@@ -492,7 +492,7 @@ namespace TWAINCSTst
         private void ShowImage(Bitmap a_bitmap)
         {
             // We're leaving...
-            if (m_blClosing || (m_graphics1 == null))
+            if (m_blClosing || (m_graphics1 == null) || (a_bitmap == null))
             {
                 return;
             }
