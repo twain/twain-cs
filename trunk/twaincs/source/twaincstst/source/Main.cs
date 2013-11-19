@@ -995,8 +995,6 @@ namespace TWAINCSTst
         /// <param name="e">Arguments</param>
         private void m_buttonStop_Click(object sender, EventArgs e)
         {
-            TWAINCSToolkit.STS sts;
-
             // Issue the command...
             if (m_twaincstoolkit != null)
             {
