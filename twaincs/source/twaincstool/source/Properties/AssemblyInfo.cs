@@ -35,11 +35,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("twaincstool")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("TWAIN Toolkit for C#")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Kodak Alaris Inc.")]
 [assembly: AssemblyProduct("twaincstool")]
-[assembly: AssemblyCopyright("Copyright ©  2013")]
+[assembly: AssemblyCopyright("Copyright © 2013, Kodak Alaris Inc.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
