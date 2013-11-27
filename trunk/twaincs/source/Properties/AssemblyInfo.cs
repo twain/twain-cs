@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("TWAIN")]
 [assembly: AssemblyDescription("TWAIN Driver Interface for C#")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("TWAIN Working Group")]
+[assembly: AssemblyCompany("Kodak Alaris Inc.")]
 [assembly: AssemblyProduct("TWAIN")]
-[assembly: AssemblyCopyright("Copyright ©  2013")]
+[assembly: AssemblyCopyright("Copyright © 2013, Kodak Alaris Inc.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
