@@ -488,8 +488,10 @@ namespace TWAINCSTst
         /// <summary>
         /// Show an image...
         /// </summary>
-        /// <param name="a_bitmap">The bitmap we want to show</param>
-        private void ShowImage(Bitmap a_bitmap)
+        /// <param name="a_sts">Current status</param>
+        /// <param name="a_bitmap">C# bitmap of the image</param>
+        /// <param name="a_szFile">File name, if doing a file transfer</param>
+        public void ShowImage(TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile)
         {
             // We're leaving...
             if (m_blClosing || (m_graphics1 == null) || (a_bitmap == null))
@@ -504,7 +506,7 @@ namespace TWAINCSTst
                 // for the thread to return.  Be careful when using EndInvoke.
                 // It's possible to create a deadlock situation with the Stop
                 // button press.  A much better solution would be to 
-                BeginInvoke(new MethodInvoker(delegate() { ShowImage(new Bitmap(a_bitmap)); }));
+                BeginInvoke(new MethodInvoker(delegate() { ShowImage(a_sts, (a_bitmap == null) ? null : new Bitmap(a_bitmap), a_szFile); }));
                 return;
             }
 
