@@ -64,6 +64,7 @@ namespace TWAINCSScan
             InitializeComponent();
 
             // Init other stuff...
+            m_blIndicators = false;
             m_blExit = false;
             m_iUseBitmap = 0;
             this.FormClosing += new FormClosingEventHandler(FormScan_FormClosing);
@@ -192,8 +193,10 @@ namespace TWAINCSScan
         /// <summary>
         /// Show an image...
         /// </summary>
-        /// <param name="a_bitmap"></param>
-        private void ShowImage(Bitmap a_bitmap)
+        /// <param name="a_sts">Current status</param>
+        /// <param name="a_bitmap">C# bitmap of the image</param>
+        /// <param name="a_szFile">File name, if doing a file transfer</param>
+        public void ShowImage(TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile)
         {
             // We're leaving...
             if (m_graphics1 == null)
@@ -208,13 +211,22 @@ namespace TWAINCSScan
                 // for the thread to return.  Be careful when using EndInvoke.
                 // It's possible to create a deadlock situation with the Stop
                 // button press.  A much better solution would be to 
-                BeginInvoke(new MethodInvoker(delegate() { ShowImage((a_bitmap == null)?null:new Bitmap(a_bitmap)); }));
+                BeginInvoke(new MethodInvoker(delegate() { ShowImage(a_sts, (a_bitmap == null) ? null : new Bitmap(a_bitmap), a_szFile); }));
                 return;
             }
 
             // We're processing end of scan...
             if (a_bitmap == null)
             {
+                // Report errors, but only if the driver's indicators have
+                // been turned off, otherwise we'll hit the user with multiple
+                // dialogs for the same error...
+                if (!m_blIndicators && (a_sts != TWAINCSToolkit.STS.SUCCESS))
+                {
+                    MessageBox.Show("End of session status: " + a_sts);
+                }
+
+                // Get ready for the next scan...
                 SetButtons(EBUTTONSTATE.OPEN);
                 return;
             }
@@ -417,6 +429,16 @@ namespace TWAINCSScan
                 return;
             }
 
+            // Decide whether or not to show the driver's window messages...
+            szStatus = "";
+            szCapability = "CAP_INDICATORS,TWON_ONEVALUE,TWTY_UINT16," + (m_blIndicators?"1":"0");
+            sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_CAPABILITY", "MSG_SET", ref szCapability, ref szStatus);
+            if (sts != TWAINCSToolkit.STS.SUCCESS)
+            {
+                m_blExit = true;
+                return;
+            }
+
             // New state...
             SetButtons(EBUTTONSTATE.OPEN);
 
@@ -475,6 +497,12 @@ namespace TWAINCSScan
         /// as the place where we'll put customdsdata...
         /// </summary>
         private string m_szProductDirectory;
+
+        /// <summary>
+        /// If true, then show the driver's window messages while
+        /// we're scanning.  Set this in the constructor...
+        /// </summary>
+        private bool m_blIndicators;
 
         /// <summary>
         /// Stuff used to display the images...
