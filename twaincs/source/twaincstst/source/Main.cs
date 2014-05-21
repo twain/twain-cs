@@ -14,10 +14,12 @@
 // may want to add to their code.
 //
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Author          Date            TWAIN       Comment
-//  M.McLaughlin    21-Oct-2013     2.3         Initial Release
+//  Author          Date            Version     Comment
+//  M.McLaughlin    21-May-2014     2.0.0.0     64-bit Linux
+//  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
+//  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013 Kodak Alaris Inc.
+//  Copyright (C) 2013-2014 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -486,12 +488,15 @@ namespace TWAINCSTst
         }
 
         /// <summary>
-        /// Show an image...
+        /// Handle an image...
         /// </summary>
+        /// <param name="a_szDg">Data group that preceeded this call</param>
+        /// <param name="a_szDat">Data argument type that preceeded this call</param>
+        /// <param name="a_szMsg">Message that preceeded this call</param>
         /// <param name="a_sts">Current status</param>
         /// <param name="a_bitmap">C# bitmap of the image</param>
         /// <param name="a_szFile">File name, if doing a file transfer</param>
-        public void ShowImage(TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile)
+        public void ReportImage(string a_szDg, string a_szDat, string a_szMsg, TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile)
         {
             // We're leaving...
             if (m_blClosing || (m_graphics1 == null) || (a_bitmap == null))
@@ -506,7 +511,7 @@ namespace TWAINCSTst
                 // for the thread to return.  Be careful when using EndInvoke.
                 // It's possible to create a deadlock situation with the Stop
                 // button press.  A much better solution would be to 
-                BeginInvoke(new MethodInvoker(delegate() { ShowImage(a_sts, (a_bitmap == null) ? null : new Bitmap(a_bitmap), a_szFile); }));
+                BeginInvoke(new MethodInvoker(delegate() { ReportImage(a_szDg, a_szDat, a_szMsg, a_sts, (a_bitmap == null) ? null : new Bitmap(a_bitmap), a_szFile); }));
                 return;
             }
 
@@ -875,7 +880,7 @@ namespace TWAINCSTst
                     (
                         this.Handle,
                         WriteOutput,
-                        ShowImage,
+                        ReportImage,
                         SetMessageFilter,
                         "TWAIN Working Group",
                         "TWAIN Sharp",

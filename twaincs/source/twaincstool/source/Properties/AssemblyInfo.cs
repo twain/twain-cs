@@ -3,10 +3,12 @@
 // TWAINWorkingGroupToolkit AssemblyInfo
 //
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Author          Date            TWAIN       Comment
-//  M.McLaughlin    21-Oct-2013     2.3         Initial Release
+//  Author          Date            Version     Comment
+//  M.McLaughlin    21-May-2014     2.0.0.0     64-bit Linux
+//  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
+//  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013 Kodak Alaris Inc.
+//  Copyright (C) 2013-2014 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -39,7 +41,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Kodak Alaris Inc.")]
 [assembly: AssemblyProduct("twaincstool")]
-[assembly: AssemblyCopyright("Copyright © 2013, Kodak Alaris Inc.")]
+[assembly: AssemblyCopyright("Copyright © 2013-2014, Kodak Alaris Inc.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -61,5 +63,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("2.0.0.0")]
+[assembly: AssemblyFileVersion("2.0.0.0")]
