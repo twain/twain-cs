@@ -8,9 +8,11 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
-//  M.McLaughlin    21-Oct-2013     2.3         Initial Release
+//  M.McLaughlin    21-May-2014     2.3.0.2     64-Bit Linux
+//  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
+//  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013 Kodak Alaris Inc.
+//  Copyright (C) 2013-2014 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -171,7 +173,13 @@ namespace TWAINWorkingGroup
                     Convert.ToChar((sz32Item_16 >> 8) & 0xFF).ToString();
 
                 // If the first character is a NUL, then return the empty string...
-                if (sz[0] == '\0')
+                while ((sz.Length > 0) && (sz[0] == '\0'))
+                {
+                    sz = sz.Remove(0, 1);
+                }
+
+                // We have an emptry string...
+                if (sz.Length == 0)
                 {
                     return ("");
                 }
@@ -2573,6 +2581,18 @@ namespace TWAINWorkingGroup
             public TW_STR32 ProductFamily;
             public TW_STR32 ProductName;
         }
+        [StructLayout(LayoutKind.Sequential, Pack = 4, CharSet = CharSet.Ansi)]
+        public struct TW_IDENTITY_LINUX64
+        {
+            public ulong Id;
+            public TW_VERSION Version;
+            public ushort ProtocolMajor;
+            public ushort ProtocolMinor;
+            public uint SupportedGroups;
+            public TW_STR32 Manufacturer;
+            public TW_STR32 ProductFamily;
+            public TW_STR32 ProductName;
+        }
         [StructLayout(LayoutKind.Sequential, Pack = 2, CharSet = CharSet.Ansi)]
         public struct TW_IDENTITY_MACOSX
         {
@@ -4680,6 +4700,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             IntPtr memref
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryNullDest
+        (
+            ref TW_IDENTITY origin,
+            IntPtr zero,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            IntPtr memref
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryNullDest
         (
@@ -4727,6 +4757,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            IntPtr memref
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntry
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -4783,6 +4823,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             IntPtr memref
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryAudioAudiofilexfer
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            IntPtr memref
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryAudioAudiofilexfer
         (
@@ -4829,6 +4879,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_AUDIOINFO twaudioinfo
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryAudioAudioinfo
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -4897,6 +4957,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_CALLBACK twcallback
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryCallback
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_CALLBACK twcallback
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryCallback
         (
@@ -4920,6 +4990,15 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            IntPtr twnull
+        );
+        private delegate UInt16 Linux64DsmEntryCallbackDelegate
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -4975,6 +5054,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_CALLBACK2 twcallback2
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryCallback2
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_CALLBACK2 twcallback2
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryCallback2
         (
@@ -4998,6 +5087,15 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            IntPtr twnull
+        );
+        private delegate UInt16 Linux64DsmEntryCallback2Delegate
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5048,6 +5146,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_CAPABILITY twcapability
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryCapability
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5104,6 +5212,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_CUSTOMDSDATA twcustomdsdata
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryCustomdsdata
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_CUSTOMDSDATA twcustomdsdata
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryCustomdsdata
         (
@@ -5150,6 +5268,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_DEVICEEVENT twdeviceevent
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryDeviceevent
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5206,6 +5334,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_EVENT twevent
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryEvent
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_EVENT twevent
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryEvent
         (
@@ -5252,6 +5390,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_ENTRYPOINT twentrypoint
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryEntrypoint
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5308,6 +5456,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_FILESYSTEM twfilesystem
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryFilesystem
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_FILESYSTEM twfilesystem
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryFilesystem
         (
@@ -5358,6 +5516,16 @@ namespace TWAINWorkingGroup
             DAT dat,
             MSG msg,
             ref TW_IDENTITY_LEGACY twidentity
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryIdentity
+        (
+            ref TW_IDENTITY origin,
+            IntPtr dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_IDENTITY twidentity
         );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryIdentity
@@ -5422,6 +5590,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref IntPtr hwnd
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryParent
+        (
+            ref TW_IDENTITY origin,
+            IntPtr dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref IntPtr hwnd
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryParent
         (
@@ -5468,6 +5646,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_PASSTHRU twpassthru
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryPassthru
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5524,6 +5712,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_PENDINGXFERS twpendingxfers
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryPendingxfers
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_PENDINGXFERS twpendingxfers
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryPendingxfers
         (
@@ -5570,6 +5768,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_SETUPFILEXFER twsetupfilexfer
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntrySetupfilexfer
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5626,6 +5834,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_SETUPMEMXFER twsetupmemxfer
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntrySetupmemxfer
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_SETUPMEMXFER twsetupmemxfer
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntrySetupmemxfer
         (
@@ -5672,6 +5890,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_STATUS twstatus
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryStatus
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5728,6 +5956,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_STATUSUTF8 twstatusutf8
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryStatusutf8
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_STATUSUTF8 twstatusutf8
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryStatusutf8
         (
@@ -5774,6 +6012,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_USERINTERFACE twuserinterface
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryUserinterface
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5830,6 +6078,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref UInt32 twuint32
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryXfergroup
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref UInt32 twuint32
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryXfergroup
         (
@@ -5876,6 +6134,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_CIECOLOR twciecolor
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryCiecolor
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -5932,6 +6200,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_EXTIMAGEINFO twextimageinfo
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryExtimageinfo
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_EXTIMAGEINFO twextimageinfo
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryExtimageinfo
         (
@@ -5978,6 +6256,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_FILTER twfilter
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryFilter
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -6034,6 +6322,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_GRAYRESPONSE twgrayresponse
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryGrayresponse
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_GRAYRESPONSE twgrayresponse
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryGrayresponse
         (
@@ -6080,6 +6378,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_MEMORY twmemory
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryIccprofile
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -6136,6 +6444,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             IntPtr twmemref
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryImagefilexfer
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            IntPtr twmemref
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryImagefilexfer
         (
@@ -6182,6 +6500,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_IMAGEINFO twimageinfo
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryImageinfo
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -6238,6 +6566,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_IMAGELAYOUT twimagelayout
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryImagelayout
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_IMAGELAYOUT twimagelayout
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryImagelayout
         (
@@ -6284,6 +6622,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_IMAGEMEMXFER twimagememfilexfer
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryImagememfilexfer
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -6340,6 +6688,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_IMAGEMEMXFER twimagememxfer
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryImagememxfer
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_IMAGEMEMXFER twimagememxfer
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryImagememxfer
         (
@@ -6386,6 +6744,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref IntPtr intptrBitmap
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryImagenativexfer
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,
@@ -6442,6 +6810,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_JPEGCOMPRESSION twjpegcompression
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryJpegcompression
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_JPEGCOMPRESSION twjpegcompression
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryJpegcompression
         (
@@ -6493,6 +6871,16 @@ namespace TWAINWorkingGroup
             MSG msg,
             ref TW_PALETTE8 twpalette8
         );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryPalette8
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_PALETTE8 twpalette8
+        );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryPalette8
         (
@@ -6539,6 +6927,16 @@ namespace TWAINWorkingGroup
         (
             ref TW_IDENTITY_LEGACY origin,
             ref TW_IDENTITY_LEGACY dest,
+            DG dg,
+            DAT dat,
+            MSG msg,
+            ref TW_RGBRESPONSE twrgbresponse
+        );
+        [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
+        private static extern UInt16 Linux64DsmEntryRgbresponse
+        (
+            ref TW_IDENTITY origin,
+            ref TW_IDENTITY dest,
             DG dg,
             DAT dat,
             MSG msg,

@@ -5,10 +5,12 @@
 //  Our entry point.
 //
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Author          Date            TWAIN       Comment
-//  M.McLaughlin    21-Oct-2013     2.3         Initial Release
+//  Author          Date            Version     Comment
+//  M.McLaughlin    21-May-2014     2.0.0.0     64-bit Linux
+//  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
+//  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013 Kodak Alaris Inc.
+//  Copyright (C) 2013-2014 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
