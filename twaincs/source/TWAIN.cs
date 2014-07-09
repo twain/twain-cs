@@ -9,6 +9,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    24-Jun-2014     2.3.0.3     Stability fixes
 //  M.McLaughlin    21-May-2014     2.3.0.2     64-Bit Linux
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
@@ -608,6 +609,7 @@ namespace TWAINWorkingGroup
                         m_tweventPreFilterMessage.pEvent = IntPtr.Zero;
                     }
                     stateStart = STATE.S4;
+                    m_blAcceptXferReady = false;
                 }
 
                 // State 4 --> State 3...
@@ -5335,6 +5337,13 @@ namespace TWAINWorkingGroup
                 return (sts);
             }
 
+            // We need this to handle data sources that return MSG_XFERREADY in
+            // the midst of processing MSG_ENABLEDS...
+            if (a_msg == MSG.ENABLEDS)
+            {
+                m_blAcceptXferReady = true;
+            }
+
             // Windows...
             if (ms_platform == Platform.WINDOWS)
             {
@@ -5400,12 +5409,20 @@ namespace TWAINWorkingGroup
                 return (STS.BUMMER);
             }
 
-            // If we opened, go to state 4...
+            // If we opened, go to state 5...
             if ((a_msg == MSG.ENABLEDS) || (a_msg == MSG.ENABLEDSUIONLY))
             {
                 if (sts == STS.SUCCESS)
                 {
                     m_state = STATE.S5;
+
+                    // MSG_XFERREADY showed up while we were still processing MSG_ENABLEDS
+                    if ((sts == STS.SUCCESS) && m_blAcceptXferReady && m_blIsMsgxferready)
+                    {
+                        m_blAcceptXferReady = false;
+                        m_state = STATE.S6;
+                        CallerToThreadSet();
+                    }
                 }
             }
 
@@ -5574,6 +5591,15 @@ namespace TWAINWorkingGroup
 
             // Make sure our command data is clean...
             m_threaddata = default(ThreadData);
+
+            // If we're on Windows, prime the messaging system...
+            /*
+            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+            {
+                MSG msg;
+                GetMessage(out msg, IntPtr.Zero, 0, 0);
+            }
+            */
 
             // Okay, we're ready to run...
             m_autoreseteventThreadStarted.Set();
@@ -5825,11 +5851,25 @@ namespace TWAINWorkingGroup
 
                 // If we're in state 5, then go to state 6...
                 case MSG.XFERREADY:
-                    if (m_state == STATE.S5)
+                    if (m_blAcceptXferReady)
                     {
-                        m_state = STATE.S6;
-                        m_blIsMsgxferready = true;
-                        CallerToThreadSet();
+                        // MSG_XFERREADY arrived during the handling of the
+                        // call to MSG_ENABLEDS.  We have to defer processing
+                        // it as late as possible...
+                        if (m_state == STATE.S4)
+                        {
+                            m_blIsMsgxferready = true;
+                         }
+
+                        // MSG_XFERREADY arrived after the completion of the
+                        // call to MSG_ENABLEDS.  We can just do it...
+                        else
+                        {
+                            m_blAcceptXferReady = false;
+                            m_state = STATE.S6;
+                            m_blIsMsgxferready = true;
+                            CallerToThreadSet();
+                        }
                     }
                     break;
 
@@ -6988,6 +7028,9 @@ namespace TWAINWorkingGroup
             public uint u32Value;
         }
 
+        [DllImport("user32.dll")]
+        static extern sbyte GetMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
+
         #endregion
 
 
@@ -7014,6 +7057,7 @@ namespace TWAINWorkingGroup
         /// Our current TWAIN state...
         /// </summary>
         private STATE m_state;
+        private bool m_blAcceptXferReady;
 
         /// <summary>
         /// DAT_NULL flags that we've seen after entering into
