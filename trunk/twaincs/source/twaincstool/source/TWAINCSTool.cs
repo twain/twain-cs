@@ -2315,8 +2315,8 @@ namespace TWAINWorkingGroupToolkit
                 {
                     byte[] abTmp;
 
-                    // Remember the offset for this strip...
-                    intptrOffset = intptrTotalXfer;
+                    // Append the new data to the end of the data we've transferred so far...
+                    intptrOffset = (IntPtr)intptrTotalXfer;
 
                     // Get a strip of image data...
                     sts = m_twain.DatImagememfilexfer(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimagememxfer);
@@ -2332,7 +2332,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -2344,7 +2344,7 @@ namespace TWAINWorkingGroupToolkit
                         sts = TWAIN.STS.LOWMEMORY;
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -2352,8 +2352,6 @@ namespace TWAINWorkingGroupToolkit
                     if (abImage != null)
                     {
                         Buffer.BlockCopy(abImage, 0, abTmp, 0, (int)intptrTotalAllocated - (int)twimagememxfer.BytesWritten);
-                        abImage = abTmp;
-                        abTmp = null;
                     }
 
                     // Switch pointers...
