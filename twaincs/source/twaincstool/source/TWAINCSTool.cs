@@ -20,6 +20,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            Comment
+//  M.McLaughlin    13-Oct-2014     Auto file format, added logging
 //  M.McLaughlin    24-Jun-2014     Stability fixes
 //  M.McLaughlin    21-May-2014     64-bit Linux
 //  M.McLaughlin    27-Feb-2014     ShowImage additions
@@ -67,12 +68,6 @@ namespace TWAINWorkingGroupToolkit
         // application...
         ///////////////////////////////////////////////////////////////////////////////
         #region Public Functions...
-
-        private void WriteOutputStub(string a_sz)
-        {
-            return;
-        }
-
 
         /// <summary>
         /// Instantiate TWAIN and open the DSM...
@@ -186,7 +181,7 @@ namespace TWAINWorkingGroupToolkit
             }
             else
             {
-                throw new Exception("Unsupported platform...");
+                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + TWAIN.GetPlatform());
             }
 
             // We've not been in the scan callback yet...
@@ -196,7 +191,7 @@ namespace TWAINWorkingGroupToolkit
             TWAIN.STS sts = m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.OPENDSM, ref m_intptrHwnd);
             if (sts != TWAIN.STS.SUCCESS)
             {
-                throw new Exception("OpenDSM failed...");
+                Log.Msg(Log.Severity.Programmer, "OpenDSM failed...");
             }
         }
 
@@ -206,15 +201,6 @@ namespace TWAINWorkingGroupToolkit
         ~TWAINCSToolkit()
         {
             Cleanup();
-        }
-
-        /// <summary>
-        /// Get our TWAIN object...
-        /// </summary>
-        /// <returns></returns>
-        public TWAIN Twain()
-        {
-            return (m_twain);
         }
 
         /// <summary>
@@ -242,6 +228,77 @@ namespace TWAINWorkingGroupToolkit
 
             // Issue the command...
             m_twain.Rollback(TWAIN.STATE.S3);
+        }
+
+        /// <summary>
+        /// Parse a CSV string (we're hiding the TWAIN namespace for
+        /// the caller)...
+        /// </summary>
+        /// <param name="a_szCsv">String to parse</param>
+        /// <returns>Array of strings</returns>
+        public static string[] CsvParse(string a_szCsv)
+        {
+            return (CSV.Parse(a_szCsv));
+        }
+
+        /// <summary>
+        /// Get on automatic determination of JPEG or TIFF for file
+        /// transfers...
+        /// </summary>
+        public bool GetAutomaticJpegOrTiff()
+        {
+            return (m_blAutomaticJpegOrTiff);
+        }
+
+        /// <summary>
+        /// Get the list of drivers, along with the default...
+        /// </summary>
+        /// <param name="a_szDefault">Returns the CSV identity default driver</param>
+        /// <returns>Array of CSV identities for each driver found</returns>
+        public string[] GetDrivers(ref string a_szDefault)
+        {
+            int ii;
+            STS sts;
+            string szIdentity = "";
+            string szStatus = "";
+            string[] aszTmp;
+            string[] aszIdentity = null;
+
+            // Enumerate all the drivers...
+            ii = 0;
+            for (sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETFIRST", ref szIdentity, ref szStatus);
+                 sts == STS.SUCCESS;
+                 sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETNEXT", ref szIdentity, ref szStatus))
+            {
+                ii += 1;
+                aszTmp = new string[ii];
+                if (aszIdentity != null)
+                {
+                    Array.Copy(aszIdentity, aszTmp, ii - 1);
+                }
+                aszTmp[ii - 1] = szIdentity;
+                aszIdentity = aszTmp;
+                aszTmp = null;
+            }
+
+            // Get the default...
+            a_szDefault = "";
+            if (aszIdentity != null)
+            {
+                Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETDEFAULT", ref a_szDefault, ref szStatus);
+            }
+
+            // All done...
+            return (aszIdentity);
+        }
+
+        /// <summary>
+        /// Get the path where images will be saved...
+        /// </summary>
+        /// <returns>The image path</returns>
+        public string GetImagePath()
+        {
+            return (m_szImagePath);
         }
 
         /// <summary>
@@ -457,79 +514,6 @@ namespace TWAINWorkingGroupToolkit
         }
 
         /// <summary>
-        /// Parse a CSV string (we're hiding the TWAIN namespace for
-        /// the caller)...
-        /// </summary>
-        /// <param name="a_szCsv">String to parse</param>
-        /// <returns>Array of strings</returns>
-        public static string[] CsvParse(string a_szCsv)
-        {
-            return (CSV.Parse(a_szCsv));
-        }
-
-        /// <summary>
-        /// Get the list of drivers, along with the default...
-        /// </summary>
-        /// <param name="a_szDefault">Returns the CSV identity default driver</param>
-        /// <returns>Array of CSV identities for each driver found</returns>
-        public string[] GetDrivers(ref string a_szDefault)
-        {
-            int ii;
-            STS sts;
-            string szIdentity = "";
-            string szStatus = "";
-            string[] aszTmp;
-            string[] aszIdentity = null;
-
-            // Enumerate all the drivers...
-            ii = 0;
-            for (sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETFIRST", ref szIdentity, ref szStatus);
-                 sts == STS.SUCCESS;
-                 sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETNEXT", ref szIdentity, ref szStatus))
-            {
-                ii += 1;
-                aszTmp = new string[ii];
-                if (aszIdentity != null)
-                {
-                    Array.Copy(aszIdentity, aszTmp, ii - 1);
-                }
-                aszTmp[ii - 1] = szIdentity;
-                aszIdentity = aszTmp;
-                aszTmp = null;
-            }
-
-            // Get the default...
-            a_szDefault = "";
-            if (aszIdentity != null)
-            {
-                Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETDEFAULT", ref a_szDefault, ref szStatus);
-            }
-
-            // All done...
-            return (aszIdentity);
-        }
-
-        /// <summary>
-        /// Get the path where images will be saved...
-        /// </summary>
-        /// <returns>The image path</returns>
-        public string GetImagePath()
-        {
-            return (m_szImagePath);
-        }
-
-        /// <summary>
-        /// Set the path where images should be saved...
-        /// </summary>
-        /// <param name="a_szImagePath">Folder to save images in</param>
-        /// <param name="a_iImageCount">New image count number</param>
-        public void SetImagePath(string a_szImagePath, int a_iImageCount)
-        {
-            m_szImagePath = a_szImagePath;
-            m_iImageCount = a_iImageCount;
-        }
-
-        /// <summary>
         /// Restore a snapshot of driver values...
         /// </summary>
         /// <param name="a_szFile">File to use to restore driver settings</param>
@@ -598,6 +582,7 @@ namespace TWAINWorkingGroupToolkit
             sts = Send("DG_CONTROL", "DAT_CUSTOMDSDATA", "MSG_GET", ref szCustomdsdata, ref szStatus);
             if (sts != STS.SUCCESS)
             {
+                Log.Msg(Log.Severity.Error, "DAT_CUSTOMDSDATA failed...");
                 return (sts);
             }
 
@@ -620,6 +605,36 @@ namespace TWAINWorkingGroupToolkit
 
             // All done...
             return (STS.SUCCESS);
+        }
+
+        /// <summary>
+        /// Turn on automatic determination of JPEG or TIFF for file
+        /// transfers...
+        /// </summary>
+        /// <param name="a_blSetting">true for automatic</param>
+        public void SetAutomaticJpegOrTiff(bool a_blSetting)
+        {
+            m_blAutomaticJpegOrTiff = a_blSetting;
+        }
+
+        /// <summary>
+        /// Set the path where images should be saved...
+        /// </summary>
+        /// <param name="a_szImagePath">Folder to save images in</param>
+        /// <param name="a_iImageCount">New image count number</param>
+        public void SetImagePath(string a_szImagePath, int a_iImageCount)
+        {
+            m_szImagePath = a_szImagePath;
+            m_iImageCount = a_iImageCount;
+        }
+
+        /// <summary>
+        /// Get our TWAIN object...
+        /// </summary>
+        /// <returns></returns>
+        public TWAIN Twain()
+        {
+            return (m_twain);
         }
 
         #endregion
@@ -803,6 +818,11 @@ namespace TWAINWorkingGroupToolkit
             if (m_twain.GetState() < TWAIN.STATE.S4)
             {
                 twmemref = Marshal.AllocHGlobal(8192);
+                if (twmemref == IntPtr.Zero)
+                {
+                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
+                    return (STS.LOWMEMORY);
+                }
                 sts = m_twain.DsmEntryNullDest(a_dg, a_dat, a_msg, twmemref);
                 Marshal.FreeHGlobal(twmemref);
                 return (CvtSts(sts));
@@ -812,6 +832,11 @@ namespace TWAINWorkingGroupToolkit
             else
             {
                 twmemref = Marshal.AllocHGlobal(8192);
+                if (twmemref == IntPtr.Zero)
+                {
+                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
+                    return (STS.LOWMEMORY);
+                }
                 sts = m_twain.DsmEntry(a_dg, a_dat, a_msg, twmemref);
                 Marshal.FreeHGlobal(twmemref);
                 return (CvtSts(sts));
@@ -1399,6 +1424,7 @@ namespace TWAINWorkingGroupToolkit
             // Validate...
             if (m_twain == null)
             {
+                Log.Msg(Log.Severity.Error, "m_twain is null...");
                 if (ReportImage != null) ReportImage("", "", "", CvtSts(TWAIN.STS.FAILURE), null, null);
                 return (TWAIN.STS.FAILURE);
             }
@@ -1462,6 +1488,14 @@ namespace TWAINWorkingGroupToolkit
             // see it, then return...
             if (!m_twain.IsMsgXferReady())
             {
+                // If we're on Windows we need to send event requests to the driver...
+                if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+                {
+                    TWAIN.TW_EVENT twevent = default(TWAIN.TW_EVENT);
+                    m_twain.DatEvent(TWAIN.DG.CONTROL,TWAIN.MSG.PROCESSEVENT,ref twevent);
+                }
+
+                // Scoot...
                 return (TWAIN.STS.SUCCESS);
             }
 
@@ -1517,8 +1551,35 @@ namespace TWAINWorkingGroupToolkit
                 Bitmap bitmap;
                 TWAIN.TW_SETUPFILEXFER twsetupfilexfer = default(TWAIN.TW_SETUPFILEXFER);
 
-                // Add the image transfer count and the extension...
+                // Get a copy of the current setup file transfer info...
                 twsetupfilexfer = m_twsetupfilexfer;
+
+                // ***WARNING***
+                // Override the current setting with one that supports the pixeltype and
+                // compression of the current image.  The choices are JPEG or TIFF.  Note
+                // that this only works for drivers that report final value in state 6...
+                if (m_blAutomaticJpegOrTiff)
+                {
+                    // We need the image info for this one...
+                    twimageinfo = default(TWAIN.TW_IMAGEINFO);
+                    sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
+                    if (sts != TWAIN.STS.SUCCESS)
+                    {
+                        WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
+                        m_twain.Rollback(m_stateAfterScan);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        return (TWAIN.STS.SUCCESS);
+                    }
+
+                    // Assume TIFF, unless we detect JPEG (JFIF)...
+                    twsetupfilexfer.Format = TWAIN.TWFF.TIFF;
+                    if (twimageinfo.Compression == (ushort)TWAIN.TWCP.JPEG)
+                    {
+                        twsetupfilexfer.Format = TWAIN.TWFF.JFIF;
+                    }
+                }
+
+                // Add the image transfer count and the extension...
                 switch (twsetupfilexfer.Format)
                 {
                     default: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".xxx"); break;
@@ -1580,6 +1641,7 @@ namespace TWAINWorkingGroupToolkit
                     }
                 }
             }
+
             #endregion
 
 
@@ -2296,6 +2358,7 @@ namespace TWAINWorkingGroupToolkit
                 }
 
                 // Allocate our unmanaged memory...
+                twimagememxfer.Memory.Flags = (uint)TWAIN.TWMF.APPOWNS | (uint)TWAIN.TWMF.POINTER;
                 twimagememxfer.Memory.Length = twsetupmemxfer.Preferred;
                 twimagememxfer.Memory.TheMem = Marshal.AllocHGlobal((int)twsetupmemxfer.Preferred);
                 if (twimagememxfer.Memory.TheMem == IntPtr.Zero)
@@ -2532,6 +2595,15 @@ namespace TWAINWorkingGroupToolkit
             return (TWAIN.STS.SUCCESS);
         }
 
+        /// <summary>
+        /// A placeholder for when the user doesn't supply us this callback...
+        /// </summary>
+        /// <param name="a_sz"></param>
+        private void WriteOutputStub(string a_sz)
+        {
+            return;
+        }
+
         #endregion
 
 
@@ -2569,6 +2641,23 @@ namespace TWAINWorkingGroupToolkit
                 AtStressCapGetCurrent();
             }
 
+            // @autojpegtiff...
+            else if (a_szCmd.ToLower().StartsWith("@autojpegtiff"))
+            {
+                if (GetAutomaticJpegOrTiff())
+                {
+                    SetAutomaticJpegOrTiff(false);
+                    WriteOutput(Environment.NewLine);
+                    WriteOutput("Automatic JPEG/TIFF turned OFF...");
+                }
+                else
+                {
+                    SetAutomaticJpegOrTiff(true);
+                    WriteOutput(Environment.NewLine);
+                    WriteOutput("Automatic JPEG/TIFF turned ON...");
+                }
+            }
+
             // All done...
             return (true);
         }
@@ -2581,6 +2670,7 @@ namespace TWAINWorkingGroupToolkit
             WriteOutput(Environment.NewLine);
             WriteOutput("@help - this text" + Environment.NewLine);
             WriteOutput("@stresscapgetcurrent - stress test capabilities" + Environment.NewLine);
+            WriteOutput("@autojpegtiff - turn on auto jpeg or tiff" + Environment.NewLine);
         }
 
         /// <summary>
@@ -3000,6 +3090,17 @@ namespace TWAINWorkingGroupToolkit
         /// Counter for saving images...
         /// </summary>
         private int m_iImageCount;
+
+        /// <summary>
+        /// ***WARNING***
+        /// Use this for file transfers to choose automatically
+        /// between JPEG and TIFF, based on the pixeltype and
+        /// compression of the image.  Note that this only works
+        /// reliably for drivers that report the final values of
+        /// an image in state 6, which is not a requirements of
+        /// the TWAIN Specification...
+        /// </summary>
+        private bool m_blAutomaticJpegOrTiff;
 
         #endregion
     }

@@ -6,6 +6,7 @@
     <ProjectGuid>{E00DEC90-0A85-47D5-B0E4-39940AF8C141}</ProjectGuid>
     <OutputType>Library</OutputType>
     <NoStandardLibraries>false</NoStandardLibraries>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
     <AssemblyName>TWAIN</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -88,7 +89,7 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TWAIN.cs" />
     <Compile Include="TWAINH.cs" />
   </ItemGroup>
