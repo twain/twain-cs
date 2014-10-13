@@ -6595,7 +6595,7 @@ namespace TWAINWorkingGroup
         /// <param name="dg"></param>
         /// <param name="dat"></param>
         /// <param name="msg"></param>
-        /// <param name="twimagememfilexfer"></param>
+        /// <param name="twimagememxfer"></param>
         /// <returns></returns>
         [DllImport("twain_32.dll", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 WindowsTwain32DsmEntryImagememfilexfer
@@ -6605,7 +6605,7 @@ namespace TWAINWorkingGroup
             DG dg,
             DAT dat,
             MSG msg,
-            ref TW_IMAGEMEMXFER twimagememfilexfer
+            ref TW_IMAGEMEMXFER twimagememxfer
         );
         [DllImport("twaindsm.dll", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 WindowsTwaindsmDsmEntryImagememfilexfer
@@ -6615,7 +6615,7 @@ namespace TWAINWorkingGroup
             DG dg,
             DAT dat,
             MSG msg,
-            ref TW_IMAGEMEMXFER twimagememfilexfer
+            ref TW_IMAGEMEMXFER twimagememxfer
         );
         [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 LinuxDsmEntryImagememfilexfer
@@ -6625,7 +6625,7 @@ namespace TWAINWorkingGroup
             DG dg,
             DAT dat,
             MSG msg,
-            ref TW_IMAGEMEMXFER twimagememfilexfer
+            ref TW_IMAGEMEMXFER twimagememxfer
         );
         [DllImport("/usr/local/lib/libtwaindsm.so", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 Linux64DsmEntryImagememfilexfer
@@ -6635,7 +6635,7 @@ namespace TWAINWorkingGroup
             DG dg,
             DAT dat,
             MSG msg,
-            ref TW_IMAGEMEMXFER twimagememfilexfer
+            ref TW_IMAGEMEMXFER twimagememxfer
         );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryImagememfilexfer
@@ -6645,7 +6645,7 @@ namespace TWAINWorkingGroup
             DG dg,
             DAT dat,
             MSG msg,
-            ref TW_IMAGEMEMXFER twimagememfilexfer
+            ref TW_IMAGEMEMXFER_MACOSX twimagememxfer
         );
 
         /// <summary>
