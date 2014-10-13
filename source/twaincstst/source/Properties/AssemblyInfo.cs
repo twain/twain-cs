@@ -1,11 +1,9 @@
 ﻿///////////////////////////////////////////////////////////////////////////////////////
 //
-// TWAINWorkingGroupToolkit AssemblyInfo
+// TWAINCSTst AssemblyInfo
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            Version     Comment
-//  M.McLaughlin    11-Jul-2014     2.2.0.0     memfile fix
-//  M.McLaughlin    08-Jul-2014     2.1.0.0     ReportImage lock fix
 //  M.McLaughlin    21-May-2014     2.0.0.0     64-bit Linux
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
@@ -38,11 +36,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("twaincstool")]
-[assembly: AssemblyDescription("TWAIN Toolkit for C#")]
+[assembly: AssemblyTitle("TWAINCSTst")]
+[assembly: AssemblyDescription("Diagnostic TWAIN Application for C#")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Kodak Alaris Inc.")]
-[assembly: AssemblyProduct("twaincstool")]
+[assembly: AssemblyProduct("TWAINCSTst")]
 [assembly: AssemblyCopyright("Copyright © 2013-2014, Kodak Alaris Inc.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -53,7 +51,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("40c4d0c6-0483-4456-9fad-d23b79e18d9f")]
+[assembly: Guid("1b424eff-90ab-4e15-863d-884b513fe3c4")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -65,5 +63,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("2.3.0.4")]
-[assembly: AssemblyFileVersion("2.3.0.4")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]

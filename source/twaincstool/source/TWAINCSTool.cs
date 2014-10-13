@@ -19,12 +19,10 @@
 // work.
 //
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Author          Date            Comment
-//  M.McLaughlin    13-Oct-2014     Auto file format, added logging
-//  M.McLaughlin    24-Jun-2014     Stability fixes
-//  M.McLaughlin    21-May-2014     64-bit Linux
-//  M.McLaughlin    27-Feb-2014     ShowImage additions
-//  M.McLaughlin    21-Oct-2013     Initial Release
+//  Author          Date            Version     Comment
+//  M.McLaughlin    21-May-2014     2.0.0.0     64-bit Linux
+//  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
+//  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Copyright (C) 2013-2014 Kodak Alaris Inc.
 //
@@ -114,14 +112,7 @@ namespace TWAINWorkingGroupToolkit
 
             // Init stuff...
             m_intptrHwnd = a_intptrHwnd;
-            if (a_writeoutputdelegate == null)
-            {
-                WriteOutput = WriteOutputStub;
-            }
-            else
-            {
-                WriteOutput = a_writeoutputdelegate;
-            }
+            WriteOutput = a_writeoutputdelegate;
             ReportImage = a_reportimagedelegate;
             SetMessageFilter = m_setmessagefilterdelegate;
             m_szImagePath = null;
@@ -181,7 +172,7 @@ namespace TWAINWorkingGroupToolkit
             }
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + TWAIN.GetPlatform());
+                throw new Exception("Unsupported platform...");
             }
 
             // We've not been in the scan callback yet...
@@ -191,7 +182,7 @@ namespace TWAINWorkingGroupToolkit
             TWAIN.STS sts = m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.OPENDSM, ref m_intptrHwnd);
             if (sts != TWAIN.STS.SUCCESS)
             {
-                Log.Msg(Log.Severity.Programmer, "OpenDSM failed...");
+                throw new Exception("OpenDSM failed...");
             }
         }
 
@@ -228,77 +219,6 @@ namespace TWAINWorkingGroupToolkit
 
             // Issue the command...
             m_twain.Rollback(TWAIN.STATE.S3);
-        }
-
-        /// <summary>
-        /// Parse a CSV string (we're hiding the TWAIN namespace for
-        /// the caller)...
-        /// </summary>
-        /// <param name="a_szCsv">String to parse</param>
-        /// <returns>Array of strings</returns>
-        public static string[] CsvParse(string a_szCsv)
-        {
-            return (CSV.Parse(a_szCsv));
-        }
-
-        /// <summary>
-        /// Get on automatic determination of JPEG or TIFF for file
-        /// transfers...
-        /// </summary>
-        public bool GetAutomaticJpegOrTiff()
-        {
-            return (m_blAutomaticJpegOrTiff);
-        }
-
-        /// <summary>
-        /// Get the list of drivers, along with the default...
-        /// </summary>
-        /// <param name="a_szDefault">Returns the CSV identity default driver</param>
-        /// <returns>Array of CSV identities for each driver found</returns>
-        public string[] GetDrivers(ref string a_szDefault)
-        {
-            int ii;
-            STS sts;
-            string szIdentity = "";
-            string szStatus = "";
-            string[] aszTmp;
-            string[] aszIdentity = null;
-
-            // Enumerate all the drivers...
-            ii = 0;
-            for (sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETFIRST", ref szIdentity, ref szStatus);
-                 sts == STS.SUCCESS;
-                 sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETNEXT", ref szIdentity, ref szStatus))
-            {
-                ii += 1;
-                aszTmp = new string[ii];
-                if (aszIdentity != null)
-                {
-                    Array.Copy(aszIdentity, aszTmp, ii - 1);
-                }
-                aszTmp[ii - 1] = szIdentity;
-                aszIdentity = aszTmp;
-                aszTmp = null;
-            }
-
-            // Get the default...
-            a_szDefault = "";
-            if (aszIdentity != null)
-            {
-                Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETDEFAULT", ref a_szDefault, ref szStatus);
-            }
-
-            // All done...
-            return (aszIdentity);
-        }
-
-        /// <summary>
-        /// Get the path where images will be saved...
-        /// </summary>
-        /// <returns>The image path</returns>
-        public string GetImagePath()
-        {
-            return (m_szImagePath);
         }
 
         /// <summary>
@@ -510,7 +430,80 @@ namespace TWAINWorkingGroupToolkit
         public void StopSession()
         {
             m_twain.Rollback(TWAIN.STATE.S4);
-            ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.USERINTERFACE.ToString(), TWAIN.MSG.DISABLEDS.ToString(), CvtSts(TWAIN.STS.CANCEL), null, null);
+            ReportImage(TWAIN.DG.CONTROL.ToString(),TWAIN.DAT.USERINTERFACE.ToString(),TWAIN.MSG.DISABLEDS.ToString(),CvtSts(TWAIN.STS.CANCEL),null,null);
+        }
+
+        /// <summary>
+        /// Parse a CSV string (we're hiding the TWAIN namespace for
+        /// the caller)...
+        /// </summary>
+        /// <param name="a_szCsv">String to parse</param>
+        /// <returns>Array of strings</returns>
+        public static string[] CsvParse(string a_szCsv)
+        {
+            return (CSV.Parse(a_szCsv));
+        }
+
+        /// <summary>
+        /// Get the list of drivers, along with the default...
+        /// </summary>
+        /// <param name="a_szDefault">Returns the CSV identity default driver</param>
+        /// <returns>Array of CSV identities for each driver found</returns>
+        public string[] GetDrivers(ref string a_szDefault)
+        {
+            int ii;
+            STS sts;
+            string szIdentity = "";
+            string szStatus = "";
+            string[] aszTmp;
+            string[] aszIdentity = null;
+
+            // Enumerate all the drivers...
+            ii = 0;
+            for (sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETFIRST", ref szIdentity, ref szStatus);
+                 sts == STS.SUCCESS;
+                 sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETNEXT", ref szIdentity, ref szStatus))
+            {
+                ii += 1;
+                aszTmp = new string[ii];
+                if (aszIdentity != null)
+                {
+                    Array.Copy(aszIdentity, aszTmp, ii - 1);
+                }
+                aszTmp[ii - 1] = szIdentity;
+                aszIdentity = aszTmp;
+                aszTmp = null;
+            }
+
+            // Get the default...
+            a_szDefault = "";
+            if (aszIdentity != null)
+            {
+                Send("DG_CONTROL", "DAT_IDENTITY", "MSG_GETDEFAULT", ref a_szDefault, ref szStatus);
+            }
+
+            // All done...
+            return (aszIdentity);
+        }
+
+        /// <summary>
+        /// Get the path where images will be saved...
+        /// </summary>
+        /// <returns>The image path</returns>
+        public string GetImagePath()
+        {
+            return (m_szImagePath);
+        }
+
+        /// <summary>
+        /// Set the path where images should be saved...
+        /// </summary>
+        /// <param name="a_szImagePath">Folder to save images in</param>
+        /// <param name="a_iImageCount">New image count number</param>
+        public void SetImagePath(string a_szImagePath, int a_iImageCount)
+        {
+            m_szImagePath = a_szImagePath;
+            m_iImageCount = a_iImageCount;
         }
 
         /// <summary>
@@ -582,7 +575,6 @@ namespace TWAINWorkingGroupToolkit
             sts = Send("DG_CONTROL", "DAT_CUSTOMDSDATA", "MSG_GET", ref szCustomdsdata, ref szStatus);
             if (sts != STS.SUCCESS)
             {
-                Log.Msg(Log.Severity.Error, "DAT_CUSTOMDSDATA failed...");
                 return (sts);
             }
 
@@ -605,36 +597,6 @@ namespace TWAINWorkingGroupToolkit
 
             // All done...
             return (STS.SUCCESS);
-        }
-
-        /// <summary>
-        /// Turn on automatic determination of JPEG or TIFF for file
-        /// transfers...
-        /// </summary>
-        /// <param name="a_blSetting">true for automatic</param>
-        public void SetAutomaticJpegOrTiff(bool a_blSetting)
-        {
-            m_blAutomaticJpegOrTiff = a_blSetting;
-        }
-
-        /// <summary>
-        /// Set the path where images should be saved...
-        /// </summary>
-        /// <param name="a_szImagePath">Folder to save images in</param>
-        /// <param name="a_iImageCount">New image count number</param>
-        public void SetImagePath(string a_szImagePath, int a_iImageCount)
-        {
-            m_szImagePath = a_szImagePath;
-            m_iImageCount = a_iImageCount;
-        }
-
-        /// <summary>
-        /// Get our TWAIN object...
-        /// </summary>
-        /// <returns></returns>
-        public TWAIN Twain()
-        {
-            return (m_twain);
         }
 
         #endregion
@@ -664,7 +626,7 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_szFile">File name, if doing a file transfer</param>
         /// <summary>
         /// </summary>
-        public delegate TWAINCSToolkit.MSG ReportImageDelegate(string a_szDg, string a_szDat, string a_szMsg, TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile);
+        public delegate void ReportImageDelegate(string a_szDg, string a_szDat, string a_szMsg, TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile);
 
         /// <summary>
         /// Turn message filtering on and off using a function
@@ -725,23 +687,6 @@ namespace TWAINWorkingGroupToolkit
             DOCTOOLIGHT = STSCC + 27,
             DOCTOODARK = STSCC + 28,
             NOMEDIA = STSCC + 29
-        }
-
-        /// <summary>
-        /// Some messages, taken from TWAINCS.H...
-        /// </summary>
-        public enum MSG
-        {
-            // Custom base (same for TWRC and TWCC)...
-            CUSTOMBASE = 0x8000,
-            UNSUPPORTED = 0xFFFF,
-
-            /* Generic messages may be used with any of several DATs.                   */
-            RESET = 0x0007,
-
-            /* Messages used with a pointer to a DAT_PENDINGXFERS structure             */
-            ENDXFER = 0x0701,
-            STOPFEEDER = 0x0702,
         }
 
         #endregion
@@ -818,11 +763,6 @@ namespace TWAINWorkingGroupToolkit
             if (m_twain.GetState() < TWAIN.STATE.S4)
             {
                 twmemref = Marshal.AllocHGlobal(8192);
-                if (twmemref == IntPtr.Zero)
-                {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
-                    return (STS.LOWMEMORY);
-                }
                 sts = m_twain.DsmEntryNullDest(a_dg, a_dat, a_msg, twmemref);
                 Marshal.FreeHGlobal(twmemref);
                 return (CvtSts(sts));
@@ -832,11 +772,6 @@ namespace TWAINWorkingGroupToolkit
             else
             {
                 twmemref = Marshal.AllocHGlobal(8192);
-                if (twmemref == IntPtr.Zero)
-                {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
-                    return (STS.LOWMEMORY);
-                }
                 sts = m_twain.DsmEntry(a_dg, a_dat, a_msg, twmemref);
                 Marshal.FreeHGlobal(twmemref);
                 return (CvtSts(sts));
@@ -1414,7 +1349,6 @@ namespace TWAINWorkingGroupToolkit
         private TWAIN.STS ScanCallback(bool a_blClosing)
         {
             bool blXferDone;
-            TWAINCSToolkit.MSG msgPendingxfers = TWAINCSToolkit.MSG.ENDXFER;
             TWAIN.STS sts;
             string szFilename = "";
             bool blDidImageInfo;
@@ -1424,15 +1358,14 @@ namespace TWAINWorkingGroupToolkit
             // Validate...
             if (m_twain == null)
             {
-                Log.Msg(Log.Severity.Error, "m_twain is null...");
-                if (ReportImage != null) ReportImage("", "", "", CvtSts(TWAIN.STS.FAILURE), null, null);
+                ReportImage("","","",CvtSts(TWAIN.STS.FAILURE),null,null);
                 return (TWAIN.STS.FAILURE);
             }
 
             // We're leaving...
             if (a_blClosing)
             {
-                if (ReportImage != null) ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.IDENTITY.ToString(), TWAIN.MSG.CLOSEDS.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null);
+                ReportImage(TWAIN.DG.CONTROL.ToString(),TWAIN.DAT.IDENTITY.ToString(),TWAIN.MSG.CLOSEDS.ToString(),CvtSts(TWAIN.STS.SUCCESS),null,null);
                 return (TWAIN.STS.SUCCESS);
             }
 
@@ -1440,13 +1373,13 @@ namespace TWAINWorkingGroupToolkit
             if (m_twain.IsMsgCloseDsReq())
             {
                 m_twain.Rollback(TWAIN.STATE.S4);
-                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.NULL.ToString(), TWAIN.MSG.CLOSEDSREQ.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null);
+                ReportImage(TWAIN.DG.CONTROL.ToString(),TWAIN.DAT.NULL.ToString(),TWAIN.MSG.CLOSEDSREQ.ToString(),CvtSts(TWAIN.STS.SUCCESS),null,null);
                 return (TWAIN.STS.SUCCESS);
             }
             else if (m_twain.IsMsgCloseDsOk())
             {
                 m_twain.Rollback(TWAIN.STATE.S4);
-                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.NULL.ToString(), TWAIN.MSG.CLOSEDSOK.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null);
+                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.NULL.ToString(), TWAIN.MSG.CLOSEDSOK.ToString(), CvtSts(TWAIN.STS.SUCCESS),null,null);
                 return (TWAIN.STS.SUCCESS);
             }
 
@@ -1488,14 +1421,6 @@ namespace TWAINWorkingGroupToolkit
             // see it, then return...
             if (!m_twain.IsMsgXferReady())
             {
-                // If we're on Windows we need to send event requests to the driver...
-                if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
-                {
-                    TWAIN.TW_EVENT twevent = default(TWAIN.TW_EVENT);
-                    m_twain.DatEvent(TWAIN.DG.CONTROL,TWAIN.MSG.PROCESSEVENT,ref twevent);
-                }
-
-                // Scoot...
                 return (TWAIN.STS.SUCCESS);
             }
 
@@ -1530,12 +1455,12 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGENATIVEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGENATIVEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
                 else
                 {
-                    msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGENATIVEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null);
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGENATIVEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,null);
                     bitmap = null;
                     blXferDone = true;
                 }
@@ -1551,35 +1476,8 @@ namespace TWAINWorkingGroupToolkit
                 Bitmap bitmap;
                 TWAIN.TW_SETUPFILEXFER twsetupfilexfer = default(TWAIN.TW_SETUPFILEXFER);
 
-                // Get a copy of the current setup file transfer info...
-                twsetupfilexfer = m_twsetupfilexfer;
-
-                // ***WARNING***
-                // Override the current setting with one that supports the pixeltype and
-                // compression of the current image.  The choices are JPEG or TIFF.  Note
-                // that this only works for drivers that report final value in state 6...
-                if (m_blAutomaticJpegOrTiff)
-                {
-                    // We need the image info for this one...
-                    twimageinfo = default(TWAIN.TW_IMAGEINFO);
-                    sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                    if (sts != TWAIN.STS.SUCCESS)
-                    {
-                        WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                        m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                        return (TWAIN.STS.SUCCESS);
-                    }
-
-                    // Assume TIFF, unless we detect JPEG (JFIF)...
-                    twsetupfilexfer.Format = TWAIN.TWFF.TIFF;
-                    if (twimageinfo.Compression == (ushort)TWAIN.TWCP.JPEG)
-                    {
-                        twsetupfilexfer.Format = TWAIN.TWFF.JFIF;
-                    }
-                }
-
                 // Add the image transfer count and the extension...
+                twsetupfilexfer = m_twsetupfilexfer;
                 switch (twsetupfilexfer.Format)
                 {
                     default: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".xxx"); break;
@@ -1606,7 +1504,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.SETUPFILEXFER.ToString(), TWAIN.MSG.SET.ToString(), CvtSts(sts), null, null);
+                    ReportImage(TWAIN.DG.CONTROL.ToString(),TWAIN.DAT.SETUPFILEXFER.ToString(),TWAIN.MSG.SET.ToString(),CvtSts(sts),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
 
@@ -1616,7 +1514,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
                 else
@@ -1624,11 +1522,8 @@ namespace TWAINWorkingGroupToolkit
                     try
                     {
                         szFilename = twsetupfilexfer.FileName.Get();
-                        Image image = Image.FromFile(szFilename);
-                        bitmap = new Bitmap(image);
-                        image.Dispose();
-                        image = null;
-                        msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFilename);
+                        bitmap = new Bitmap(Image.FromFile(szFilename));
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,szFilename);
                         bitmap = null;
                         blXferDone = true;
                     }
@@ -1636,12 +1531,11 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, szFilename);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,szFilename);
                         return (TWAIN.STS.SUCCESS);
                     }
                 }
             }
-
             #endregion
 
 
@@ -1674,12 +1568,11 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.SETUPMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage(TWAIN.DG.CONTROL.ToString(),TWAIN.DAT.SETUPMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
 
                 // Allocate our unmanaged memory...
-                twimagememxfer.Memory.Flags = (uint)TWAIN.TWMF.APPOWNS | (uint)TWAIN.TWMF.POINTER;
                 twimagememxfer.Memory.Length = twsetupmemxfer.Preferred;
                 twimagememxfer.Memory.TheMem = Marshal.AllocHGlobal((int)twsetupmemxfer.Preferred);
                 if (twimagememxfer.Memory.TheMem == IntPtr.Zero)
@@ -1687,12 +1580,11 @@ namespace TWAINWorkingGroupToolkit
                     sts = TWAIN.STS.LOWMEMORY;
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
 
-                // Loop through all the strips of data, at the end of this the byte
-                // array abImage has all of the data that we got from the scanner...
+                // Loop through all the strips of data...
                 #region Tranfer the image from the driver...
                 intptrTotalAllocated = (IntPtr)iSpaceForHeader;
                 intptrOffset = (IntPtr)iSpaceForHeader;
@@ -1719,7 +1611,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -1731,7 +1623,7 @@ namespace TWAINWorkingGroupToolkit
                         sts = TWAIN.STS.LOWMEMORY;
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -1774,11 +1666,7 @@ namespace TWAINWorkingGroupToolkit
                             }
 
                             // Show the image from disk...
-                            Image image = Image.FromFile(szFile);
-                            Bitmap bitmapFile = new Bitmap(image);
-                            image.Dispose();
-                            image = null;
-                            msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.XFERDONE), bitmapFile, szFile);
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.XFERDONE),new Bitmap(szFile),szFile);
                             blXferDone = true;
                         }
 
@@ -1787,11 +1675,8 @@ namespace TWAINWorkingGroupToolkit
                         {
                             // Turn the data into a bitmap...
                             memorystream = new MemoryStream(abImage, iSpaceForHeader, abImage.Length - iSpaceForHeader);
-                            Image image = Image.FromStream(memorystream);
-                            bitmap = new Bitmap(image);
-                            image.Dispose();
-                            image = null;
-                            msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null);
+                            bitmap = new Bitmap(Image.FromStream(memorystream));
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,null);
                             bitmap = null;
                             memorystream = null;
                             blXferDone = true;
@@ -1801,7 +1686,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
                 }
@@ -1824,7 +1709,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEINFO.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -1845,73 +1730,121 @@ namespace TWAINWorkingGroupToolkit
                     // Create a TIFF image and load it...
                     try
                     {
-                        bool blDeleteWhenDone = false;
-                        string szImagePath = m_szImagePath;
-
-                        // We don't have a valid user supplied folder, so use the temp
-                        // directory...
-                        if ((m_szImagePath == null) || !Directory.Exists(m_szImagePath))
-                        {
-                            blDeleteWhenDone = true;
-                            szImagePath = Path.GetTempPath();
-                        }
-
                         // Write the image to disk...
-                        try
+                        if ((m_szImagePath != null) && Directory.Exists(m_szImagePath))
                         {
-                            szFile = Path.Combine(szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
-                            using (FileStream filestream = new FileStream(szFile, FileMode.Create, FileAccess.Write))
+                            // Write the image to disk...
+                            try
                             {
-                                filestream.Write
-                                (
-                                    abImage,
-                                    iSpaceForHeader - Marshal.SizeOf(tiffbitonalg4),
-                                    abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffbitonalg4))
-                                );
+                                szFile = Path.Combine(m_szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
+                                using (FileStream filestream = new FileStream(szFile, FileMode.Create, FileAccess.Write))
+                                {
+                                    filestream.Write
+                                    (
+                                        abImage,
+                                        iSpaceForHeader - Marshal.SizeOf(tiffbitonalg4),
+                                        abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffbitonalg4))
+                                    );
+                                }
                             }
+                            catch
+                            {
+                                WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
+                                m_twain.Rollback(m_stateAfterScan);
+                                ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FILEWRITEERROR),null,szFile);
+                                return (TWAIN.STS.SUCCESS);
+                            }
+
+                            // Free the memory...
+                            Marshal.FreeHGlobal(intptrTiff);
+                            intptrTiff = IntPtr.Zero;
+
+                            // Build the bitmap from disk (to reduce our memory footprint)...
+                            bitmap = new Bitmap(szFile);
+
+                            // Show it...
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,szFile);
                         }
-                        catch
+
+                        // Otherwise, display the image from memory, sadly we can only do
+                        // this on Windows...
+                        else if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
                         {
-                            WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
-                            m_twain.Rollback(m_stateAfterScan);
-                            ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
-                            return (TWAIN.STS.SUCCESS);
+                            // Turn the byte array into a memory stream...
+                            memorystream = new MemoryStream
+                            (
+                                abImage,
+                                iSpaceForHeader - Marshal.SizeOf(tiffbitonalg4),
+                                abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffbitonalg4))
+                            );
+
+                            // Get our bitmap...
+                            bitmap = new Bitmap(Image.FromStream(memorystream));
+
+                            // Show it...
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,null);
+
+                            // Free the memory...
+                            Marshal.FreeHGlobal(intptrTiff);
+                            intptrTiff = IntPtr.Zero;
                         }
 
-                        // Free the memory...
-                        Marshal.FreeHGlobal(intptrTiff);
-                        intptrTiff = IntPtr.Zero;
-
-                        // Build the bitmap from disk (to reduce our memory footprint)...
-                        Image image = Image.FromFile(szFile);
-                        bitmap = new Bitmap(image);
-                        image.Dispose();
-                        image = null;
-
-                        // Send it off to the application...
-                        msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile);
-
-                        // Delete it if it's temp...
-                        if (blDeleteWhenDone)
+                        // Use a temporary file, mono seems okay with this...
+                        else
                         {
+                            // Write the image to disk...
+                            try
+                            {
+                                szFile = Path.Combine(System.IO.Path.GetTempPath(), "img.tif");
+                                using (FileStream filestream = new FileStream(szFile, FileMode.Create, FileAccess.Write))
+                                {
+                                    filestream.Write
+                                    (
+                                        abImage,
+                                        iSpaceForHeader - Marshal.SizeOf(tiffbitonalg4),
+                                        abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffbitonalg4))
+                                    );
+                                }
+                            }
+                            catch
+                            {
+                                WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
+                                m_twain.Rollback(m_stateAfterScan);
+                                ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FILEWRITEERROR),null,null);
+                                return (TWAIN.STS.SUCCESS);
+                            }
+
+                            // Free the memory...
+                            Marshal.FreeHGlobal(intptrTiff);
+                            intptrTiff = IntPtr.Zero;
+
+                            // Build the bitmap from disk (to reduce our memory footprint)...
+                            bitmap = new Bitmap(szFile);
+
+                            // Show it...
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,szFile);
+
+                            // Remove the file...
                             try
                             {
                                 File.Delete(szFile);
                             }
                             catch
                             {
-                                WriteOutput("Failed to delete temporary image file <" + szFile + ">" + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
-                                return (TWAIN.STS.SUCCESS);
+                                // Don't worry about it...
                             }
                         }
+
+                        // Cleanup...
+                        bitmap = null;
+                        memorystream = null;
+                        blXferDone = true;
                     }
                     catch
                     {
                         WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
                 }
@@ -1924,380 +1857,323 @@ namespace TWAINWorkingGroupToolkit
                 #region Uncompressed images (all pixel types)...
                 else if ((TWAIN.TWCP)twimagememxfer.Compression == TWAIN.TWCP.NONE)
                 {
+                    int iStride;
+                    PixelFormat pixelformat;
+
                     // We need the image info for this one...
                     sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
                     if (sts != TWAIN.STS.SUCCESS)
                     {
                         WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEINFO.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
 
 
-                    // Handle uncompressed bitonal images...
-                    #region Handle uncompressed bitonal images...
+                    // Handle uncompressed bitonal images (align them raster by raster)...
+                    #region Realign a black and white image...
                     if (twimageinfo.BitsPerPixel == 1)
                     {
                         try
                         {
-                            IntPtr intptrTiff;
-                            TiffBitonalUncompressed tiffbitonaluncompressed;
-                            string szFile = "";
-
-                            // We need the image info for this one...
-                            sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                            if (sts != TWAIN.STS.SUCCESS)
+                            #region Windows
+                            // Windows can do this natively...
+                            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
                             {
-                                WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                                return (TWAIN.STS.SUCCESS);
-                            }
-
-                            // Create a TIFF header...
-                            tiffbitonaluncompressed = new TiffBitonalUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)intptrTotalXfer);
-
-                            // Create memory for the TIFF header...
-                            intptrTiff = Marshal.AllocHGlobal(Marshal.SizeOf(tiffbitonaluncompressed));
-
-                            // Copy the header into the memory...
-                            Marshal.StructureToPtr(tiffbitonaluncompressed, intptrTiff, true);
-
-                            // Copy the memory into the byte array (we left room for it), giving us a
-                            // TIFF image starting at (iSpaceForHeader - Marshal.SizeOf(tiffbitonal))
-                            // in the byte array...
-                            Marshal.Copy(intptrTiff, abImage, iSpaceForHeader - Marshal.SizeOf(tiffbitonaluncompressed), Marshal.SizeOf(tiffbitonaluncompressed));
-
-                            // Create a TIFF image and load it...
-                            try
-                            {
-                                bool blDeleteWhenDone = false;
-                                string szImagePath = m_szImagePath;
-
-                                // We don't have a valid user supplied folder, so use the temp
-                                // directory...
-                                if ((m_szImagePath == null) || !Directory.Exists(m_szImagePath))
+                                // Create the bitmap...
+                                pixelformat = PixelFormat.Format1bppIndexed;
+                                iStride = ((int)twimagememxfer.BytesPerRow + 0x3) & ~0x3;
+                                bitmap = new Bitmap(twimageinfo.ImageWidth, twimageinfo.ImageLength, PixelFormat.Format1bppIndexed);
+                                BitmapData bitmapdata = bitmap.LockBits(new Rectangle(0, 0, twimageinfo.ImageWidth, twimageinfo.ImageLength), ImageLockMode.WriteOnly, pixelformat);
+                                int ss;
+                                int dd;
+                                for (ss = dd = 0; ss < (int)intptrTotalXfer; ss += (int)twimagememxfer.BytesPerRow, dd += iStride)
                                 {
-                                    blDeleteWhenDone = true;
-                                    szImagePath = Path.GetTempPath();
+                                     Marshal.Copy(abImage, iSpaceForHeader + ss, (IntPtr)((UInt64)bitmapdata.Scan0 + (UInt64)dd), (int)twimagememxfer.BytesPerRow);
+                                }
+                                bitmap.UnlockBits(bitmapdata);
+
+                                // Write the data to disk...
+                                string szFile = null;
+                                if ((m_szImagePath != null) && Directory.Exists(m_szImagePath))
+                                {
+                                    szFile = Path.Combine(m_szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
+                                    bitmap.Save(szFile, ImageFormat.Tiff);
                                 }
 
-                                // Write the image to disk...
+                                // Show it...
+                                ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,szFile);
+                                bitmap = null;
+                                bitmapdata = null;
+                                blXferDone = true;
+                            }
+                            #endregion
+
+                            // No such joy with Linux and Mac, so we'll do the same trick we do for G4...
+                            #region Linux/MacOSX
+                            else if ((TWAIN.GetPlatform() == TWAIN.Platform.LINUX) || (TWAIN.GetPlatform() == TWAIN.Platform.MACOSX))
+                            {
+                                IntPtr intptrTiff;
+                                TiffBitonalUncompressed tiffbitonaluncompressed;
+                                string szFile = "";
+
+                                // We need the image info for this one...
+                                sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
+                                if (sts != TWAIN.STS.SUCCESS)
+                                {
+                                    WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
+                                    m_twain.Rollback(m_stateAfterScan);
+                                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
+                                    return (TWAIN.STS.SUCCESS);
+                                }
+
+                                // Create a TIFF header...
+                                tiffbitonaluncompressed = new TiffBitonalUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)intptrTotalXfer);
+
+                                // Create memory for the TIFF header...
+                                intptrTiff = Marshal.AllocHGlobal(Marshal.SizeOf(tiffbitonaluncompressed));
+
+                                // Copy the header into the memory...
+                                Marshal.StructureToPtr(tiffbitonaluncompressed, intptrTiff, true);
+
+                                // Copy the memory into the byte array (we left room for it), giving us a
+                                // TIFF image starting at (iSpaceForHeader - Marshal.SizeOf(tiffbitonal))
+                                // in the byte array...
+                                Marshal.Copy(intptrTiff, abImage, iSpaceForHeader - Marshal.SizeOf(tiffbitonaluncompressed), Marshal.SizeOf(tiffbitonaluncompressed));
+
+                                // Create a TIFF image and load it...
                                 try
                                 {
-                                    szFile = Path.Combine(szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
-                                    using (FileStream filestream = new FileStream(szFile, FileMode.Create, FileAccess.Write))
+                                    // Write the image to disk...
+                                    if ((m_szImagePath != null) && Directory.Exists(m_szImagePath))
                                     {
-                                        filestream.Write
+                                        // Write the image to disk...
+                                        try
+                                        {
+                                            szFile = Path.Combine(m_szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
+                                            using (FileStream filestream = new FileStream(szFile, FileMode.Create, FileAccess.Write))
+                                            {
+                                                filestream.Write
+                                                (
+                                                    abImage,
+                                                    iSpaceForHeader - Marshal.SizeOf(tiffbitonaluncompressed),
+                                                    abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffbitonaluncompressed))
+                                                );
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
+                                            m_twain.Rollback(m_stateAfterScan);
+                                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FILEWRITEERROR),null,szFile);
+                                            return (TWAIN.STS.SUCCESS);
+                                        }
+
+                                        // Free the memory...
+                                        Marshal.FreeHGlobal(intptrTiff);
+                                        intptrTiff = IntPtr.Zero;
+
+                                        // Build the bitmap from disk (to reduce our memory footprint)...
+                                        bitmap = new Bitmap(szFile);
+
+                                        // Show it...
+                                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,szFile);
+                                    }
+
+                                    // Otherwise, display the image from memory, sadly we can only do
+                                    // this on Windows...
+                                    else if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+                                    {
+                                        // Turn the byte array into a memory stream...
+                                        memorystream = new MemoryStream
                                         (
                                             abImage,
                                             iSpaceForHeader - Marshal.SizeOf(tiffbitonaluncompressed),
                                             abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffbitonaluncompressed))
                                         );
+
+                                        // Get our bitmap...
+                                        bitmap = new Bitmap(Image.FromStream(memorystream));
+
+                                        // Show it...
+                                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,null);
+
+                                        // Free the memory...
+                                        Marshal.FreeHGlobal(intptrTiff);
+                                        intptrTiff = IntPtr.Zero;
                                     }
+
+                                    // Use a temporary file, mono seems okay with this...
+                                    else
+                                    {
+                                        // Write the image to disk...
+                                        try
+                                        {
+                                            szFile = Path.Combine(System.IO.Path.GetTempPath(), "img.tif");
+                                            using (FileStream filestream = new FileStream(szFile, FileMode.Create, FileAccess.Write))
+                                            {
+                                                filestream.Write
+                                                (
+                                                    abImage,
+                                                    iSpaceForHeader - Marshal.SizeOf(tiffbitonaluncompressed),
+                                                    abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffbitonaluncompressed))
+                                                );
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
+                                            m_twain.Rollback(m_stateAfterScan);
+                                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FILEWRITEERROR),null,szFile);
+                                            return (TWAIN.STS.SUCCESS);
+                                        }
+
+                                        // Free the memory...
+                                        Marshal.FreeHGlobal(intptrTiff);
+                                        intptrTiff = IntPtr.Zero;
+
+                                        // Build the bitmap from disk (to reduce our memory footprint)...
+                                        bitmap = new Bitmap(szFile);
+
+                                        // Show it...
+                                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,szFile);
+
+                                        // Remove the file...
+                                        try
+                                        {
+                                            File.Delete(szFile);
+                                        }
+                                        catch
+                                        {
+                                            // Don't worry about it...
+                                        }
+                                    }
+
+                                    // Cleanup...
+                                    bitmap = null;
+                                    memorystream = null;
+                                    blXferDone = true;
                                 }
                                 catch
                                 {
-                                    WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
+                                    WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                                     m_twain.Rollback(m_stateAfterScan);
-                                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                                     return (TWAIN.STS.SUCCESS);
                                 }
-
-                                // Free the memory...
-                                Marshal.FreeHGlobal(intptrTiff);
-                                intptrTiff = IntPtr.Zero;
-
-                                // Build the bitmap from the file, make sure we discard the image so the file isn't locked...
-                                Image image = Image.FromFile(szFile);
-                                bitmap = new Bitmap(image);
-                                image.Dispose();
-                                image = null;
-
-                                // Send the stuff to the application...
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile);
-
-                                // Delete it if it's temp...
-                                if (blDeleteWhenDone)
-                                {
-                                    try
-                                    {
-                                        File.Delete(szFile);
-                                    }
-                                    catch
-                                    {
-                                        WriteOutput("Failed to delete temporary image file <" + szFile + ">" + Environment.NewLine);
-                                        m_twain.Rollback(m_stateAfterScan);
-                                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
-                                        return (TWAIN.STS.SUCCESS);
-                                    }
-                                }
-
-                                // Cleanup...
-                                bitmap = null;
-                                memorystream = null;
-                                blXferDone = true;
                             }
-                            catch
+                            #endregion
+
+                            // Uh-oh...
+                            #region Uh-oh...
+                            else
                             {
-                                WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
+                                WriteOutput("Unsupported platform..." + Environment.NewLine);
                                 m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                                ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                                 return (TWAIN.STS.SUCCESS);
                             }
+                            #endregion
                         }
                         catch
                         {
                             WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                             m_twain.Rollback(m_stateAfterScan);
-                            ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                             return (TWAIN.STS.SUCCESS);
                         }
                     }
                     #endregion
 
 
-                    // Handle uncompressed color images...
-                    #region Handle uncompressed color images...
+                    // Handle uncompressed color images (change RGB to BGR and align them raster by raster)...
+                    #region Realign a color image...
                     else if (twimageinfo.BitsPerPixel == 24)
                     {
                         try
                         {
-                            IntPtr intptrTiff;
-                            TiffColorUncompressed tiffcoloruncompressed;
-                            string szFile = "";
-
-                            // We need the image info for this one...
-                            sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                            if (sts != TWAIN.STS.SUCCESS)
+                            // Create the bitmap...
+                            pixelformat = PixelFormat.Format24bppRgb;
+                            iStride = ((int)twimagememxfer.BytesPerRow + 0x3) & ~0x3;
+                            bitmap = new Bitmap(twimageinfo.ImageWidth, twimageinfo.ImageLength);
+                            BitmapData bitmapdata = bitmap.LockBits(new Rectangle(0, 0, twimageinfo.ImageWidth, twimageinfo.ImageLength), ImageLockMode.WriteOnly, pixelformat);
+                            int ss;
+                            int dd;
+                            byte bb;
+                            for (ss = iSpaceForHeader; ss < (int)intptrTotalXfer; ss += 3)
                             {
-                                WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                                return (TWAIN.STS.SUCCESS);
+                                bb = abImage[ss];
+                                abImage[ss] = abImage[ss + 2];
+                                abImage[ss + 2] = bb;
+                            }
+                            for (ss = dd = 0; ss < (int)intptrTotalXfer; ss += (int)twimagememxfer.BytesPerRow, dd += iStride)
+                            {
+                                Marshal.Copy(abImage, iSpaceForHeader + ss, (IntPtr)((UInt64)bitmapdata.Scan0 + (UInt64)dd), (int)twimagememxfer.BytesPerRow);
+                            }
+                            bitmap.UnlockBits(bitmapdata);
+
+                            // Write the data to disk...
+                            string szFile = null;
+                            if ((m_szImagePath != null) && Directory.Exists(m_szImagePath))
+                            {
+                                szFile = Path.Combine(m_szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
+                                bitmap.Save(szFile, ImageFormat.Tiff);
                             }
 
-                            // Create a TIFF header...
-                            tiffcoloruncompressed = new TiffColorUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)intptrTotalXfer);
-
-                            // Create memory for the TIFF header...
-                            intptrTiff = Marshal.AllocHGlobal(Marshal.SizeOf(tiffcoloruncompressed));
-
-                            // Copy the header into the memory...
-                            Marshal.StructureToPtr(tiffcoloruncompressed, intptrTiff, true);
-
-                            // Copy the memory into the byte array (we left room for it), giving us a
-                            // TIFF image starting at (iSpaceForHeader - Marshal.SizeOf(tiffbitonal))
-                            // in the byte array...
-                            Marshal.Copy(intptrTiff, abImage, iSpaceForHeader - Marshal.SizeOf(tiffcoloruncompressed), Marshal.SizeOf(tiffcoloruncompressed));
-
-                            // Create a TIFF image and load it...
-                            try
-                            {
-                                bool blDeleteWhenDone = false;
-                                string szImagePath = m_szImagePath;
-
-                                // We don't have a valid user supplied folder, so use the temp
-                                // directory...
-                                if ((m_szImagePath == null) || !Directory.Exists(m_szImagePath))
-                                {
-                                    blDeleteWhenDone = true;
-                                    szImagePath = Path.GetTempPath();
-                                }
-
-                                // Write the image to disk...
-                                try
-                                {
-                                    szFile = Path.Combine(szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
-                                    using (FileStream filestream = new FileStream(szFile, FileMode.Create, FileAccess.Write))
-                                    {
-                                        filestream.Write
-                                        (
-                                            abImage,
-                                            iSpaceForHeader - Marshal.SizeOf(tiffcoloruncompressed),
-                                            abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffcoloruncompressed))
-                                        );
-                                    }
-                                }
-                                catch
-                                {
-                                    WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
-                                    m_twain.Rollback(m_stateAfterScan);
-                                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
-                                    return (TWAIN.STS.SUCCESS);
-                                }
-
-                                // Free the memory...
-                                Marshal.FreeHGlobal(intptrTiff);
-                                intptrTiff = IntPtr.Zero;
-
-                                // Build the bitmap from the file, make sure we discard the image so the file isn't locked...
-                                Image image = Image.FromFile(szFile);
-                                bitmap = new Bitmap(image);
-                                image.Dispose();
-                                image = null;
-
-                                // Send the stuff to the application...
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile);
-
-                                // Delete it if it's temp...
-                                if (blDeleteWhenDone)
-                                {
-                                    try
-                                    {
-                                        File.Delete(szFile);
-                                    }
-                                    catch
-                                    {
-                                        WriteOutput("Failed to delete temporary image file <" + szFile + ">" + Environment.NewLine);
-                                        m_twain.Rollback(m_stateAfterScan);
-                                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
-                                        return (TWAIN.STS.SUCCESS);
-                                    }
-                                }
-
-                                // Cleanup...
-                                bitmap = null;
-                                memorystream = null;
-                                blXferDone = true;
-                            }
-                            catch
-                            {
-                                WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
-                                return (TWAIN.STS.SUCCESS);
-                            }
+                            // Show it...
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,szFile);
+                            bitmap = null;
+                            bitmapdata = null;
+                            blXferDone = true;
                         }
                         catch
                         {
                             WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                             m_twain.Rollback(m_stateAfterScan);
-                            ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                             return (TWAIN.STS.SUCCESS);
                         }
                     }
                     #endregion
 
 
-                    // Handle uncompressed grayscale images...
-                    #region Handle uncompressed grayscale images...
+                    // Grayscale is even more painful, we do it a pixel at a time into a color bitmap...
+                    #region Realign a grayscale image...
                     else if (twimageinfo.BitsPerPixel == 8)
                     {
+                        // Okay, make our bitmap...
                         try
                         {
-                            IntPtr intptrTiff;
-                            TiffGrayscaleUncompressed tiffgrayscaleuncompressed;
-                            string szFile = "";
-
-                            // We need the image info for this one...
-                            sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                            if (sts != TWAIN.STS.SUCCESS)
+                            // Create the bitmap...
+                            iStride = ((int)twimagememxfer.BytesPerRow + 0x3) & ~0x3;
+                            bitmap = new Bitmap(twimageinfo.ImageWidth, twimageinfo.ImageLength, PixelFormat.Format24bppRgb);
+                            for (int yy = 0; yy < twimageinfo.ImageLength; yy++)
                             {
-                                WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                                return (TWAIN.STS.SUCCESS);
+                                for (int xx = 0; xx < twimageinfo.ImageWidth; xx++)
+                                {
+                                    int gg = abImage[iSpaceForHeader + (yy * twimagememxfer.BytesPerRow) + xx];
+                                    bitmap.SetPixel(xx, yy, Color.FromArgb(255, gg, gg, gg));
+                                }
                             }
 
-                            // Create a TIFF header...
-                            tiffgrayscaleuncompressed = new TiffGrayscaleUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)intptrTotalXfer);
-
-                            // Create memory for the TIFF header...
-                            intptrTiff = Marshal.AllocHGlobal(Marshal.SizeOf(tiffgrayscaleuncompressed));
-
-                            // Copy the header into the memory...
-                            Marshal.StructureToPtr(tiffgrayscaleuncompressed, intptrTiff, true);
-
-                            // Copy the memory into the byte array (we left room for it), giving us a
-                            // TIFF image starting at (iSpaceForHeader - Marshal.SizeOf(tiffbitonal))
-                            // in the byte array...
-                            Marshal.Copy(intptrTiff, abImage, iSpaceForHeader - Marshal.SizeOf(tiffgrayscaleuncompressed), Marshal.SizeOf(tiffgrayscaleuncompressed));
-
-                            // Create a TIFF image and load it...
-                            try
+                            // Write the data to disk...
+                            string szFile = Path.Combine(m_szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
+                            if ((m_szImagePath != null) && Directory.Exists(m_szImagePath))
                             {
-                                bool blDeleteWhenDone = false;
-                                string szImagePath = m_szImagePath;
-
-                                // We don't have a valid user supplied folder, so use the temp
-                                // directory...
-                                if ((m_szImagePath == null) || !Directory.Exists(m_szImagePath))
-                                {
-                                    blDeleteWhenDone = true;
-                                    szImagePath = Path.GetTempPath();
-                                }
-
-                                // Write the image to disk...
-                                try
-                                {
-                                    szFile = Path.Combine(szImagePath, "img" + m_iImageCount.ToString("D6") + ".tif");
-                                    using (FileStream filestream = new FileStream(szFile, FileMode.Create, FileAccess.Write))
-                                    {
-                                        filestream.Write
-                                        (
-                                            abImage,
-                                            iSpaceForHeader - Marshal.SizeOf(tiffgrayscaleuncompressed),
-                                            abImage.Length - (iSpaceForHeader - Marshal.SizeOf(tiffgrayscaleuncompressed))
-                                        );
-                                    }
-                                }
-                                catch
-                                {
-                                    WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
-                                    m_twain.Rollback(m_stateAfterScan);
-                                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
-                                    return (TWAIN.STS.SUCCESS);
-                                }
-
-                                // Free the memory...
-                                Marshal.FreeHGlobal(intptrTiff);
-                                intptrTiff = IntPtr.Zero;
-
-                                // Build the bitmap from the file, make sure we discard the image so the file isn't locked...
-                                Image image = Image.FromFile(szFile);
-                                bitmap = new Bitmap(image);
-                                image.Dispose();
-                                image = null;
-
-                                // Send the stuff to the application...
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile);
-
-                                // Delete it if it's temp...
-                                if (blDeleteWhenDone)
-                                {
-                                    try
-                                    {
-                                        File.Delete(szFile);
-                                    }
-                                    catch
-                                    {
-                                        WriteOutput("Failed to delete temporary image file <" + szFile + ">" + Environment.NewLine);
-                                        m_twain.Rollback(m_stateAfterScan);
-                                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
-                                        return (TWAIN.STS.SUCCESS);
-                                    }
-                                }
-
-                                // Cleanup...
-                                bitmap = null;
-                                memorystream = null;
-                                blXferDone = true;
+                                bitmap.Save(szFile, ImageFormat.Tiff);
                             }
-                            catch
-                            {
-                                WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
-                                return (TWAIN.STS.SUCCESS);
-                            }
+
+                            // Show it...
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,szFile);
+                            bitmap = null;
+                            blXferDone = true;
                         }
                         catch
                         {
                             WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                             m_twain.Rollback(m_stateAfterScan);
-                            ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                            ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                             return (TWAIN.STS.SUCCESS);
                         }
                     }
@@ -2311,7 +2187,7 @@ namespace TWAINWorkingGroupToolkit
                         WriteOutput("Scanning error: unsupported pixeltype..." + Environment.NewLine);
                         m_iImageCount -= 1;
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
                     #endregion
@@ -2325,7 +2201,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: unsupported compression..." + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
                 #endregion
@@ -2353,12 +2229,11 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.SETUPMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.SETUPMEMXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
 
                 // Allocate our unmanaged memory...
-                twimagememxfer.Memory.Flags = (uint)TWAIN.TWMF.APPOWNS | (uint)TWAIN.TWMF.POINTER;
                 twimagememxfer.Memory.Length = twsetupmemxfer.Preferred;
                 twimagememxfer.Memory.TheMem = Marshal.AllocHGlobal((int)twsetupmemxfer.Preferred);
                 if (twimagememxfer.Memory.TheMem == IntPtr.Zero)
@@ -2366,7 +2241,7 @@ namespace TWAINWorkingGroupToolkit
                     sts = TWAIN.STS.LOWMEMORY;
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
 
@@ -2378,8 +2253,8 @@ namespace TWAINWorkingGroupToolkit
                 {
                     byte[] abTmp;
 
-                    // Append the new data to the end of the data we've transferred so far...
-                    intptrOffset = (IntPtr)intptrTotalXfer;
+                    // Remember the offset for this strip...
+                    intptrOffset = intptrTotalXfer;
 
                     // Get a strip of image data...
                     sts = m_twain.DatImagememfilexfer(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimagememxfer);
@@ -2395,7 +2270,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -2407,7 +2282,7 @@ namespace TWAINWorkingGroupToolkit
                         sts = TWAIN.STS.LOWMEMORY;
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -2415,6 +2290,8 @@ namespace TWAINWorkingGroupToolkit
                     if (abImage != null)
                     {
                         Buffer.BlockCopy(abImage, 0, abTmp, 0, (int)intptrTotalAllocated - (int)twimagememxfer.BytesWritten);
+                        abImage = abTmp;
+                        abTmp = null;
                     }
 
                     // Switch pointers...
@@ -2429,11 +2306,8 @@ namespace TWAINWorkingGroupToolkit
                 memorystream = new MemoryStream(abImage);
                 try
                 {
-                    Image image = Image.FromStream(memorystream);
-                    bitmap = new Bitmap(image);
-                    image.Dispose();
-                    image = null;
-                    msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null);
+                    bitmap = new Bitmap(Image.FromStream(memorystream));
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),bitmap,null);
                     bitmap = null;
                     blXferDone = true;
                 }
@@ -2441,7 +2315,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                    ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                     return (TWAIN.STS.SUCCESS);
                 }
                 memorystream = null;
@@ -2455,7 +2329,7 @@ namespace TWAINWorkingGroupToolkit
             {
                 WriteOutput("Scan: unrecognized ICAP_XFERMECH value..." + m_twsxXferMech + Environment.NewLine);
                 m_twain.Rollback(m_stateAfterScan);
-                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEMEMFILEXFER.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(TWAIN.STS.FAILURE),null,null);
                 return (TWAIN.STS.SUCCESS);
             }
             #endregion
@@ -2487,7 +2361,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage(TWAIN.DG.IMAGE.ToString(),TWAIN.DAT.IMAGEINFO.ToString(),TWAIN.MSG.GET.ToString(),CvtSts(sts),null,null);
                         return (TWAIN.STS.SUCCESS);
                     }
                 }
@@ -2538,42 +2412,14 @@ namespace TWAINWorkingGroupToolkit
             {
                 WriteOutput("Scanning error: " + sts + Environment.NewLine);
                 m_twain.Rollback(m_stateAfterScan);
-                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.ENDXFER.ToString(), CvtSts(sts), null, null);
+                ReportImage(TWAIN.DG.CONTROL.ToString(),TWAIN.DAT.PENDINGXFERS.ToString(),TWAIN.MSG.ENDXFER.ToString(),CvtSts(sts),null,null);
                 return (TWAIN.STS.SUCCESS);
-            }
-
-            // We've been asked to do extra work...
-            switch (msgPendingxfers)
-            {
-                // No work needed here...
-                default:
-                case TWAINCSToolkit.MSG.ENDXFER:
-                    break;
-
-                // Reset, we're exiting from scanning...
-                case TWAINCSToolkit.MSG.RESET:
-                    m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null);
-                    return (TWAIN.STS.SUCCESS);
-
-                // Stop the feeder...
-                case TWAINCSToolkit.MSG.STOPFEEDER:
-                    twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
-                    sts = m_twain.DatPendingxfers(TWAIN.DG.CONTROL, TWAIN.MSG.STOPFEEDER, ref twpendingxfers);
-                    if (sts != TWAIN.STS.SUCCESS)
-                    {
-                        // If we can't stop gracefully, then just abort...
-                        m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null);
-                        return (TWAIN.STS.SUCCESS);
-                    }
-                    break;
             }
 
             // If count goes to zero, then the session is complete, and the
             // driver goes to state 5, otherwise it goes to state 6 in
             // preperation for the next image.  We'll also return a value of
-            // zero if the transfer hits an error, like a paper jam.  And then,
+            // zero if the transfer hits an error, like a paper jam.  An then,
             // just to keep it interesting, we also need to pay attention to
             // whether or not we have a UI running.  If we don't, then state 5
             // is our target, otherwise we want to go to state 4 (programmatic
@@ -2588,20 +2434,11 @@ namespace TWAINWorkingGroupToolkit
                 // We saved this value for you when MSG_ENABLEDS was called, if the
                 // UI is up, then goto state 5...
                 m_twain.Rollback(m_stateAfterScan);
-                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null);
+                ReportImage(TWAIN.DG.CONTROL.ToString(),TWAIN.DAT.PENDINGXFERS.ToString(),TWAIN.MSG.RESET.ToString(),CvtSts(sts),null,null);
             }
 
             // All done...
             return (TWAIN.STS.SUCCESS);
-        }
-
-        /// <summary>
-        /// A placeholder for when the user doesn't supply us this callback...
-        /// </summary>
-        /// <param name="a_sz"></param>
-        private void WriteOutputStub(string a_sz)
-        {
-            return;
         }
 
         #endregion
@@ -2641,23 +2478,6 @@ namespace TWAINWorkingGroupToolkit
                 AtStressCapGetCurrent();
             }
 
-            // @autojpegtiff...
-            else if (a_szCmd.ToLower().StartsWith("@autojpegtiff"))
-            {
-                if (GetAutomaticJpegOrTiff())
-                {
-                    SetAutomaticJpegOrTiff(false);
-                    WriteOutput(Environment.NewLine);
-                    WriteOutput("Automatic JPEG/TIFF turned OFF...");
-                }
-                else
-                {
-                    SetAutomaticJpegOrTiff(true);
-                    WriteOutput(Environment.NewLine);
-                    WriteOutput("Automatic JPEG/TIFF turned ON...");
-                }
-            }
-
             // All done...
             return (true);
         }
@@ -2670,7 +2490,6 @@ namespace TWAINWorkingGroupToolkit
             WriteOutput(Environment.NewLine);
             WriteOutput("@help - this text" + Environment.NewLine);
             WriteOutput("@stresscapgetcurrent - stress test capabilities" + Environment.NewLine);
-            WriteOutput("@autojpegtiff - turn on auto jpeg or tiff" + Environment.NewLine);
         }
 
         /// <summary>
@@ -2760,6 +2579,8 @@ namespace TWAINWorkingGroupToolkit
                 u32NextIFD = 0;
                 u64XResolution = (ulong)0x100000000 + (ulong)a_u32Resolution;
                 u64YResolution = (ulong)0x100000000 + (ulong)a_u32Resolution;
+                //u64Zeros1       = 0;
+                //u64Zeros2       = 0;
             }
 
             // Header...
@@ -2792,6 +2613,8 @@ namespace TWAINWorkingGroupToolkit
             public uint u32NextIFD;
             public ulong u64XResolution;
             public ulong u64YResolution;
+            //public ulong 		    u64Zeros1;
+            //public ulong            u64Zeros2;
         }
 
         // TIFF header for Group4 BITONAL images...
@@ -2831,6 +2654,8 @@ namespace TWAINWorkingGroupToolkit
                 u32NextIFD = 0;
                 u64XResolution = (ulong)0x100000000 + (ulong)a_u32Resolution;
                 u64YResolution = (ulong)0x100000000 + (ulong)a_u32Resolution;
+                //u64Zeros1       = 0;
+                //u64Zeros2       = 0;
             }
 
             // Header...
@@ -2863,146 +2688,8 @@ namespace TWAINWorkingGroupToolkit
             public uint u32NextIFD;
             public ulong u64XResolution;
             public ulong u64YResolution;
-        }
-
-        // TIFF header for Uncompressed GRAYSCALE images...
-        [StructLayout(LayoutKind.Sequential, Pack = 2)]
-        private struct TiffGrayscaleUncompressed
-        {
-            // Constructor...
-            public TiffGrayscaleUncompressed(uint a_u32Width, uint a_u32Height, uint a_u32Resolution, uint a_u32Size)
-            {
-                // Header...
-                u16ByteOrder = 0x4949;
-                u16Version = 42;
-                u32OffsetFirstIFD = 8;
-
-                // First IFD...
-                u16IFD = 14;
-
-                // Tags...
-                tifftagNewSubFileType = new TiffTag(254, 4, 1, 0);
-                tifftagSubFileType = new TiffTag(255, 3, 1, 1);
-                tifftagImageWidth = new TiffTag(256, 4, 1, a_u32Width);
-                tifftagImageLength = new TiffTag(257, 4, 1, a_u32Height);
-                tifftagBitsPerSample = new TiffTag(258, 3, 1, 8);
-                tifftagCompression = new TiffTag(259, 3, 1, 1);
-                tifftagPhotometricInterpretation = new TiffTag(262, 3, 1, 1);
-                tifftagStripOffsets = new TiffTag(273, 4, 1, 198);
-                tifftagSamplesPerPixel = new TiffTag(277, 3, 1, 1);
-                tifftagRowsPerStrip = new TiffTag(278, 4, 1, a_u32Height);
-                tifftagStripByteCounts = new TiffTag(279, 4, 1, a_u32Size);
-                tifftagXResolution = new TiffTag(282, 5, 1, 182);
-                tifftagYResolution = new TiffTag(283, 5, 1, 190);
-                tifftagResolutionUnit = new TiffTag(296, 3, 1, 2);
-
-                // Footer...
-                u32NextIFD = 0;
-                u64XResolution = (ulong)0x100000000 + (ulong)a_u32Resolution;
-                u64YResolution = (ulong)0x100000000 + (ulong)a_u32Resolution;
-            }
-
-            // Header...
-            public ushort u16ByteOrder;
-            public ushort u16Version;
-            public uint u32OffsetFirstIFD;
-
-            // First IFD...
-            public ushort u16IFD;
-
-            // Tags...
-            public TiffTag tifftagNewSubFileType;
-            public TiffTag tifftagSubFileType;
-            public TiffTag tifftagImageWidth;
-            public TiffTag tifftagImageLength;
-            public TiffTag tifftagBitsPerSample;
-            public TiffTag tifftagCompression;
-            public TiffTag tifftagPhotometricInterpretation;
-            public TiffTag tifftagStripOffsets;
-            public TiffTag tifftagSamplesPerPixel;
-            public TiffTag tifftagRowsPerStrip;
-            public TiffTag tifftagStripByteCounts;
-            public TiffTag tifftagXResolution;
-            public TiffTag tifftagYResolution;
-            public TiffTag tifftagResolutionUnit;
-
-            // Footer...
-            public uint u32NextIFD;
-            public ulong u64XResolution;
-            public ulong u64YResolution;
-        }
-
-        // TIFF header for Uncompressed COLOR images...
-        [StructLayout(LayoutKind.Sequential, Pack = 2)]
-        private struct TiffColorUncompressed
-        {
-            // Constructor...
-            public TiffColorUncompressed(uint a_u32Width, uint a_u32Height, uint a_u32Resolution, uint a_u32Size)
-            {
-                // Header...
-                u16ByteOrder = 0x4949;
-                u16Version = 42;
-                u32OffsetFirstIFD = 8;
-
-                // First IFD...
-                u16IFD = 14;
-
-                // Tags...
-                tifftagNewSubFileType = new TiffTag(254, 4, 1, 0);
-                tifftagSubFileType = new TiffTag(255, 3, 1, 1);
-                tifftagImageWidth = new TiffTag(256, 4, 1, a_u32Width);
-                tifftagImageLength = new TiffTag(257, 4, 1, a_u32Height);
-                tifftagBitsPerSample = new TiffTag(258, 3, 3, 182);
-                tifftagCompression = new TiffTag(259, 3, 1, 1);
-                tifftagPhotometricInterpretation = new TiffTag(262, 3, 1, 2);
-                tifftagStripOffsets = new TiffTag(273, 4, 1, 204);
-                tifftagSamplesPerPixel = new TiffTag(277, 3, 1, 3);
-                tifftagRowsPerStrip = new TiffTag(278, 4, 1, a_u32Height);
-                tifftagStripByteCounts = new TiffTag(279, 4, 1, a_u32Size);
-                tifftagXResolution = new TiffTag(282, 5, 1, 188);
-                tifftagYResolution = new TiffTag(283, 5, 1, 196);
-                tifftagResolutionUnit = new TiffTag(296, 3, 1, 2);
-
-                // Footer...
-                u32NextIFD = 0;
-                u16XBitsPerSample1 = 8;
-                u16XBitsPerSample2 = 8;
-                u16XBitsPerSample3 = 8;
-                u64XResolution = (ulong)0x100000000 + (ulong)a_u32Resolution;
-                u64YResolution = (ulong)0x100000000 + (ulong)a_u32Resolution;
-            }
-
-            // Header...
-            public ushort u16ByteOrder;
-            public ushort u16Version;
-            public uint u32OffsetFirstIFD;
-
-            // First IFD...
-            public ushort u16IFD;
-
-            // Tags...
-            public TiffTag tifftagNewSubFileType;
-            public TiffTag tifftagSubFileType;
-            public TiffTag tifftagImageWidth;
-            public TiffTag tifftagImageLength;
-            public TiffTag tifftagBitsPerSample;
-            public TiffTag tifftagCompression;
-            public TiffTag tifftagPhotometricInterpretation;
-            public TiffTag tifftagStripOffsets;
-            public TiffTag tifftagSamplesPerPixel;
-            public TiffTag tifftagRowsPerStrip;
-            public TiffTag tifftagStripByteCounts;
-            public TiffTag tifftagXResolution;
-            public TiffTag tifftagYResolution;
-            public TiffTag tifftagResolutionUnit;
-
-            // Footer...
-            public uint u32NextIFD;
-            public ushort u16XBitsPerSample1;
-            public ushort u16XBitsPerSample2;
-            public ushort u16XBitsPerSample3;
-            public ulong u64XResolution;
-            public ulong u64YResolution;
+            //public ulong 		    u64Zeros1;
+            //public ulong            u64Zeros2;
         }
 
         #endregion
@@ -3090,17 +2777,6 @@ namespace TWAINWorkingGroupToolkit
         /// Counter for saving images...
         /// </summary>
         private int m_iImageCount;
-
-        /// <summary>
-        /// ***WARNING***
-        /// Use this for file transfers to choose automatically
-        /// between JPEG and TIFF, based on the pixeltype and
-        /// compression of the image.  Note that this only works
-        /// reliably for drivers that report the final values of
-        /// an image in state 6, which is not a requirements of
-        /// the TWAIN Specification...
-        /// </summary>
-        private bool m_blAutomaticJpegOrTiff;
 
         #endregion
     }

@@ -488,7 +488,7 @@ namespace TWAINCSTst
         }
 
         /// <summary>
-        /// Handle an image.
+        /// Handle an image...
         /// </summary>
         /// <param name="a_szDg">Data group that preceeded this call</param>
         /// <param name="a_szDat">Data argument type that preceeded this call</param>
@@ -496,12 +496,12 @@ namespace TWAINCSTst
         /// <param name="a_sts">Current status</param>
         /// <param name="a_bitmap">C# bitmap of the image</param>
         /// <param name="a_szFile">File name, if doing a file transfer</param>
-        public TWAINCSToolkit.MSG ReportImage(string a_szDg, string a_szDat, string a_szMsg, TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile)
+        public void ReportImage(string a_szDg, string a_szDat, string a_szMsg, TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile)
         {
             // We're leaving...
             if (m_blClosing || (m_graphics1 == null) || (a_bitmap == null))
             {
-                return (TWAINCSToolkit.MSG.RESET);
+                return;
             }
 
             // Let us be called from any thread...
@@ -510,9 +510,9 @@ namespace TWAINCSTst
                 // We need a copy of the bitmap, because we're not going to wait
                 // for the thread to return.  Be careful when using EndInvoke.
                 // It's possible to create a deadlock situation with the Stop
-                // button press.
-                BeginInvoke(new MethodInvoker(delegate() { ReportImage(a_szDg, a_szDat, a_szMsg, a_sts, a_bitmap, a_szFile); }));
-                return (TWAINCSToolkit.MSG.ENDXFER);
+                // button press.  A much better solution would be to 
+                BeginInvoke(new MethodInvoker(delegate() { ReportImage(a_szDg, a_szDat, a_szMsg, a_sts, (a_bitmap == null) ? null : new Bitmap(a_bitmap), a_szFile); }));
+                return;
             }
 
             // Display the image...
@@ -550,9 +550,6 @@ namespace TWAINCSTst
             {
                 m_iCurrentPictureBox = 0;
             }
-
-            // All done...
-            return (TWAINCSToolkit.MSG.ENDXFER);
         }
 
         /// <summary>

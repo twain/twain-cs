@@ -9,8 +9,6 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
-//  M.McLaughlin    13-Oct-2014     2.3.0.4     Added logging
-//  M.McLaughlin    24-Jun-2014     2.3.0.3     Stability fixes
 //  M.McLaughlin    21-May-2014     2.3.0.2     64-Bit Linux
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
@@ -37,7 +35,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -194,10 +191,10 @@ namespace TWAINWorkingGroup
                 m_macosxdsmentrycontrolcallbackdelegate = MacosxDsmEntryCallbackProxy;
             }
 
-            // Uh-oh, Log will throw an exception for us...
+            // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                throw new Exception("Unsupported platform...");
             }
 
             // Activate our thread...
@@ -214,8 +211,7 @@ namespace TWAINWorkingGroup
                     }
                     catch
                     {
-                        // Log will throw an exception for us...
-                        Log.Msg(Log.Severity.Programmer, "Failed to start the TWAIN background thread...");
+                        throw new Exception("Failed to start the TWAIN background thread...");
                     }
                 }
             }
@@ -247,62 +243,35 @@ namespace TWAINWorkingGroup
         /// <returns>Point to memory</returns>
         public virtual IntPtr DsmMemAlloc(uint a_u32Size)
         {
-            IntPtr intptr;
-
             // Use the DSM...
             if (m_twentrypoint.DSM_MemAllocate != null)
             {
-                intptr = m_twentrypoint.DSM_MemAllocate(a_u32Size);
-                if (intptr == IntPtr.Zero)
-                {
-                    Log.Msg(Log.Severity.Error, "DSM_MemAllocate failed...");
-                }
-                return (intptr);
+                return (m_twentrypoint.DSM_MemAllocate(a_u32Size));
             }
 
             // Do it ourselves, Windows...
             if (ms_platform == Platform.WINDOWS)
             {
-                intptr = Marshal.AllocHGlobal((int)a_u32Size);
-                if (intptr == IntPtr.Zero)
-                {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
-                }
-                return (intptr);
+                return (Marshal.AllocHGlobal((int)a_u32Size));
             }
 
             // Do it ourselves, Linux...
             if (ms_platform == Platform.LINUX)
             {
-                intptr = Marshal.AllocHGlobal((int)a_u32Size);
-                if (intptr == IntPtr.Zero)
-                {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
-                }
+                return (Marshal.AllocHGlobal((int)a_u32Size));
             }
 
             // Do it ourselves, Mac OS X...
             if (ms_platform == Platform.MACOSX)
             {
                 IntPtr intptrIndirect = Marshal.AllocHGlobal((int)a_u32Size);
-                if (intptrIndirect == IntPtr.Zero)
-                {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal(indirect) failed...");
-                    return (intptrIndirect);
-                }
                 IntPtr intptrDirect = Marshal.AllocHGlobal(Marshal.SizeOf(intptrIndirect));
-                if (intptrDirect == IntPtr.Zero)
-                {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal(direct) failed...");
-                    return (intptrDirect);
-                }
                 Marshal.StructureToPtr(intptrIndirect, intptrDirect, true);
                 return (intptrDirect);
             }
 
-            // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
-            return (IntPtr.Zero);
+            // Trouble...
+            throw new Exception("Unsupported platform...");
         }
 
         /// <summary>
@@ -375,28 +344,24 @@ namespace TWAINWorkingGroup
                 return (m_twentrypoint.DSM_MemLock(a_intptrHandle));
             }
 
-            // Do it ourselves, Windows...
+            // Do it ourselves...
             if (ms_platform == Platform.WINDOWS)
             {
                 return (a_intptrHandle);
             }
-
-            // Do it ourselves, Linux...
-            if (ms_platform == Platform.LINUX)
+            else if (ms_platform == Platform.LINUX)
             {
                 return (a_intptrHandle);
             }
-
-            // Do it ourselves, Mac OS X...
-            if (ms_platform == Platform.MACOSX)
+            else if (ms_platform == Platform.MACOSX)
             {
                 IntPtr intptr = (IntPtr)Marshal.PtrToStructure(a_intptrHandle, typeof(IntPtr));
                 return (intptr);
             }
-
-            // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
-            return (IntPtr.Zero);
+            else
+            {
+                throw new Exception("Unsupported platform...");
+            }
         }
 
         /// <summary>
@@ -418,26 +383,23 @@ namespace TWAINWorkingGroup
                 return;
             }
 
-            // Do it ourselves, Windows...
+            // Do it ourselves...
             if (ms_platform == Platform.WINDOWS)
             {
                 return;
             }
-
-            // Do it ourselves, Linux...
-            if (ms_platform == Platform.LINUX)
+            else if (ms_platform == Platform.LINUX)
             {
                 return;
             }
-
-            // Do it ourselves, Mac OS X...
-            if (ms_platform == Platform.MACOSX)
+            else if (ms_platform == Platform.MACOSX)
             {
                 return;
             }
-
-            // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+            else
+            {
+                throw new Exception("Unsupported platform...");
+            }
         }
 
         /// <summary>
@@ -462,20 +424,22 @@ namespace TWAINWorkingGroup
             }
 
             // Linux...
-            if (ms_platform == Platform.LINUX)
+            else if (ms_platform == Platform.LINUX)
             {
                 return ((m_twidentitylegacyApp.SupportedGroups & (uint)DG.DSM2) != 0);
             }
 
             // Mac OS X...
-            if (ms_platform == Platform.MACOSX)
+            else if (ms_platform == Platform.MACOSX)
             {
                 return ((m_twidentitymacosxApp.SupportedGroups & (uint)DG.DSM2) != 0);
             }
 
-            // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
-            return (false);
+            // Uh-oh...
+            else
+            {
+                throw new Exception("Unsupported platform...");
+            }
         }
 
         /// <summary>
@@ -644,7 +608,6 @@ namespace TWAINWorkingGroup
                         m_tweventPreFilterMessage.pEvent = IntPtr.Zero;
                     }
                     stateStart = STATE.S4;
-                    m_blAcceptXferReady = false;
                 }
 
                 // State 4 --> State 3...
@@ -1803,7 +1766,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -1826,7 +1788,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -1842,7 +1803,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -1850,7 +1810,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -1914,7 +1873,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -1937,7 +1895,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -1953,7 +1910,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -1961,7 +1917,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2024,7 +1979,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2047,7 +2001,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2063,7 +2016,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2071,7 +2023,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2134,7 +2085,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2157,7 +2107,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2173,7 +2122,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2181,7 +2129,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2244,7 +2191,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2267,7 +2213,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2283,7 +2228,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2291,7 +2235,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2354,7 +2297,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2377,7 +2319,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2393,7 +2334,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2401,7 +2341,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2464,7 +2403,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2487,7 +2425,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2503,7 +2440,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2511,7 +2447,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2574,7 +2509,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2597,7 +2531,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2613,7 +2546,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2621,7 +2553,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2684,7 +2615,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2707,7 +2637,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2723,7 +2652,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2731,7 +2659,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2812,7 +2739,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2835,7 +2761,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2851,7 +2776,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2859,7 +2783,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2902,7 +2825,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2925,7 +2847,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2941,7 +2862,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -2949,14 +2869,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
-            }
-
-            // Check the event for anything interesting...
-            if ((sts == STS.DSEVENT) || (sts == STS.NOTDSEVENT))
-            {
-                ProcessEvent((MSG)a_twevent.TWMessage);
             }
 
             // All done...
@@ -3018,7 +2931,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3041,7 +2953,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3057,7 +2968,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3065,7 +2975,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3128,7 +3037,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3151,7 +3059,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3167,7 +3074,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3175,7 +3081,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3238,7 +3143,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3261,7 +3165,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3277,7 +3180,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3285,7 +3187,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3348,7 +3249,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3371,7 +3271,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3387,7 +3286,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3395,7 +3293,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3458,7 +3355,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3481,7 +3377,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3497,7 +3392,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3505,7 +3399,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3569,7 +3462,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
                 a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
@@ -3595,7 +3487,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3612,7 +3503,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
                 a_twidentity = TwidentitymacosxToTwidentity(twidentitymacosx);
@@ -3621,7 +3511,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3660,7 +3549,6 @@ namespace TWAINWorkingGroup
                             catch
                             {
                                 // The driver crashed...
-                                Log.Msg(Log.Severity.Error, "Driver crash...");
                                 return (STS.BUMMER);
                             }
                         }
@@ -3686,7 +3574,6 @@ namespace TWAINWorkingGroup
                         catch
                         {
                             // The driver crashed...
-                            Log.Msg(Log.Severity.Error, "Driver crash...");
                             return (STS.BUMMER);
                         }
                     }
@@ -3705,7 +3592,6 @@ namespace TWAINWorkingGroup
                         catch
                         {
                             // The driver crashed...
-                            Log.Msg(Log.Severity.Error, "Driver crash...");
                             return (STS.BUMMER);
                         }
                     }
@@ -3780,7 +3666,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3803,7 +3688,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3819,7 +3703,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3827,7 +3710,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3890,7 +3772,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3913,7 +3794,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3929,7 +3809,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -3937,7 +3816,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3997,7 +3875,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4020,7 +3897,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4036,7 +3912,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4044,7 +3919,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4113,7 +3987,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4136,7 +4009,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4147,34 +4019,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    System.Console.Out.WriteLine("Got this far..."); System.Console.Out.Flush();
-                    TW_IMAGEMEMXFER_MACOSX twimagememxfermacosx = default(TW_IMAGEMEMXFER_MACOSX);
-                    twimagememxfermacosx.BytesPerRow = a_twimagememxfer.BytesPerRow;
-                    twimagememxfermacosx.BytesWritten = a_twimagememxfer.BytesWritten;
-                    twimagememxfermacosx.Columns = a_twimagememxfer.Columns;
-                    twimagememxfermacosx.Compression = a_twimagememxfer.Compression;
-                    twimagememxfermacosx.Memory.Flags = a_twimagememxfer.Memory.Flags;
-                    twimagememxfermacosx.Memory.Length = a_twimagememxfer.Memory.Length;
-                    twimagememxfermacosx.Memory.TheMem = a_twimagememxfer.Memory.TheMem;
-                    twimagememxfermacosx.Rows = a_twimagememxfer.Rows;
-                    twimagememxfermacosx.XOffset = a_twimagememxfer.XOffset;
-                    twimagememxfermacosx.YOffset = a_twimagememxfer.YOffset;
-                    sts = (STS)MacosxDsmEntryImagememfilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref twimagememxfermacosx);
-                    a_twimagememxfer.BytesPerRow = twimagememxfermacosx.BytesPerRow;
-                    a_twimagememxfer.BytesWritten = twimagememxfermacosx.BytesWritten;
-                    a_twimagememxfer.Columns = twimagememxfermacosx.Columns;
-                    a_twimagememxfer.Compression = (ushort)twimagememxfermacosx.Compression;
-                    a_twimagememxfer.Memory.Flags = twimagememxfermacosx.Memory.Flags;
-                    a_twimagememxfer.Memory.Length = twimagememxfermacosx.Memory.Length;
-                    a_twimagememxfer.Memory.TheMem = twimagememxfermacosx.Memory.TheMem;
-                    a_twimagememxfer.Rows = twimagememxfermacosx.Rows;
-                    a_twimagememxfer.XOffset = twimagememxfermacosx.XOffset;
-                    a_twimagememxfer.YOffset = twimagememxfermacosx.YOffset;
+                    sts = (STS)MacosxDsmEntryImagememfilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref a_twimagememxfer);
                 }
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4182,7 +4031,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4251,7 +4099,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4274,7 +4121,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4311,7 +4157,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4319,7 +4164,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4389,7 +4233,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4412,7 +4255,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4429,7 +4271,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4437,7 +4278,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4514,7 +4354,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4537,7 +4376,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4553,7 +4391,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4561,7 +4398,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4624,7 +4460,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4647,7 +4482,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4663,7 +4497,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4671,7 +4504,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4734,7 +4566,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4757,7 +4588,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4773,7 +4603,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4781,7 +4610,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4862,7 +4690,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4885,7 +4712,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4901,7 +4727,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4909,7 +4734,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4972,7 +4796,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -4995,7 +4818,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5011,7 +4833,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5019,7 +4840,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5109,7 +4929,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5132,7 +4951,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5148,7 +4966,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5156,7 +4973,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5219,7 +5035,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5242,7 +5057,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5258,7 +5072,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5266,7 +5079,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5329,7 +5141,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5352,7 +5163,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5368,7 +5178,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5376,7 +5185,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5439,7 +5247,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5462,7 +5269,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5478,7 +5284,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5486,7 +5291,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5531,13 +5335,6 @@ namespace TWAINWorkingGroup
                 return (sts);
             }
 
-            // We need this to handle data sources that return MSG_XFERREADY in
-            // the midst of processing MSG_ENABLEDS...
-            if (a_msg == MSG.ENABLEDS)
-            {
-                m_blAcceptXferReady = true;
-            }
-
             // Windows...
             if (ms_platform == Platform.WINDOWS)
             {
@@ -5556,7 +5353,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5579,7 +5375,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5595,7 +5390,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5603,24 +5397,15 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
-            // If we opened, go to state 5...
+            // If we opened, go to state 4...
             if ((a_msg == MSG.ENABLEDS) || (a_msg == MSG.ENABLEDSUIONLY))
             {
                 if (sts == STS.SUCCESS)
                 {
                     m_state = STATE.S5;
-
-                    // MSG_XFERREADY showed up while we were still processing MSG_ENABLEDS
-                    if ((sts == STS.SUCCESS) && m_blAcceptXferReady && m_blIsMsgxferready)
-                    {
-                        m_blAcceptXferReady = false;
-                        m_state = STATE.S6;
-                        CallerToThreadSet();
-                    }
                 }
             }
 
@@ -5694,7 +5479,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5717,7 +5501,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5733,7 +5516,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -5741,7 +5523,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5793,15 +5574,6 @@ namespace TWAINWorkingGroup
 
             // Make sure our command data is clean...
             m_threaddata = default(ThreadData);
-
-            // If we're on Windows, prime the messaging system...
-            /*
-            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
-            {
-                MSG msg;
-                GetMessage(out msg, IntPtr.Zero, 0, 0);
-            }
-            */
 
             // Okay, we're ready to run...
             m_autoreseteventThreadStarted.Set();
@@ -6053,25 +5825,11 @@ namespace TWAINWorkingGroup
 
                 // If we're in state 5, then go to state 6...
                 case MSG.XFERREADY:
-                    if (m_blAcceptXferReady)
+                    if (m_state == STATE.S5)
                     {
-                        // MSG_XFERREADY arrived during the handling of the
-                        // call to MSG_ENABLEDS.  We have to defer processing
-                        // it as late as possible...
-                        if (m_state == STATE.S4)
-                        {
-                            m_blIsMsgxferready = true;
-                         }
-
-                        // MSG_XFERREADY arrived after the completion of the
-                        // call to MSG_ENABLEDS.  We can just do it...
-                        else
-                        {
-                            m_blAcceptXferReady = false;
-                            m_state = STATE.S6;
-                            m_blIsMsgxferready = true;
-                            CallerToThreadSet();
-                        }
+                        m_state = STATE.S6;
+                        m_blIsMsgxferready = true;
+                        CallerToThreadSet();
                     }
                     break;
 
@@ -6223,7 +5981,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -6239,7 +5996,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -6255,7 +6011,6 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -6263,7 +6018,6 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -6316,11 +6070,11 @@ namespace TWAINWorkingGroup
                     ms_platform = Platform.LINUX;
                 }
 
-                // We have a problem, Log will throw for us...
+                // We have a problem...
                 else
                 {
                     ms_platform = Platform.UNKNOWN;
-                    Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                    throw new Exception("Unsupported platform...");
                 }
             }
 
@@ -6855,6 +6609,98 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Convert a public identity to a legacy identity...
+        /// </summary>
+        /// <param name="a_twidentity">Identity to convert</param>
+        /// <returns>Legacy form of identity</returns>
+        private TW_IDENTITY_LEGACY TwidentityToTwidentitylegacy(TW_IDENTITY a_twidentity)
+        {
+            TW_IDENTITY_LEGACY twidentitylegacy = new TW_IDENTITY_LEGACY();
+            twidentitylegacy.Id = (uint)a_twidentity.Id;
+            twidentitylegacy.Manufacturer = a_twidentity.Manufacturer;
+            twidentitylegacy.ProductFamily = a_twidentity.ProductFamily;
+            twidentitylegacy.ProductName = a_twidentity.ProductName;
+            twidentitylegacy.ProtocolMajor = a_twidentity.ProtocolMajor;
+            twidentitylegacy.ProtocolMinor = a_twidentity.ProtocolMinor;
+            twidentitylegacy.SupportedGroups = a_twidentity.SupportedGroups;
+            twidentitylegacy.Version.Country = a_twidentity.Version.Country;
+            twidentitylegacy.Version.Info = a_twidentity.Version.Info;
+            twidentitylegacy.Version.Language = a_twidentity.Version.Language;
+            twidentitylegacy.Version.MajorNum = a_twidentity.Version.MajorNum;
+            twidentitylegacy.Version.MinorNum = a_twidentity.Version.MinorNum;
+            return (twidentitylegacy);
+        }
+
+        /// <summary>
+        /// Convert a public identity to a macosx identity...
+        /// </summary>
+        /// <param name="a_twidentity">Identity to convert</param>
+        /// <returns>Mac OS X form of identity</returns>
+        public static TW_IDENTITY_MACOSX TwidentityToTwidentitymacosx(TW_IDENTITY a_twidentity)
+        {
+            TW_IDENTITY_MACOSX twidentitymacosx = new TW_IDENTITY_MACOSX();
+            twidentitymacosx.Id = (uint)a_twidentity.Id;
+            twidentitymacosx.Manufacturer = a_twidentity.Manufacturer;
+            twidentitymacosx.ProductFamily = a_twidentity.ProductFamily;
+            twidentitymacosx.ProductName = a_twidentity.ProductName;
+            twidentitymacosx.ProtocolMajor = a_twidentity.ProtocolMajor;
+            twidentitymacosx.ProtocolMinor = a_twidentity.ProtocolMinor;
+            twidentitymacosx.SupportedGroups = a_twidentity.SupportedGroups;
+            twidentitymacosx.Version.Country = a_twidentity.Version.Country;
+            twidentitymacosx.Version.Info = a_twidentity.Version.Info;
+            twidentitymacosx.Version.Language = a_twidentity.Version.Language;
+            twidentitymacosx.Version.MajorNum = a_twidentity.Version.MajorNum;
+            twidentitymacosx.Version.MinorNum = a_twidentity.Version.MinorNum;
+            return (twidentitymacosx);
+        }
+
+        /// <summary>
+        /// Convert a legacy identity to a public identity...
+        /// </summary>
+        /// <param name="a_twidentitylegacy">Legacy identity to convert</param>
+        /// <returns>Regular form of identity</returns>
+        private TW_IDENTITY TwidentitylegacyToTwidentity(TW_IDENTITY_LEGACY a_twidentitylegacy)
+        {
+            TW_IDENTITY twidentity = new TW_IDENTITY();
+            twidentity.Id = a_twidentitylegacy.Id;
+            twidentity.Manufacturer = a_twidentitylegacy.Manufacturer;
+            twidentity.ProductFamily = a_twidentitylegacy.ProductFamily;
+            twidentity.ProductName = a_twidentitylegacy.ProductName;
+            twidentity.ProtocolMajor = a_twidentitylegacy.ProtocolMajor;
+            twidentity.ProtocolMinor = a_twidentitylegacy.ProtocolMinor;
+            twidentity.SupportedGroups = a_twidentitylegacy.SupportedGroups;
+            twidentity.Version.Country = a_twidentitylegacy.Version.Country;
+            twidentity.Version.Info = a_twidentitylegacy.Version.Info;
+            twidentity.Version.Language = a_twidentitylegacy.Version.Language;
+            twidentity.Version.MajorNum = a_twidentitylegacy.Version.MajorNum;
+            twidentity.Version.MinorNum = a_twidentitylegacy.Version.MinorNum;
+            return (twidentity);
+        }
+
+        /// <summary>
+        /// Convert a macosx identity to a public identity...
+        /// </summary>
+        /// <param name="a_twidentitymacosx">Mac OS X identity to convert</param>
+        /// <returns>Regular identity</returns>
+        private TW_IDENTITY TwidentitymacosxToTwidentity(TW_IDENTITY_MACOSX a_twidentitymacosx)
+        {
+            TW_IDENTITY twidentity = new TW_IDENTITY();
+            twidentity.Id = a_twidentitymacosx.Id;
+            twidentity.Manufacturer = a_twidentitymacosx.Manufacturer;
+            twidentity.ProductFamily = a_twidentitymacosx.ProductFamily;
+            twidentity.ProductName = a_twidentitymacosx.ProductName;
+            twidentity.ProtocolMajor = a_twidentitymacosx.ProtocolMajor;
+            twidentity.ProtocolMinor = a_twidentitymacosx.ProtocolMinor;
+            twidentity.SupportedGroups = a_twidentitymacosx.SupportedGroups;
+            twidentity.Version.Country = a_twidentitymacosx.Version.Country;
+            twidentity.Version.Info = a_twidentitymacosx.Version.Info;
+            twidentity.Version.Language = a_twidentitymacosx.Version.Language;
+            twidentity.Version.MajorNum = a_twidentitymacosx.Version.MajorNum;
+            twidentity.Version.MinorNum = a_twidentitymacosx.Version.MinorNum;
+            return (twidentity);
+        }
+
+        /// <summary>
         /// Get .NET 'Bitmap' object from memory DIB via stream constructor.
         /// This should work for most DIBs.
         /// </summary>
@@ -6990,98 +6836,6 @@ namespace TWAINWorkingGroup
 
             // Uh-oh...
             return (null);
-        }
-
-        /// <summary>
-        /// Convert a public identity to a legacy identity...
-        /// </summary>
-        /// <param name="a_twidentity">Identity to convert</param>
-        /// <returns>Legacy form of identity</returns>
-        private TW_IDENTITY_LEGACY TwidentityToTwidentitylegacy(TW_IDENTITY a_twidentity)
-        {
-            TW_IDENTITY_LEGACY twidentitylegacy = new TW_IDENTITY_LEGACY();
-            twidentitylegacy.Id = (uint)a_twidentity.Id;
-            twidentitylegacy.Manufacturer = a_twidentity.Manufacturer;
-            twidentitylegacy.ProductFamily = a_twidentity.ProductFamily;
-            twidentitylegacy.ProductName = a_twidentity.ProductName;
-            twidentitylegacy.ProtocolMajor = a_twidentity.ProtocolMajor;
-            twidentitylegacy.ProtocolMinor = a_twidentity.ProtocolMinor;
-            twidentitylegacy.SupportedGroups = a_twidentity.SupportedGroups;
-            twidentitylegacy.Version.Country = a_twidentity.Version.Country;
-            twidentitylegacy.Version.Info = a_twidentity.Version.Info;
-            twidentitylegacy.Version.Language = a_twidentity.Version.Language;
-            twidentitylegacy.Version.MajorNum = a_twidentity.Version.MajorNum;
-            twidentitylegacy.Version.MinorNum = a_twidentity.Version.MinorNum;
-            return (twidentitylegacy);
-        }
-
-        /// <summary>
-        /// Convert a public identity to a macosx identity...
-        /// </summary>
-        /// <param name="a_twidentity">Identity to convert</param>
-        /// <returns>Mac OS X form of identity</returns>
-        public static TW_IDENTITY_MACOSX TwidentityToTwidentitymacosx(TW_IDENTITY a_twidentity)
-        {
-            TW_IDENTITY_MACOSX twidentitymacosx = new TW_IDENTITY_MACOSX();
-            twidentitymacosx.Id = (uint)a_twidentity.Id;
-            twidentitymacosx.Manufacturer = a_twidentity.Manufacturer;
-            twidentitymacosx.ProductFamily = a_twidentity.ProductFamily;
-            twidentitymacosx.ProductName = a_twidentity.ProductName;
-            twidentitymacosx.ProtocolMajor = a_twidentity.ProtocolMajor;
-            twidentitymacosx.ProtocolMinor = a_twidentity.ProtocolMinor;
-            twidentitymacosx.SupportedGroups = a_twidentity.SupportedGroups;
-            twidentitymacosx.Version.Country = a_twidentity.Version.Country;
-            twidentitymacosx.Version.Info = a_twidentity.Version.Info;
-            twidentitymacosx.Version.Language = a_twidentity.Version.Language;
-            twidentitymacosx.Version.MajorNum = a_twidentity.Version.MajorNum;
-            twidentitymacosx.Version.MinorNum = a_twidentity.Version.MinorNum;
-            return (twidentitymacosx);
-        }
-
-        /// <summary>
-        /// Convert a legacy identity to a public identity...
-        /// </summary>
-        /// <param name="a_twidentitylegacy">Legacy identity to convert</param>
-        /// <returns>Regular form of identity</returns>
-        private TW_IDENTITY TwidentitylegacyToTwidentity(TW_IDENTITY_LEGACY a_twidentitylegacy)
-        {
-            TW_IDENTITY twidentity = new TW_IDENTITY();
-            twidentity.Id = a_twidentitylegacy.Id;
-            twidentity.Manufacturer = a_twidentitylegacy.Manufacturer;
-            twidentity.ProductFamily = a_twidentitylegacy.ProductFamily;
-            twidentity.ProductName = a_twidentitylegacy.ProductName;
-            twidentity.ProtocolMajor = a_twidentitylegacy.ProtocolMajor;
-            twidentity.ProtocolMinor = a_twidentitylegacy.ProtocolMinor;
-            twidentity.SupportedGroups = a_twidentitylegacy.SupportedGroups;
-            twidentity.Version.Country = a_twidentitylegacy.Version.Country;
-            twidentity.Version.Info = a_twidentitylegacy.Version.Info;
-            twidentity.Version.Language = a_twidentitylegacy.Version.Language;
-            twidentity.Version.MajorNum = a_twidentitylegacy.Version.MajorNum;
-            twidentity.Version.MinorNum = a_twidentitylegacy.Version.MinorNum;
-            return (twidentity);
-        }
-
-        /// <summary>
-        /// Convert a macosx identity to a public identity...
-        /// </summary>
-        /// <param name="a_twidentitymacosx">Mac OS X identity to convert</param>
-        /// <returns>Regular identity</returns>
-        private TW_IDENTITY TwidentitymacosxToTwidentity(TW_IDENTITY_MACOSX a_twidentitymacosx)
-        {
-            TW_IDENTITY twidentity = new TW_IDENTITY();
-            twidentity.Id = a_twidentitymacosx.Id;
-            twidentity.Manufacturer = a_twidentitymacosx.Manufacturer;
-            twidentity.ProductFamily = a_twidentitymacosx.ProductFamily;
-            twidentity.ProductName = a_twidentitymacosx.ProductName;
-            twidentity.ProtocolMajor = a_twidentitymacosx.ProtocolMajor;
-            twidentity.ProtocolMinor = a_twidentitymacosx.ProtocolMinor;
-            twidentity.SupportedGroups = a_twidentitymacosx.SupportedGroups;
-            twidentity.Version.Country = a_twidentitymacosx.Version.Country;
-            twidentity.Version.Info = a_twidentitymacosx.Version.Info;
-            twidentity.Version.Language = a_twidentitymacosx.Version.Language;
-            twidentity.Version.MajorNum = a_twidentitymacosx.Version.MajorNum;
-            twidentity.Version.MinorNum = a_twidentitymacosx.Version.MinorNum;
-            return (twidentity);
         }
 
         #endregion
@@ -7234,9 +6988,6 @@ namespace TWAINWorkingGroup
             public uint u32Value;
         }
 
-        [DllImport("user32.dll")]
-        static extern sbyte GetMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
-
         #endregion
 
 
@@ -7263,7 +7014,6 @@ namespace TWAINWorkingGroup
         /// Our current TWAIN state...
         /// </summary>
         private STATE m_state;
-        private bool m_blAcceptXferReady;
 
         /// <summary>
         /// DAT_NULL flags that we've seen after entering into
@@ -7367,7 +7117,6 @@ namespace TWAINWorkingGroup
 
         #endregion
     }
-
 
     /// <summary>
     /// A quick and dirty CSV reader/writer...
@@ -7535,148 +7284,6 @@ namespace TWAINWorkingGroup
         /// Our working string for creating or parsing...
         /// </summary>
         private string m_szCsv;
-
-        #endregion
-    }
-    
-
-    /// <summary>
-    /// Our logger.  If we bump up to 4.5 (and if mono supports it at compile
-    /// time), then we'll be able to add the following to our traces, which
-    /// seems like it should be more than enough to locate log messages.  For
-    /// now we'll leave the log messages undecorated:
-    ///     [CallerFilePath] string file = "",
-    ///     [CallerMemberName] string member = "",
-    ///     [CallerLineNumber] int line = 0
-    /// </summary>
-    public static class Log
-    {
-    	// Public methods...
-	    #region Public methods
-
-        /// <summary>
-        /// Close tracing...
-        /// </summary>
-        public static void Close()
-        {
-            if (!ms_blFirstPass)
-            {
-                Trace.Close();
-            }
-        }
-
-        /// <summary>
-        /// Handle messages...
-        /// </summary>
-        /// <param name="a_eSeverity">Message severity</param>
-        /// <param name="a_szMessage">The message</param>
-        public static void Msg(Severity a_eSeverity, string a_szMessage)
-        {
-	    switch (a_eSeverity)
-            {
-                case Severity.Info:
-                    WriteEntry(" ", a_szMessage, ms_blFlush);
-                    break;
-                case Severity.Warning:
-                    WriteEntry("W", a_szMessage, ms_blFlush);
-                    break;
-                case Severity.Error:
-                    WriteEntry("E", a_szMessage, true);
-                    break;
-                default:
-                case Severity.Programmer:
-                    WriteEntry("A", a_szMessage, true);
-                    throw new Exception(a_szMessage);
-            }
-        }
-
-        /// <summary>
-        /// Flush data to the file...
-        /// </summary>
-        public static void SetFlush(bool a_blFlush)
-        {
-            ms_blFlush = a_blFlush;
-            if (a_blFlush)
-            {
-                Trace.Flush();
-            }
-        }
-
-	    #endregion
-
-
-        // Public definitions...
-        #region Public definitions
-
-        public enum Severity
-        {
-            Info,
-            Warning,
-            Error,
-            Programmer
-        }
-
-        #endregion
-
-
-        // Private methods...
-        #region Private methods
-
-        /// <summary>
-        /// Do this for all of them...
-        /// </summary>
-        /// <param name="a_szMessage">The message</param>
-        /// <param name="a_szSeverity">Message severity</param>
-        /// <param name="a_blFlush">Flush it to disk</param>
-        private static void WriteEntry(string a_szMessage, string a_szSeverity, bool a_blFlush)
-        {
-            // First pass...
-            if (ms_blFirstPass)
-            {
-                Trace.UseGlobalLock = true;
-                ms_blFirstPass = false;
-                Trace.WriteLine
-                (
-                    string.Format
-                    (
-                        "{0:D6} {1} {2} {3}",
-                        ms_iMessageNumber++,
-                        DateTime.Now.ToString("mmssffffff"),
-                        a_szSeverity.ToString(),
-                        DateTime.Now.ToString("yyyyMMddHHmmssffffff")
-                    )
-                );
-            }
-
-            // And log it...
-            Trace.WriteLine
-            (
-                string.Format
-                (
-                    "{0:D6} {1} {2} {3}",
-                    ms_iMessageNumber++,
-                    DateTime.Now.ToString("HHmmssffffff"),
-                    a_szSeverity.ToString(),
-                    a_szMessage
-                )
-            );
-
-            // Flush it...
-            if (a_blFlush)
-            {
-                Trace.Flush();
-            }
-        }
-
-        #endregion
-
-
-	    // Private attributes...
-	    #region Public attributes
-
-        private static bool ms_blFirstPass = true;
-        private static bool ms_blFlush = false;
-        private static int ms_iMessageNumber = 0;
 
         #endregion
     }
