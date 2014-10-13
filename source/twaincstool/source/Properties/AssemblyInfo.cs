@@ -4,8 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            Version     Comment
-//  M.McLaughlin    11-Jul-2014     2.2.0.0     memfile fix
-//  M.McLaughlin    08-Jul-2014     2.1.0.0     ReportImage lock fix
+//  M.McLaughlin    08-Jul-2014     2.1.0.0     ReportImage ref on bitmap
 //  M.McLaughlin    21-May-2014     2.0.0.0     64-bit Linux
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
@@ -65,5 +64,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("2.3.0.4")]
-[assembly: AssemblyFileVersion("2.3.0.4")]
+[assembly: AssemblyVersion("2.1.0.0")]
+[assembly: AssemblyFileVersion("2.1.0.0")]
