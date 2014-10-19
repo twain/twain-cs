@@ -279,6 +279,7 @@ namespace TWAINWorkingGroup
                 {
                     Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
                 }
+                return (intptr);
             }
 
             // Do it ourselves, Mac OS X...
@@ -1235,8 +1236,8 @@ namespace TWAINWorkingGroup
                             // Set the meta data...
                             TW_ONEVALUE twonevalue = default(TW_ONEVALUE);
                             twonevalue.ItemType = twty;
-                             Marshal.StructureToPtr(twonevalue, intptr, true);
-
+                            Marshal.StructureToPtr(twonevalue, intptr, true);
+ 
                             // Get the pointer to the ItemList...
                             intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twonevalue));
                         }
@@ -2745,7 +2746,7 @@ namespace TWAINWorkingGroup
             }
 
             // If we closed, go to state 2...
-            else if (a_msg == MSG.CLOSEDS)
+            else if (a_msg == MSG.CLOSEDSM)
             {
                 if (sts == STS.SUCCESS)
                 {
@@ -5506,6 +5507,17 @@ namespace TWAINWorkingGroup
             STS sts;
 
             // Submit the work to the TWAIN thread...
+            //
+            // Normally this would be a good thing, however we have a problem on Windows,
+            // in that any window created by this call has to appear in the same thread as
+            // the HINSTANCE that was passed to the TWAIN driver's DllMain.  Otherwise the
+            // dispatcher won't be able to make the connection to forward events to the
+            // driver's window.
+            //
+            // The same problem could occur on destroy, especially when trying to free
+            // resources.  So we're not forwarding this message to our thread.  It'll run
+            // in the context of the caller's thread.
+            /*
             if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
             {
                 lock (m_lockTwain)
@@ -5530,6 +5542,7 @@ namespace TWAINWorkingGroup
                 }
                 return (sts);
             }
+            */
 
             // We need this to handle data sources that return MSG_XFERREADY in
             // the midst of processing MSG_ENABLEDS...
@@ -7572,7 +7585,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_szMessage">The message</param>
         public static void Msg(Severity a_eSeverity, string a_szMessage)
         {
-	    switch (a_eSeverity)
+	        switch (a_eSeverity)
             {
                 case Severity.Info:
                     WriteEntry(" ", a_szMessage, ms_blFlush);
@@ -7672,7 +7685,7 @@ namespace TWAINWorkingGroup
 
 
 	    // Private attributes...
-	    #region Public attributes
+	    #region Private attributes
 
         private static bool ms_blFirstPass = true;
         private static bool ms_blFlush = false;
