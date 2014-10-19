@@ -1459,7 +1459,7 @@ namespace TWAINWorkingGroupToolkit
                 m_blScanStart = false;
 
                 // Make a note of it...
-                WriteOutput(Environment.NewLine + "Scanning started..." + Environment.NewLine);
+                WriteOutput(Environment.NewLine + "Entered state 5..." + Environment.NewLine);
 
                 // Get the current setting for the image transfer...
                 twcapability = default(TWAIN.TW_CAPABILITY);
@@ -1492,7 +1492,12 @@ namespace TWAINWorkingGroupToolkit
                 if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
                 {
                     TWAIN.TW_EVENT twevent = default(TWAIN.TW_EVENT);
-                    m_twain.DatEvent(TWAIN.DG.CONTROL,TWAIN.MSG.PROCESSEVENT,ref twevent);
+                    twevent.pEvent = Marshal.AllocHGlobal(256); // over allocate for MSG structure
+                    if (twevent.pEvent != IntPtr.Zero)
+                    {
+                        m_twain.DatEvent(TWAIN.DG.CONTROL, TWAIN.MSG.PROCESSEVENT, ref twevent);
+                        Marshal.FreeHGlobal(twevent.pEvent);
+                    }
                 }
 
                 // Scoot...
@@ -1579,25 +1584,35 @@ namespace TWAINWorkingGroupToolkit
                     }
                 }
 
+                // If specified, m_szImagePath wins over DAT_SETUPFILEXFER...
+                string szFile = m_twsetupfilexfer.FileName.Get();
+                if ((m_szImagePath != null) && (m_szImagePath != ""))
+                {
+                    szFile = m_szImagePath;
+                }
+
+                // Build the base...
+                szFile = System.IO.Path.Combine(szFile, m_iImageXferCount.ToString("D6"));
+
                 // Add the image transfer count and the extension...
                 switch (twsetupfilexfer.Format)
                 {
-                    default: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".xxx"); break;
-                    case TWAIN.TWFF.BMP: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".bmp"); break;
-                    case TWAIN.TWFF.DEJAVU: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".dejavu"); break;
-                    case TWAIN.TWFF.EXIF: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".exif"); break;
-                    case TWAIN.TWFF.FPX: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".fpx"); break;
-                    case TWAIN.TWFF.JFIF: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".jpg"); break;
-                    case TWAIN.TWFF.JP2: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".jp2"); break;
-                    case TWAIN.TWFF.JPX: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".jpx"); break;
-                    case TWAIN.TWFF.PDF: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".pdf"); break;
-                    case TWAIN.TWFF.PDFA: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".pdf"); break;
-                    case TWAIN.TWFF.PICT: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".pict"); break;
-                    case TWAIN.TWFF.PNG: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".png"); break;
-                    case TWAIN.TWFF.SPIFF: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".spiff"); break;
-                    case TWAIN.TWFF.TIFF: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".tif"); break;
-                    case TWAIN.TWFF.TIFFMULTI: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".tif"); break;
-                    case TWAIN.TWFF.XBM: twsetupfilexfer.FileName.Set(m_twsetupfilexfer.FileName.Get() + m_iImageXferCount.ToString("D6") + ".xbm"); break;
+                    default: twsetupfilexfer.FileName.Set(szFile + ".xxx"); break;
+                    case TWAIN.TWFF.BMP: twsetupfilexfer.FileName.Set(szFile + ".bmp"); break;
+                    case TWAIN.TWFF.DEJAVU: twsetupfilexfer.FileName.Set(szFile + ".dejavu"); break;
+                    case TWAIN.TWFF.EXIF: twsetupfilexfer.FileName.Set(szFile + ".exif"); break;
+                    case TWAIN.TWFF.FPX: twsetupfilexfer.FileName.Set(szFile + ".fpx"); break;
+                    case TWAIN.TWFF.JFIF: twsetupfilexfer.FileName.Set(szFile + ".jpg"); break;
+                    case TWAIN.TWFF.JP2: twsetupfilexfer.FileName.Set(szFile + ".jp2"); break;
+                    case TWAIN.TWFF.JPX: twsetupfilexfer.FileName.Set(szFile + ".jpx"); break;
+                    case TWAIN.TWFF.PDF: twsetupfilexfer.FileName.Set(szFile + ".pdf"); break;
+                    case TWAIN.TWFF.PDFA: twsetupfilexfer.FileName.Set(szFile + ".pdf"); break;
+                    case TWAIN.TWFF.PICT: twsetupfilexfer.FileName.Set(szFile + ".pict"); break;
+                    case TWAIN.TWFF.PNG: twsetupfilexfer.FileName.Set(szFile + ".png"); break;
+                    case TWAIN.TWFF.SPIFF: twsetupfilexfer.FileName.Set(szFile + ".spiff"); break;
+                    case TWAIN.TWFF.TIFF: twsetupfilexfer.FileName.Set(szFile + ".tif"); break;
+                    case TWAIN.TWFF.TIFFMULTI: twsetupfilexfer.FileName.Set(szFile + ".tif"); break;
+                    case TWAIN.TWFF.XBM: twsetupfilexfer.FileName.Set(szFile + ".xbm"); break;
                 }
 
                 // Setup the file transfer...
