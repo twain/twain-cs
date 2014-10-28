@@ -313,7 +313,7 @@ namespace TWAINWorkingGroup
         public virtual void DsmMemFree(ref IntPtr a_intptrHandle)
         {
             // Validate...
-            if (a_intptrHandle != IntPtr.Zero)
+            if (a_intptrHandle == IntPtr.Zero)
             {
                 return;
             }
