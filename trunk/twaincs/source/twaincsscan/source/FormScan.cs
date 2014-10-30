@@ -99,6 +99,16 @@ namespace TWAINCSScan
             {
                 m_twaincstoolkit = null;
                 m_blExit = true;
+                MessageBox.Show
+                (
+                    "Unable to start, the most likely reason is that the TWAIN\n" +
+                    "Data Source Manager is not installed on your system.\n\n" +
+                    "An internet search for 'TWAIN DSM' will locate it and once\n" +
+                    "installed, you should be able to proceed.\n\n" +
+                    "You can also try the following link:\n" +
+                    "http://sourceforge.net/projects/twain-dsm/",
+                    "Error Starting TWAIN CS Scan"
+                );
                 return;
             }
 
@@ -122,7 +132,7 @@ namespace TWAINCSScan
 
 
         ///////////////////////////////////////////////////////////////////////////////
-        // Private Methods...
+        // Private Methods, this includes our callback "ReportImage"...
         ///////////////////////////////////////////////////////////////////////////////
         #region Private Methods...
 

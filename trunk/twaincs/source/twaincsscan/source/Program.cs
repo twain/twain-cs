@@ -46,7 +46,7 @@ namespace TWAINCSScan
         [STAThread]
         static void Main()
         {
-            FormScan formscan;
+            FormScan formscan = null;
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             formscan = new FormScan();
@@ -55,6 +55,7 @@ namespace TWAINCSScan
                 Application.Run(formscan);
             }
             formscan = null;
+            Application.Exit();
         }
     }
 }

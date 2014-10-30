@@ -197,7 +197,7 @@ namespace TWAINWorkingGroup
             // Uh-oh, Log will throw an exception for us...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
             }
 
             // Activate our thread...
@@ -215,7 +215,7 @@ namespace TWAINWorkingGroup
                     catch
                     {
                         // Log will throw an exception for us...
-                        Log.Msg(Log.Severity.Programmer, "Failed to start the TWAIN background thread...");
+                        Log.Msg(Log.Severity.Throw, "Failed to start the TWAIN background thread...");
                     }
                 }
             }
@@ -302,7 +302,7 @@ namespace TWAINWorkingGroup
             }
 
             // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+            Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
             return (IntPtr.Zero);
         }
 
@@ -396,7 +396,7 @@ namespace TWAINWorkingGroup
             }
 
             // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+            Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
             return (IntPtr.Zero);
         }
 
@@ -438,7 +438,7 @@ namespace TWAINWorkingGroup
             }
 
             // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+            Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
         }
 
         /// <summary>
@@ -475,7 +475,7 @@ namespace TWAINWorkingGroup
             }
 
             // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+            Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
             return (false);
         }
 
@@ -1851,7 +1851,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -1962,7 +1962,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2072,7 +2072,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2182,7 +2182,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2292,7 +2292,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2402,7 +2402,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2512,7 +2512,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2622,7 +2622,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2732,26 +2732,8 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
-            }
-
-            // If we opened, go to state 4...
-            if (a_msg == MSG.OPENDSM)
-            {
-                if (sts == STS.SUCCESS)
-                {
-                    m_state = STATE.S3;
-                }
-            }
-
-            // If we closed, go to state 2...
-            else if (a_msg == MSG.CLOSEDSM)
-            {
-                if (sts == STS.SUCCESS)
-                {
-                    m_state = STATE.S2;
-                }
             }
 
             // All done...
@@ -2860,7 +2842,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -2950,7 +2932,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3066,7 +3048,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3176,7 +3158,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3286,7 +3268,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3396,7 +3378,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3506,7 +3488,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3622,7 +3604,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3828,7 +3810,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -3938,7 +3920,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4045,7 +4027,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4183,7 +4165,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4320,7 +4302,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4438,7 +4420,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4562,7 +4544,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4672,7 +4654,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -4782,11 +4764,11 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
-            // If we opened, go to state 4...
+            // If we opened, go to state 3...
             if (a_msg == MSG.OPENDSM)
             {
                 if (sts == STS.SUCCESS)
@@ -4796,7 +4778,7 @@ namespace TWAINWorkingGroup
             }
 
             // If we closed, go to state 2...
-            else if (a_msg == MSG.CLOSEDS)
+            else if (a_msg == MSG.CLOSEDSM)
             {
                 if (sts == STS.SUCCESS)
                 {
@@ -4910,7 +4892,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5020,7 +5002,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5157,7 +5139,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5267,7 +5249,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5377,7 +5359,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5487,7 +5469,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5616,7 +5598,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -5754,7 +5736,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -6276,7 +6258,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -6333,7 +6315,7 @@ namespace TWAINWorkingGroup
                 else
                 {
                     ms_platform = Platform.UNKNOWN;
-                    Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + ms_platform);
+                    Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
                 }
             }
 
@@ -7564,8 +7546,8 @@ namespace TWAINWorkingGroup
     /// </summary>
     public static class Log
     {
-    	// Public methods...
-	    #region Public methods
+        // Public methods...
+        #region Public methods
 
         /// <summary>
         /// Close tracing...
@@ -7585,7 +7567,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_szMessage">The message</param>
         public static void Msg(Severity a_eSeverity, string a_szMessage)
         {
-	        switch (a_eSeverity)
+            switch (a_eSeverity)
             {
                 case Severity.Info:
                     WriteEntry(" ", a_szMessage, ms_blFlush);
@@ -7597,8 +7579,8 @@ namespace TWAINWorkingGroup
                     WriteEntry("E", a_szMessage, true);
                     break;
                 default:
-                case Severity.Programmer:
-                    WriteEntry("A", a_szMessage, true);
+                case Severity.Throw:
+                    WriteEntry("T", a_szMessage, true);
                     throw new Exception(a_szMessage);
             }
         }
@@ -7615,7 +7597,7 @@ namespace TWAINWorkingGroup
             }
         }
 
-	    #endregion
+        #endregion
 
 
         // Public definitions...
@@ -7626,7 +7608,7 @@ namespace TWAINWorkingGroup
             Info,
             Warning,
             Error,
-            Programmer
+            Throw
         }
 
         #endregion
@@ -7684,8 +7666,8 @@ namespace TWAINWorkingGroup
         #endregion
 
 
-	    // Private attributes...
-	    #region Private attributes
+        // Private attributes...
+        #region Private attributes
 
         private static bool ms_blFirstPass = true;
         private static bool ms_blFlush = false;
