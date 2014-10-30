@@ -181,7 +181,7 @@ namespace TWAINWorkingGroupToolkit
             }
             else
             {
-                Log.Msg(Log.Severity.Programmer, "Unsupported platform..." + TWAIN.GetPlatform());
+                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + TWAIN.GetPlatform());
             }
 
             // We've not been in the scan callback yet...
@@ -191,7 +191,9 @@ namespace TWAINWorkingGroupToolkit
             TWAIN.STS sts = m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.OPENDSM, ref m_intptrHwnd);
             if (sts != TWAIN.STS.SUCCESS)
             {
-                Log.Msg(Log.Severity.Programmer, "OpenDSM failed...");
+                Log.Msg(Log.Severity.Error, "OpenDSM failed...");
+                Cleanup();
+                throw new Exception("OpenDSM failed...");
             }
         }
 
