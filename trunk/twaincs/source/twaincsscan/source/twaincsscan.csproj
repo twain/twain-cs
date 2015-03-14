@@ -92,7 +92,6 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml" />
     <Reference Include="TWAINCSToolkit">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\twaincstool\source\bin\$(Platform)\$(Configuration)\TWAINCSToolkit.dll</HintPath>
