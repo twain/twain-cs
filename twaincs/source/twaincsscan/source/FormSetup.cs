@@ -10,7 +10,7 @@
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2014 Kodak Alaris Inc.
+//  Copyright (C) 2013-2015 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -30,6 +30,7 @@
 //  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 //  DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////////////
+
 using System;
 using System.Data;
 using System.Drawing;
@@ -151,7 +152,7 @@ namespace TWAINCSScan
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        void FormSetup_FormClosing(object sender, FormClosingEventArgs e)
+        private void FormSetup_FormClosing(object sender, FormClosingEventArgs e)
         {
             if ((m_twaincstoolkit.GetImagePath() != "") && !Directory.Exists(m_twaincstoolkit.GetImagePath()))
             {

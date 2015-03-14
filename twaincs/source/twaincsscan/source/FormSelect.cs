@@ -10,7 +10,7 @@
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2014 Kodak Alaris Inc.
+//  Copyright (C) 2013-2015 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -30,6 +30,7 @@
 //  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 //  DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////////////
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -43,7 +44,16 @@ namespace TWAINCSScan
 {
     public partial class FormSelect : Form
     {
-        // Our constructor...
+        ///////////////////////////////////////////////////////////////////////////////
+        // Public Methods...
+        ///////////////////////////////////////////////////////////////////////////////
+        #region Public Methods...
+
+        /// <summary>
+        /// Our constructor...
+        /// </summary>
+        /// <param name="a_aszIdentity">list of scanners to show</param>
+        /// <param name="a_szDefault">the default selection</param>
         public FormSelect(string[] a_aszIdentity, string a_szDefault)
         {
             string[] aszIdentity;
@@ -72,6 +82,19 @@ namespace TWAINCSScan
             m_listboxSelect.EndUpdate();
         }
 
+        public string GetSelectedDriver()
+        {
+            return (m_szSelected);
+        }
+
+        #endregion
+
+
+        ///////////////////////////////////////////////////////////////////////////////
+        // Private Methods...
+        ///////////////////////////////////////////////////////////////////////////////
+        #region Private Methods...
+
         /// <summary>
         /// Select this as our driver and close the dialog...
         /// </summary>
@@ -82,17 +105,25 @@ namespace TWAINCSScan
             m_szSelected = (string)m_listboxSelect.SelectedItem;
         }
 
-        public string GetSelectedDriver()
-        {
-            return (m_szSelected);
-        }
-
-        private string m_szSelected;
-
         private void m_listboxSelect_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             m_szSelected = (string)m_listboxSelect.SelectedItem;
             this.DialogResult = System.Windows.Forms.DialogResult.OK;
         }
+
+        #endregion
+
+
+        ///////////////////////////////////////////////////////////////////////////////
+        // Private Attributes...
+        ///////////////////////////////////////////////////////////////////////////////
+        #region Private Attributes...
+
+        /// <summary>
+        /// The currently selected item...
+        /// </summary>
+        private string m_szSelected;
+
+        #endregion
     }
 }

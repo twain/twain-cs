@@ -20,13 +20,14 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            Comment
+//  M.McLaughlin    13-Mar-2015     Numerous fixes
 //  M.McLaughlin    13-Oct-2014     Auto file format, added logging
 //  M.McLaughlin    24-Jun-2014     Stability fixes
 //  M.McLaughlin    21-May-2014     64-bit Linux
 //  M.McLaughlin    27-Feb-2014     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2014 Kodak Alaris Inc.
+//  Copyright (C) 2013-2015 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -110,6 +111,7 @@ namespace TWAINWorkingGroupToolkit
             bool a_blUseCallbacks
         )
         {
+            TWAIN.STS sts;
             uint u32SupportedGroups;
 
             // Init stuff...
@@ -188,7 +190,15 @@ namespace TWAINWorkingGroupToolkit
             m_blScanStart = true;
 
             // Open the DSM...
-            TWAIN.STS sts = m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.OPENDSM, ref m_intptrHwnd);
+            try
+            {
+                sts = m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.OPENDSM, ref m_intptrHwnd);
+            }
+            catch (Exception exception)
+            {
+                Log.Msg(Log.Severity.Error, "OpenDSM exception: " + exception.Message);
+                sts = TWAIN.STS.FAILURE;
+            }
             if (sts != TWAIN.STS.SUCCESS)
             {
                 Log.Msg(Log.Severity.Error, "OpenDSM failed...");
@@ -413,6 +423,7 @@ namespace TWAINWorkingGroupToolkit
         /// <returns></returns>
         public STS Send(string a_szDg, string a_szDat, string a_szMsg, ref string a_szMemref, ref string a_szStatus)
         {
+            STS sts;
             TWAIN.DG dg;
             TWAIN.DAT dat;
             TWAIN.MSG msg;
@@ -463,47 +474,64 @@ namespace TWAINWorkingGroupToolkit
             switch (dat)
             {
                 default:
-                    return (SendDat(dg, dat, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDat(dg, dat, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.CALLBACK:
-                    return (SendDatCallback(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatCallback(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.CALLBACK2:
-                    return (SendDatCallback2(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatCallback2(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.CAPABILITY:
-                    return (SendDatCapability(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatCapability(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.CUSTOMDSDATA:
-                    return (SendDatCustomdsdata(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatCustomdsdata(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.DEVICEEVENT:
-                    return (SendDatDeviceevent(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatDeviceevent(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.ENTRYPOINT:
-                    return (SendDatEntrypoint(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatEntrypoint(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.FILESYSTEM:
-                    return (SendDatFilesystem(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatFilesystem(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.IDENTITY:
-                    return (SendDatIdentity(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatIdentity(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.IMAGELAYOUT:
-                    return (SendDatImagelayout(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatImagelayout(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.SETUPFILEXFER:
-                    return (SendDatSetupfilexfer(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatSetupfilexfer(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.SETUPMEMXFER:
-                    return (SendDatSetupmemxfer(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatSetupmemxfer(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.USERINTERFACE:
-                    return (SendDatUserinterface(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatUserinterface(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
 
                 case TWAIN.DAT.XFERGROUP:
-                    return (SendDatXfergroup(dg, msg, ref a_szStatus, ref a_szMemref));
+                    sts = SendDatXfergroup(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
             }
+
+            // All done...
+            return (sts);
         }
 
         /// <summary>
@@ -512,7 +540,7 @@ namespace TWAINWorkingGroupToolkit
         public void StopSession()
         {
             m_twain.Rollback(TWAIN.STATE.S4);
-            ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.USERINTERFACE.ToString(), TWAIN.MSG.DISABLEDS.ToString(), CvtSts(TWAIN.STS.CANCEL), null, null);
+            ReportImage("StopSession: 001", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.USERINTERFACE.ToString(), TWAIN.MSG.DISABLEDS.ToString(), CvtSts(TWAIN.STS.CANCEL), null, null, null, null, 0);
         }
 
         /// <summary>
@@ -658,15 +686,29 @@ namespace TWAINWorkingGroupToolkit
         /// actually does more than that, and can be used to take any
         /// desired action on a given image.
         /// </summary>
+        /// <param name="a_szTag">Tag the instance of ReportImage that was called</param>
         /// <param name="a_szDg">Data group that preceeded the call</param>
         /// <param name="a_szDat">Data argument type that preceeded the call</param>
         /// <param name="a_szMsg">Message the preceeded the call</param>
         /// <param name="a_sts">Current status</param>
         /// <param name="a_bitmap">C# bitmap of the image</param>
         /// <param name="a_szFile">File name, if doing a file transfer</param>
-        /// <summary>
-        /// </summary>
-        public delegate TWAINCSToolkit.MSG ReportImageDelegate(string a_szDg, string a_szDat, string a_szMsg, TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile);
+        /// <param name="a_szTwimageinfo">imageinfo data or null</param>
+        /// <param name="a_abImage">raw image transfer data</param>
+        /// <param name="a_iImageOffset">byte offset into the image where the data starts</param>
+        public delegate TWAINCSToolkit.MSG ReportImageDelegate
+        (
+            string a_szTag,
+            string a_szDg,
+            string a_szDat,
+            string a_szMsg,
+            TWAINCSToolkit.STS a_sts,
+            Bitmap a_bitmap,
+            string a_szFile,
+            string a_szTwimageinfo,
+            byte[] a_abImage,
+            int a_iImageOffset
+        );
 
         /// <summary>
         /// Turn message filtering on and off using a function
@@ -873,7 +915,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatCallback(a_dg, a_msg, ref twcallback);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.CallbackToCsv(ref twcallback);
+                a_szMemref = m_twain.CallbackToCsv(twcallback);
             }
 
             // All done...
@@ -908,7 +950,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatCallback2(a_dg, a_msg, ref twcallback2);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.Callback2ToCsv(ref twcallback2);
+                a_szMemref = m_twain.Callback2ToCsv(twcallback2);
             }
 
             // All done...
@@ -984,7 +1026,7 @@ namespace TWAINWorkingGroupToolkit
                 }
 
                 // Convert the value to something we can put on our form...
-                a_szMemref = m_twain.CapabilityToCsv(ref twcapability);
+                a_szMemref = m_twain.CapabilityToCsv(twcapability);
                 m_twain.DsmMemFree(ref twcapability.hContainer);
                 return (CvtSts(sts));
             }
@@ -1024,7 +1066,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatCustomdsdata(a_dg, a_msg, ref twcustomdsdata);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.CustomdsdataToCsv(ref twcustomdsdata);
+                a_szMemref = m_twain.CustomdsdataToCsv(twcustomdsdata);
             }
 
             // All done...
@@ -1050,7 +1092,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatDeviceevent(a_dg, a_msg, ref twdeviceevent);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.DeviceeventToCsv(ref twdeviceevent);
+                a_szMemref = m_twain.DeviceeventToCsv(twdeviceevent);
             }
 
             // All done...
@@ -1077,7 +1119,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatEntrypoint(a_dg, a_msg, ref twentrypoint);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.EntrypointToCsv(ref twentrypoint);
+                a_szMemref = m_twain.EntrypointToCsv(twentrypoint);
             }
 
             // All done...
@@ -1114,7 +1156,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatFilesystem(a_dg, a_msg, ref twfilesystem);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.FilesystemToCsv(ref twfilesystem);
+                a_szMemref = m_twain.FilesystemToCsv(twfilesystem);
             }
 
             // All done...
@@ -1151,15 +1193,7 @@ namespace TWAINWorkingGroupToolkit
             if (sts == TWAIN.STS.SUCCESS)
             {
                 // Get the data...
-                a_szMemref = m_twain.IdentityToCsv(ref twidentity);
- 
-                // If we're pre-MSG_OPENDS, then save the results in
-                // our DS identity variable, so it'll be there when
-                // we make the call to MSG_OPENDS...
-                if (m_twain.GetState() <= TWAIN.STATE.S3)
-                {
-                    m_twidentityDs = twidentity;
-                }
+                a_szMemref = m_twain.IdentityToCsv(twidentity);
 
                 // If we're MSG_OPENDS and callbacks aren't in use, then
                 // we need to activate the message filter...
@@ -1202,7 +1236,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatImagelayout(a_dg, a_msg, ref twimagelayout);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.ImagelayoutToCsv(ref twimagelayout);
+                a_szMemref = m_twain.ImagelayoutToCsv(twimagelayout);
             }
 
             // All done...
@@ -1238,7 +1272,7 @@ namespace TWAINWorkingGroupToolkit
             if (sts == TWAIN.STS.SUCCESS)
             {
                 // Get the data...
-                a_szMemref = m_twain.SetupfilexferToCsv(ref twsetupfilexfer);
+                a_szMemref = m_twain.SetupfilexferToCsv(twsetupfilexfer);
 
                 // Squirrel this away for DAT_IMAGEFILEXFER...
                 m_twsetupfilexfer = twsetupfilexfer;
@@ -1267,7 +1301,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatSetupmemxfer(a_dg, a_msg, ref twsetupmemxfer);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.SetupmemxferToCsv(ref twsetupmemxfer);
+                a_szMemref = m_twain.SetupmemxferToCsv(twsetupmemxfer);
             }
 
             // All done...
@@ -1339,7 +1373,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatXferGroup(a_dg, a_msg, ref u32);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.XfergroupToCsv(ref u32);
+                a_szMemref = m_twain.XfergroupToCsv(u32);
             }
 
             // All done...
@@ -1392,7 +1426,7 @@ namespace TWAINWorkingGroupToolkit
                 }
 
                 // Process what we got...
-                WriteOutput("*** DeviceEvent: " + m_twain.DeviceeventToCsv(ref twdeviceevent) + Environment.NewLine);
+                WriteOutput("*** DeviceEvent: " + m_twain.DeviceeventToCsv(twdeviceevent) + Environment.NewLine);
             }
 
             // Return a status, in case we ever need it for anything...
@@ -1419,7 +1453,6 @@ namespace TWAINWorkingGroupToolkit
             TWAINCSToolkit.MSG msgPendingxfers = TWAINCSToolkit.MSG.ENDXFER;
             TWAIN.STS sts;
             string szFilename = "";
-            bool blDidImageInfo;
             MemoryStream memorystream;
             TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
 
@@ -1427,14 +1460,14 @@ namespace TWAINWorkingGroupToolkit
             if (m_twain == null)
             {
                 Log.Msg(Log.Severity.Error, "m_twain is null...");
-                if (ReportImage != null) ReportImage("", "", "", CvtSts(TWAIN.STS.FAILURE), null, null);
+                if (ReportImage != null) ReportImage("ScanCallback: 001", "", "", "", CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                 return (TWAIN.STS.FAILURE);
             }
 
             // We're leaving...
             if (a_blClosing)
             {
-                if (ReportImage != null) ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.IDENTITY.ToString(), TWAIN.MSG.CLOSEDS.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null);
+                if (ReportImage != null) ReportImage("ScanCallback: 002", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.IDENTITY.ToString(), TWAIN.MSG.CLOSEDS.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null, null, null, 0);
                 return (TWAIN.STS.SUCCESS);
             }
 
@@ -1442,13 +1475,13 @@ namespace TWAINWorkingGroupToolkit
             if (m_twain.IsMsgCloseDsReq())
             {
                 m_twain.Rollback(TWAIN.STATE.S4);
-                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.NULL.ToString(), TWAIN.MSG.CLOSEDSREQ.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null);
+                ReportImage("ScanCallback: 003", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.NULL.ToString(), TWAIN.MSG.CLOSEDSREQ.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null, null, null, 0);
                 return (TWAIN.STS.SUCCESS);
             }
             else if (m_twain.IsMsgCloseDsOk())
             {
                 m_twain.Rollback(TWAIN.STATE.S4);
-                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.NULL.ToString(), TWAIN.MSG.CLOSEDSOK.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null);
+                ReportImage("ScanCallback: 004", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.NULL.ToString(), TWAIN.MSG.CLOSEDSOK.ToString(), CvtSts(TWAIN.STS.SUCCESS), null, null, null, null, 0);
                 return (TWAIN.STS.SUCCESS);
             }
 
@@ -1471,7 +1504,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     try
                     {
-                        string[] asz = m_twain.CapabilityToCsv(ref twcapability).Split(new char[] { ',' });
+                        string[] asz = m_twain.CapabilityToCsv(twcapability).Split(new char[] { ',' });
                         m_twain.DsmMemFree(ref twcapability.hContainer);
                         m_twsxXferMech = (TWAIN.TWSX)ushort.Parse(asz[3]);
                     }
@@ -1515,7 +1548,6 @@ namespace TWAINWorkingGroupToolkit
 
             // Init some more stuff...
             blXferDone = false;
-            blDidImageInfo = false;
 
             ///////////////////////////////////////////////////////////////////////////////
             //
@@ -1537,12 +1569,12 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGENATIVEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage("ScanCallback: 005", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGENATIVEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
                 else
                 {
-                    msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGENATIVEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null);
+                    msgPendingxfers = ReportImage("ScanCallback: 006", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGENATIVEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null, null, null, 0);
                     bitmap = null;
                     blXferDone = true;
                 }
@@ -1568,14 +1600,16 @@ namespace TWAINWorkingGroupToolkit
                 if (m_blAutomaticJpegOrTiff)
                 {
                     // We need the image info for this one...
-                    twimageinfo = default(TWAIN.TW_IMAGEINFO);
-                    sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                    if (sts != TWAIN.STS.SUCCESS)
+                    if (twimageinfo.BitsPerPixel == 0)
                     {
-                        WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                        m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                        return (TWAIN.STS.SUCCESS);
+                        sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
+                        if (sts != TWAIN.STS.SUCCESS)
+                        {
+                            WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
+                            m_twain.Rollback(m_stateAfterScan);
+                            ReportImage("ScanCallback: 007", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
+                            return (TWAIN.STS.SUCCESS);
+                        }
                     }
 
                     // Assume TIFF, unless we detect JPEG (JFIF)...
@@ -1623,17 +1657,17 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.SETUPFILEXFER.ToString(), TWAIN.MSG.SET.ToString(), CvtSts(sts), null, null);
+                    ReportImage("ScanCallback: 008", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.SETUPFILEXFER.ToString(), TWAIN.MSG.SET.ToString(), CvtSts(sts), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
 
                 // Transfer the image...
-                sts = m_twain.DatImagefilexfer(TWAIN.DG.IMAGE,TWAIN.MSG.GET);
+                sts = m_twain.DatImagefilexfer(TWAIN.DG.IMAGE, TWAIN.MSG.GET);
                 if (sts != TWAIN.STS.XFERDONE)
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage("ScanCallback: 009", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
                 else
@@ -1645,7 +1679,7 @@ namespace TWAINWorkingGroupToolkit
                         bitmap = new Bitmap(image);
                         image.Dispose();
                         image = null;
-                        msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFilename);
+                        msgPendingxfers = ReportImage("ScanCallback: 010", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFilename, m_twain.ImageinfoToCsv(twimageinfo), null, 0);
                         bitmap = null;
                         blXferDone = true;
                     }
@@ -1653,7 +1687,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, szFilename);
+                        ReportImage("ScanCallback: 011", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, szFilename, m_twain.ImageinfoToCsv(twimageinfo), null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
                 }
@@ -1683,6 +1717,7 @@ namespace TWAINWorkingGroupToolkit
                 IntPtr intptrOffset;
                 TWAIN.TW_SETUPMEMXFER twsetupmemxfer = default(TWAIN.TW_SETUPMEMXFER);
                 TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
+                TWAIN.TW_MEMORY twmemory = default(TWAIN.TW_MEMORY);
                 const int iSpaceForHeader = 512;
 
                 // Get the preferred transfer size from the driver...
@@ -1691,20 +1726,20 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.SETUPMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage("ScanCallback: 012", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.SETUPMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
 
                 // Allocate our unmanaged memory...
-                twimagememxfer.Memory.Flags = (uint)TWAIN.TWMF.APPOWNS | (uint)TWAIN.TWMF.POINTER;
-                twimagememxfer.Memory.Length = twsetupmemxfer.Preferred;
-                twimagememxfer.Memory.TheMem = Marshal.AllocHGlobal((int)twsetupmemxfer.Preferred);
-                if (twimagememxfer.Memory.TheMem == IntPtr.Zero)
+                twmemory.Flags = (uint)TWAIN.TWMF.APPOWNS | (uint)TWAIN.TWMF.POINTER;
+                twmemory.Length = twsetupmemxfer.Preferred;
+                twmemory.TheMem = Marshal.AllocHGlobal((int)twsetupmemxfer.Preferred);
+                if (twmemory.TheMem == IntPtr.Zero)
                 {
                     sts = TWAIN.STS.LOWMEMORY;
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage("ScanCallback: 013", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
 
@@ -1723,6 +1758,9 @@ namespace TWAINWorkingGroupToolkit
                     intptrOffset = (IntPtr)((int)iSpaceForHeader + (int)intptrTotalXfer);
 
                     // Get a strip of image data...
+                    twimagememxfer.Memory.Flags = twmemory.Flags;
+                    twimagememxfer.Memory.Length = twmemory.Length;
+                    twimagememxfer.Memory.TheMem = twmemory.TheMem;
                     sts = m_twain.DatImagememxfer(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimagememxfer);
                     if (sts == TWAIN.STS.XFERDONE)
                     {
@@ -1736,7 +1774,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage("ScanCallback: 014", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -1748,7 +1786,7 @@ namespace TWAINWorkingGroupToolkit
                         sts = TWAIN.STS.LOWMEMORY;
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage("ScanCallback: 015", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -1795,7 +1833,7 @@ namespace TWAINWorkingGroupToolkit
                             Bitmap bitmapFile = new Bitmap(image);
                             image.Dispose();
                             image = null;
-                            msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.XFERDONE), bitmapFile, szFile);
+                            msgPendingxfers = ReportImage("ScanCallback: 016", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.XFERDONE), bitmapFile, szFile, null, abImage, iSpaceForHeader);
                             blXferDone = true;
                         }
 
@@ -1808,7 +1846,7 @@ namespace TWAINWorkingGroupToolkit
                             bitmap = new Bitmap(image);
                             image.Dispose();
                             image = null;
-                            msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null);
+                            msgPendingxfers = ReportImage("ScanCallback: 017", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null, null, abImage, iSpaceForHeader);
                             bitmap = null;
                             memorystream = null;
                             blXferDone = true;
@@ -1818,7 +1856,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                        ReportImage("ScanCallback: 018", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
                 }
@@ -1836,13 +1874,16 @@ namespace TWAINWorkingGroupToolkit
                     string szFile = "";
 
                     // We need the image info for this one...
-                    sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                    if (sts != TWAIN.STS.SUCCESS)
+                    if (twimageinfo.BitsPerPixel == 0)
                     {
-                        WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                        m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                        return (TWAIN.STS.SUCCESS);
+                        sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
+                        if (sts != TWAIN.STS.SUCCESS)
+                        {
+                            WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
+                            m_twain.Rollback(m_stateAfterScan);
+                            ReportImage("ScanCallback: 019", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
+                            return (TWAIN.STS.SUCCESS);
+                        }
                     }
 
                     // Create a TIFF header...
@@ -1891,7 +1932,7 @@ namespace TWAINWorkingGroupToolkit
                         {
                             WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
                             m_twain.Rollback(m_stateAfterScan);
-                            ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                            ReportImage("ScanCallback: 020", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile, null, null, 0);
                             return (TWAIN.STS.SUCCESS);
                         }
 
@@ -1906,7 +1947,7 @@ namespace TWAINWorkingGroupToolkit
                         image = null;
 
                         // Send it off to the application...
-                        msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile);
+                        msgPendingxfers = ReportImage("ScanCallback: 021", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile, m_twain.ImageinfoToCsv(twimageinfo), abImage, iSpaceForHeader);
 
                         // Delete it if it's temp...
                         if (blDeleteWhenDone)
@@ -1919,7 +1960,7 @@ namespace TWAINWorkingGroupToolkit
                             {
                                 WriteOutput("Failed to delete temporary image file <" + szFile + ">" + Environment.NewLine);
                                 m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                                ReportImage("ScanCallback: 022", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile, null, null, 0);
                                 return (TWAIN.STS.SUCCESS);
                             }
                         }
@@ -1928,7 +1969,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                        ReportImage("ScanCallback: 023", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
                 }
@@ -1942,15 +1983,17 @@ namespace TWAINWorkingGroupToolkit
                 else if ((TWAIN.TWCP)twimagememxfer.Compression == TWAIN.TWCP.NONE)
                 {
                     // We need the image info for this one...
-                    sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                    if (sts != TWAIN.STS.SUCCESS)
+                    if (twimageinfo.BitsPerPixel == 0)
                     {
-                        WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                        m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                        return (TWAIN.STS.SUCCESS);
+                        sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
+                        if (sts != TWAIN.STS.SUCCESS)
+                        {
+                            WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
+                            m_twain.Rollback(m_stateAfterScan);
+                            ReportImage("ScanCallback: 024", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
+                            return (TWAIN.STS.SUCCESS);
+                        }
                     }
-
 
                     // Handle uncompressed bitonal images...
                     #region Handle uncompressed bitonal images...
@@ -1963,13 +2006,16 @@ namespace TWAINWorkingGroupToolkit
                             string szFile = "";
 
                             // We need the image info for this one...
-                            sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                            if (sts != TWAIN.STS.SUCCESS)
+                            if (twimageinfo.BitsPerPixel == 0)
                             {
-                                WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                                return (TWAIN.STS.SUCCESS);
+                                sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
+                                if (sts != TWAIN.STS.SUCCESS)
+                                {
+                                    WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
+                                    m_twain.Rollback(m_stateAfterScan);
+                                    ReportImage("ScanCallback: 025", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
+                                    return (TWAIN.STS.SUCCESS);
+                                }
                             }
 
                             // Create a TIFF header...
@@ -2018,7 +2064,7 @@ namespace TWAINWorkingGroupToolkit
                                 {
                                     WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
                                     m_twain.Rollback(m_stateAfterScan);
-                                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                                    ReportImage("ScanCallback: 026", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile, null, null, 0);
                                     return (TWAIN.STS.SUCCESS);
                                 }
 
@@ -2033,7 +2079,7 @@ namespace TWAINWorkingGroupToolkit
                                 image = null;
 
                                 // Send the stuff to the application...
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile);
+                                ReportImage("ScanCallback: 027", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile, m_twain.ImageinfoToCsv(twimageinfo), abImage, iSpaceForHeader);
 
                                 // Delete it if it's temp...
                                 if (blDeleteWhenDone)
@@ -2046,7 +2092,7 @@ namespace TWAINWorkingGroupToolkit
                                     {
                                         WriteOutput("Failed to delete temporary image file <" + szFile + ">" + Environment.NewLine);
                                         m_twain.Rollback(m_stateAfterScan);
-                                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                                        ReportImage("ScanCallback: 028", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile, null, null, 0);
                                         return (TWAIN.STS.SUCCESS);
                                     }
                                 }
@@ -2060,7 +2106,7 @@ namespace TWAINWorkingGroupToolkit
                             {
                                 WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                                 m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                                ReportImage("ScanCallback: 029", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                                 return (TWAIN.STS.SUCCESS);
                             }
                         }
@@ -2068,7 +2114,7 @@ namespace TWAINWorkingGroupToolkit
                         {
                             WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                             m_twain.Rollback(m_stateAfterScan);
-                            ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                            ReportImage("ScanCallback: 030", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                             return (TWAIN.STS.SUCCESS);
                         }
                     }
@@ -2086,13 +2132,16 @@ namespace TWAINWorkingGroupToolkit
                             string szFile = "";
 
                             // We need the image info for this one...
-                            sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                            if (sts != TWAIN.STS.SUCCESS)
+                            if (twimageinfo.BitsPerPixel == 0)
                             {
-                                WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                                return (TWAIN.STS.SUCCESS);
+                                sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
+                                if (sts != TWAIN.STS.SUCCESS)
+                                {
+                                    WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
+                                    m_twain.Rollback(m_stateAfterScan);
+                                    ReportImage("ScanCallback: 031", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
+                                    return (TWAIN.STS.SUCCESS);
+                                }
                             }
 
                             // Create a TIFF header...
@@ -2141,7 +2190,7 @@ namespace TWAINWorkingGroupToolkit
                                 {
                                     WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
                                     m_twain.Rollback(m_stateAfterScan);
-                                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                                    ReportImage("ScanCallback: 032", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile, null, null, 0);
                                     return (TWAIN.STS.SUCCESS);
                                 }
 
@@ -2156,7 +2205,7 @@ namespace TWAINWorkingGroupToolkit
                                 image = null;
 
                                 // Send the stuff to the application...
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile);
+                                ReportImage("ScanCallback: 033", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile, m_twain.ImageinfoToCsv(twimageinfo), abImage, iSpaceForHeader);
 
                                 // Delete it if it's temp...
                                 if (blDeleteWhenDone)
@@ -2169,7 +2218,7 @@ namespace TWAINWorkingGroupToolkit
                                     {
                                         WriteOutput("Failed to delete temporary image file <" + szFile + ">" + Environment.NewLine);
                                         m_twain.Rollback(m_stateAfterScan);
-                                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                                        ReportImage("ScanCallback: 034", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile, null, null, 0);
                                         return (TWAIN.STS.SUCCESS);
                                     }
                                 }
@@ -2183,7 +2232,7 @@ namespace TWAINWorkingGroupToolkit
                             {
                                 WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                                 m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                                ReportImage("ScanCallback: 035", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                                 return (TWAIN.STS.SUCCESS);
                             }
                         }
@@ -2191,7 +2240,7 @@ namespace TWAINWorkingGroupToolkit
                         {
                             WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                             m_twain.Rollback(m_stateAfterScan);
-                            ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                            ReportImage("ScanCallback: 036", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                             return (TWAIN.STS.SUCCESS);
                         }
                     }
@@ -2209,13 +2258,16 @@ namespace TWAINWorkingGroupToolkit
                             string szFile = "";
 
                             // We need the image info for this one...
-                            sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
-                            if (sts != TWAIN.STS.SUCCESS)
+                            if (twimageinfo.BitsPerPixel == 0)
                             {
-                                WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
-                                m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
-                                return (TWAIN.STS.SUCCESS);
+                                sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
+                                if (sts != TWAIN.STS.SUCCESS)
+                                {
+                                    WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
+                                    m_twain.Rollback(m_stateAfterScan);
+                                    ReportImage("ScanCallback: 037", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
+                                    return (TWAIN.STS.SUCCESS);
+                                }
                             }
 
                             // Create a TIFF header...
@@ -2264,7 +2316,7 @@ namespace TWAINWorkingGroupToolkit
                                 {
                                     WriteOutput("Unable to save image to disk <" + szFile + ">" + Environment.NewLine);
                                     m_twain.Rollback(m_stateAfterScan);
-                                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                                    ReportImage("ScanCallback: 038", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile, null, null, 0);
                                     return (TWAIN.STS.SUCCESS);
                                 }
 
@@ -2279,7 +2331,7 @@ namespace TWAINWorkingGroupToolkit
                                 image = null;
 
                                 // Send the stuff to the application...
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile);
+                                ReportImage("ScanCallback: 039", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFile, m_twain.ImageinfoToCsv(twimageinfo), abImage, iSpaceForHeader);
 
                                 // Delete it if it's temp...
                                 if (blDeleteWhenDone)
@@ -2292,7 +2344,7 @@ namespace TWAINWorkingGroupToolkit
                                     {
                                         WriteOutput("Failed to delete temporary image file <" + szFile + ">" + Environment.NewLine);
                                         m_twain.Rollback(m_stateAfterScan);
-                                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile);
+                                        ReportImage("ScanCallback: 040", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FILEWRITEERROR), null, szFile, null, null, 0);
                                         return (TWAIN.STS.SUCCESS);
                                     }
                                 }
@@ -2306,7 +2358,7 @@ namespace TWAINWorkingGroupToolkit
                             {
                                 WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                                 m_twain.Rollback(m_stateAfterScan);
-                                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                                ReportImage("ScanCallback: 041", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                                 return (TWAIN.STS.SUCCESS);
                             }
                         }
@@ -2314,7 +2366,7 @@ namespace TWAINWorkingGroupToolkit
                         {
                             WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                             m_twain.Rollback(m_stateAfterScan);
-                            ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                            ReportImage("ScanCallback: 042", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                             return (TWAIN.STS.SUCCESS);
                         }
                     }
@@ -2328,7 +2380,7 @@ namespace TWAINWorkingGroupToolkit
                         WriteOutput("Scanning error: unsupported pixeltype..." + Environment.NewLine);
                         m_iImageCount -= 1;
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                        ReportImage("ScanCallback: 043", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
                     #endregion
@@ -2342,7 +2394,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: unsupported compression..." + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                    ReportImage("ScanCallback: 044", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
                 #endregion
@@ -2370,7 +2422,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.SETUPMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage("ScanCallback: 045", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.SETUPMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
 
@@ -2383,7 +2435,7 @@ namespace TWAINWorkingGroupToolkit
                     sts = TWAIN.STS.LOWMEMORY;
                     WriteOutput("Scanning error: " + sts + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                    ReportImage("ScanCallback: 046", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
 
@@ -2412,7 +2464,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage("ScanCallback: 047", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -2424,7 +2476,7 @@ namespace TWAINWorkingGroupToolkit
                         sts = TWAIN.STS.LOWMEMORY;
                         WriteOutput("Scanning error: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage("ScanCallback: 048", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
 
@@ -2450,7 +2502,7 @@ namespace TWAINWorkingGroupToolkit
                     bitmap = new Bitmap(image);
                     image.Dispose();
                     image = null;
-                    msgPendingxfers = ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null);
+                    msgPendingxfers = ReportImage("ScanCallback: 049", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null, null, null, 0);
                     bitmap = null;
                     blXferDone = true;
                 }
@@ -2458,7 +2510,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     WriteOutput("Scanning error: unable to load image..." + Environment.NewLine);
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                    ReportImage("ScanCallback: 050", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
                 }
                 memorystream = null;
@@ -2472,7 +2524,7 @@ namespace TWAINWorkingGroupToolkit
             {
                 WriteOutput("Scan: unrecognized ICAP_XFERMECH value..." + m_twsxXferMech + Environment.NewLine);
                 m_twain.Rollback(m_stateAfterScan);
-                ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null);
+                ReportImage("ScanCallback: 051", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                 return (TWAIN.STS.SUCCESS);
             }
             #endregion
@@ -2496,7 +2548,7 @@ namespace TWAINWorkingGroupToolkit
             // is accurate in state 7 after TWRC_XFERDONE has been received...
             if (blXferDone)
             {
-                if (!blDidImageInfo)
+                if (twimageinfo.BitsPerPixel == 0)
                 {
                     twimageinfo = default(TWAIN.TW_IMAGEINFO);
                     sts = m_twain.DatImageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimageinfo);
@@ -2504,11 +2556,11 @@ namespace TWAINWorkingGroupToolkit
                     {
                         WriteOutput("ImageInfo failed: " + sts + Environment.NewLine);
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null);
+                        ReportImage("ScanCallback: 052", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEINFO.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
                 }
-                WriteOutput("ImageInfo: " + m_twain.ImageinfoToCsv(ref twimageinfo) + Environment.NewLine);
+                WriteOutput("ImageInfo: " + m_twain.ImageinfoToCsv(twimageinfo) + Environment.NewLine);
             }
 
             // And let's get some more meta data, this time using extended image
@@ -2555,7 +2607,7 @@ namespace TWAINWorkingGroupToolkit
             {
                 WriteOutput("Scanning error: " + sts + Environment.NewLine);
                 m_twain.Rollback(m_stateAfterScan);
-                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.ENDXFER.ToString(), CvtSts(sts), null, null);
+                ReportImage("ScanCallback: 053", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.ENDXFER.ToString(), CvtSts(sts), null, null, null, null, 0);
                 return (TWAIN.STS.SUCCESS);
             }
 
@@ -2570,7 +2622,7 @@ namespace TWAINWorkingGroupToolkit
                 // Reset, we're exiting from scanning...
                 case TWAINCSToolkit.MSG.RESET:
                     m_twain.Rollback(m_stateAfterScan);
-                    ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null);
+                    ReportImage("ScanCallback: 054", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null, null, null, 0);
                     return (TWAIN.STS.SUCCESS);
 
                 // Stop the feeder...
@@ -2581,7 +2633,7 @@ namespace TWAINWorkingGroupToolkit
                     {
                         // If we can't stop gracefully, then just abort...
                         m_twain.Rollback(m_stateAfterScan);
-                        ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null);
+                        ReportImage("ScanCallback: 055", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null, null, null, 0);
                         return (TWAIN.STS.SUCCESS);
                     }
                     break;
@@ -2605,7 +2657,7 @@ namespace TWAINWorkingGroupToolkit
                 // We saved this value for you when MSG_ENABLEDS was called, if the
                 // UI is up, then goto state 5...
                 m_twain.Rollback(m_stateAfterScan);
-                ReportImage(TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null);
+                ReportImage("ScanCallback: 056", TWAIN.DG.CONTROL.ToString(), TWAIN.DAT.PENDINGXFERS.ToString(), TWAIN.MSG.RESET.ToString(), CvtSts(sts), null, null, null, null, 0);
             }
 
             // All done...
@@ -3034,11 +3086,6 @@ namespace TWAINWorkingGroupToolkit
         /// Our TWAIN object...
         /// </summary>
         private TWAIN m_twain;
-
-        /// <summary>
-        /// Our current Data Source...
-        /// </summary>
-        private TWAIN.TW_IDENTITY m_twidentityDs;
 
         /// <summary>
         /// This is set in DAT_SETUPFILEXFER and used inside of

@@ -16,7 +16,7 @@
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2014 Kodak Alaris Inc.
+//  Copyright (C) 2013-2015 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -142,7 +142,7 @@ namespace TWAINCSScan
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        void FormScan_FormClosing(object sender, FormClosingEventArgs e)
+        private void FormScan_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Get rid of the toolkit...
             if (m_twaincstoolkit != null)
@@ -203,7 +203,10 @@ namespace TWAINCSScan
         }
 
         /// <summary>
-        /// Handle an image.
+        /// Handle an image.  a_bitmap is passed by reference so that this function can
+        /// dispose and null it out to gain access to the file that's backing it.  The
+        /// calling toolkit function will never perform any action with a_bitmap after
+        /// this function returns.
         /// </summary>
         /// <param name="a_szDg">Data group that preceeded this call</param>
         /// <param name="a_szDat">Data argument type that preceeded this call</param>
@@ -211,7 +214,22 @@ namespace TWAINCSScan
         /// <param name="a_sts">Current status</param>
         /// <param name="a_bitmap">C# bitmap of the image</param>
         /// <param name="a_szFile">File name, if doing a file transfer</param>
-        public TWAINCSToolkit.MSG ReportImage(string a_szDg, string a_szDat, string a_szMsg, TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile)
+        /// <param name="a_szTwimageinfo">data collected for us</param>
+        /// <param name="a_abImage">a byte array of the image</param>
+        /// <param name="a_iImageOffset">byte offset where the image data begins</param>
+        private TWAINCSToolkit.MSG ReportImage
+        (
+            string a_szTag,
+            string a_szDg,
+            string a_szDat,
+            string a_szMsg,
+            TWAINCSToolkit.STS a_sts,
+            Bitmap a_bitmap,
+            string a_szFile,
+            string a_szTwimageinfo,
+            byte[] a_abImage,
+            int a_iImageOffset
+        )
         {
             // We're leaving...
             if (m_graphics1 == null)
@@ -226,7 +244,7 @@ namespace TWAINCSScan
                 // for the thread to return.  Be careful when using EndInvoke.
                 // It's possible to create a deadlock situation with the Stop
                 // button press.
-                BeginInvoke(new MethodInvoker(delegate() { ReportImage(a_szDg, a_szDat, a_szMsg, a_sts, a_bitmap, a_szFile); }));
+                BeginInvoke(new MethodInvoker(delegate() { ReportImage(a_szTag, a_szDg, a_szDat, a_szMsg, a_sts, a_bitmap, a_szFile, a_szTwimageinfo, a_abImage, a_iImageOffset); }));
                 return (TWAINCSToolkit.MSG.ENDXFER);
             }
 
@@ -313,13 +331,6 @@ namespace TWAINCSScan
 
             m_brushBackground = new SolidBrush(Color.White);
             m_rectangleBackground = new Rectangle(0, 0, m_bitmapGraphic1.Width, m_bitmapGraphic1.Height);
-        }
-
-        enum EBUTTONSTATE
-        {
-            CLOSED,
-            OPEN,
-            SCANNING
         }
 
         /// <summary>
@@ -494,6 +505,24 @@ namespace TWAINCSScan
             string szPendingxfers = "0,0";
             string szStatus = "";
             m_twaincstoolkit.Send("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_STOPFEEDER", ref szPendingxfers, ref szStatus);
+        }
+
+        #endregion
+
+
+        ///////////////////////////////////////////////////////////////////////////////
+        // Private Definitons...
+        ///////////////////////////////////////////////////////////////////////////////
+        #region Private Definitons...
+
+        /// <summary>
+        /// Our button states...
+        /// </summary>
+        private enum EBUTTONSTATE
+        {
+            CLOSED,
+            OPEN,
+            SCANNING
         }
 
         #endregion

@@ -8,11 +8,12 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    13-Mar-2015     2.3.1.0     Numerous fixes
 //  M.McLaughlin    21-May-2014     2.3.0.2     64-Bit Linux
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2014 Kodak Alaris Inc.
+//  Copyright (C) 2013-2015 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -206,7 +207,7 @@ namespace TWAINWorkingGroup
             /// <returns></returns>
             public void Set(string a_sz)
             {
-                SetValue(a_sz,true);
+                SetValue(a_sz, true);
             }
 
             /// <summary>
@@ -216,7 +217,7 @@ namespace TWAINWorkingGroup
             /// <returns></returns>
             public void SetNoPrefix(string a_sz)
             {
-                SetValue(a_sz,false);
+                SetValue(a_sz, false);
             }
 
             /// <summary>
@@ -1783,7 +1784,7 @@ namespace TWAINWorkingGroup
             public UInt32 DescriptorCount;
             public UInt32 MaxDescriptorCount;
             public UInt32 Condition;
-            public IntPtr hDescriptors; 
+            public IntPtr hDescriptors;
         }
 
         /// <summary>
@@ -2012,106 +2013,106 @@ namespace TWAINWorkingGroup
                 switch (a_uIndex)
                 {
                     default: return;
-                    case   0: a_twinfo = Info_000; return;
-                    case   1: a_twinfo = Info_001; return;
-                    case   2: a_twinfo = Info_002; return;
-                    case   3: a_twinfo = Info_003; return;
-                    case   4: a_twinfo = Info_004; return;
-                    case   5: a_twinfo = Info_005; return;
-                    case   6: a_twinfo = Info_006; return;
-                    case   7: a_twinfo = Info_007; return;
-                    case   8: a_twinfo = Info_008; return;
-                    case   9: a_twinfo = Info_009; return;
-                    case  10: a_twinfo = Info_010; return;
-                    case  11: a_twinfo = Info_011; return;
-                    case  12: a_twinfo = Info_012; return;
-                    case  13: a_twinfo = Info_013; return;
-                    case  14: a_twinfo = Info_014; return;
-                    case  15: a_twinfo = Info_015; return;
-                    case  16: a_twinfo = Info_016; return;
-                    case  17: a_twinfo = Info_017; return;
-                    case  18: a_twinfo = Info_018; return;
-                    case  19: a_twinfo = Info_019; return;
-                    case  20: a_twinfo = Info_020; return;
-                    case  21: a_twinfo = Info_021; return;
-                    case  22: a_twinfo = Info_022; return;
-                    case  23: a_twinfo = Info_023; return;
-                    case  24: a_twinfo = Info_024; return;
-                    case  25: a_twinfo = Info_025; return;
-                    case  26: a_twinfo = Info_026; return;
-                    case  27: a_twinfo = Info_027; return;
-                    case  28: a_twinfo = Info_028; return;
-                    case  29: a_twinfo = Info_029; return;
-                    case  30: a_twinfo = Info_030; return;
-                    case  31: a_twinfo = Info_031; return;
-                    case  32: a_twinfo = Info_032; return;
-                    case  33: a_twinfo = Info_033; return;
-                    case  34: a_twinfo = Info_034; return;
-                    case  35: a_twinfo = Info_035; return;
-                    case  36: a_twinfo = Info_036; return;
-                    case  37: a_twinfo = Info_037; return;
-                    case  38: a_twinfo = Info_038; return;
-                    case  39: a_twinfo = Info_039; return;
-                    case  40: a_twinfo = Info_040; return;
-                    case  41: a_twinfo = Info_041; return;
-                    case  42: a_twinfo = Info_042; return;
-                    case  43: a_twinfo = Info_043; return;
-                    case  44: a_twinfo = Info_044; return;
-                    case  45: a_twinfo = Info_045; return;
-                    case  46: a_twinfo = Info_046; return;
-                    case  47: a_twinfo = Info_047; return;
-                    case  48: a_twinfo = Info_048; return;
-                    case  49: a_twinfo = Info_049; return;
-                    case  50: a_twinfo = Info_050; return;
-                    case  51: a_twinfo = Info_051; return;
-                    case  52: a_twinfo = Info_052; return;
-                    case  53: a_twinfo = Info_053; return;
-                    case  54: a_twinfo = Info_054; return;
-                    case  55: a_twinfo = Info_055; return;
-                    case  56: a_twinfo = Info_056; return;
-                    case  57: a_twinfo = Info_057; return;
-                    case  58: a_twinfo = Info_058; return;
-                    case  59: a_twinfo = Info_059; return;
-                    case  60: a_twinfo = Info_060; return;
-                    case  61: a_twinfo = Info_061; return;
-                    case  62: a_twinfo = Info_062; return;
-                    case  63: a_twinfo = Info_063; return;
-                    case  64: a_twinfo = Info_064; return;
-                    case  65: a_twinfo = Info_065; return;
-                    case  66: a_twinfo = Info_066; return;
-                    case  67: a_twinfo = Info_067; return;
-                    case  68: a_twinfo = Info_068; return;
-                    case  69: a_twinfo = Info_069; return;
-                    case  70: a_twinfo = Info_070; return;
-                    case  71: a_twinfo = Info_071; return;
-                    case  72: a_twinfo = Info_072; return;
-                    case  73: a_twinfo = Info_073; return;
-                    case  74: a_twinfo = Info_074; return;
-                    case  75: a_twinfo = Info_075; return;
-                    case  76: a_twinfo = Info_076; return;
-                    case  77: a_twinfo = Info_077; return;
-                    case  78: a_twinfo = Info_078; return;
-                    case  79: a_twinfo = Info_079; return;
-                    case  80: a_twinfo = Info_080; return;
-                    case  81: a_twinfo = Info_081; return;
-                    case  82: a_twinfo = Info_082; return;
-                    case  83: a_twinfo = Info_083; return;
-                    case  84: a_twinfo = Info_084; return;
-                    case  85: a_twinfo = Info_085; return;
-                    case  86: a_twinfo = Info_086; return;
-                    case  87: a_twinfo = Info_087; return;
-                    case  88: a_twinfo = Info_088; return;
-                    case  89: a_twinfo = Info_089; return;
-                    case  90: a_twinfo = Info_090; return;
-                    case  91: a_twinfo = Info_091; return;
-                    case  92: a_twinfo = Info_092; return;
-                    case  93: a_twinfo = Info_093; return;
-                    case  94: a_twinfo = Info_094; return;
-                    case  95: a_twinfo = Info_095; return;
-                    case  96: a_twinfo = Info_096; return;
-                    case  97: a_twinfo = Info_097; return;
-                    case  98: a_twinfo = Info_098; return;
-                    case  99: a_twinfo = Info_099; return;
+                    case 0: a_twinfo = Info_000; return;
+                    case 1: a_twinfo = Info_001; return;
+                    case 2: a_twinfo = Info_002; return;
+                    case 3: a_twinfo = Info_003; return;
+                    case 4: a_twinfo = Info_004; return;
+                    case 5: a_twinfo = Info_005; return;
+                    case 6: a_twinfo = Info_006; return;
+                    case 7: a_twinfo = Info_007; return;
+                    case 8: a_twinfo = Info_008; return;
+                    case 9: a_twinfo = Info_009; return;
+                    case 10: a_twinfo = Info_010; return;
+                    case 11: a_twinfo = Info_011; return;
+                    case 12: a_twinfo = Info_012; return;
+                    case 13: a_twinfo = Info_013; return;
+                    case 14: a_twinfo = Info_014; return;
+                    case 15: a_twinfo = Info_015; return;
+                    case 16: a_twinfo = Info_016; return;
+                    case 17: a_twinfo = Info_017; return;
+                    case 18: a_twinfo = Info_018; return;
+                    case 19: a_twinfo = Info_019; return;
+                    case 20: a_twinfo = Info_020; return;
+                    case 21: a_twinfo = Info_021; return;
+                    case 22: a_twinfo = Info_022; return;
+                    case 23: a_twinfo = Info_023; return;
+                    case 24: a_twinfo = Info_024; return;
+                    case 25: a_twinfo = Info_025; return;
+                    case 26: a_twinfo = Info_026; return;
+                    case 27: a_twinfo = Info_027; return;
+                    case 28: a_twinfo = Info_028; return;
+                    case 29: a_twinfo = Info_029; return;
+                    case 30: a_twinfo = Info_030; return;
+                    case 31: a_twinfo = Info_031; return;
+                    case 32: a_twinfo = Info_032; return;
+                    case 33: a_twinfo = Info_033; return;
+                    case 34: a_twinfo = Info_034; return;
+                    case 35: a_twinfo = Info_035; return;
+                    case 36: a_twinfo = Info_036; return;
+                    case 37: a_twinfo = Info_037; return;
+                    case 38: a_twinfo = Info_038; return;
+                    case 39: a_twinfo = Info_039; return;
+                    case 40: a_twinfo = Info_040; return;
+                    case 41: a_twinfo = Info_041; return;
+                    case 42: a_twinfo = Info_042; return;
+                    case 43: a_twinfo = Info_043; return;
+                    case 44: a_twinfo = Info_044; return;
+                    case 45: a_twinfo = Info_045; return;
+                    case 46: a_twinfo = Info_046; return;
+                    case 47: a_twinfo = Info_047; return;
+                    case 48: a_twinfo = Info_048; return;
+                    case 49: a_twinfo = Info_049; return;
+                    case 50: a_twinfo = Info_050; return;
+                    case 51: a_twinfo = Info_051; return;
+                    case 52: a_twinfo = Info_052; return;
+                    case 53: a_twinfo = Info_053; return;
+                    case 54: a_twinfo = Info_054; return;
+                    case 55: a_twinfo = Info_055; return;
+                    case 56: a_twinfo = Info_056; return;
+                    case 57: a_twinfo = Info_057; return;
+                    case 58: a_twinfo = Info_058; return;
+                    case 59: a_twinfo = Info_059; return;
+                    case 60: a_twinfo = Info_060; return;
+                    case 61: a_twinfo = Info_061; return;
+                    case 62: a_twinfo = Info_062; return;
+                    case 63: a_twinfo = Info_063; return;
+                    case 64: a_twinfo = Info_064; return;
+                    case 65: a_twinfo = Info_065; return;
+                    case 66: a_twinfo = Info_066; return;
+                    case 67: a_twinfo = Info_067; return;
+                    case 68: a_twinfo = Info_068; return;
+                    case 69: a_twinfo = Info_069; return;
+                    case 70: a_twinfo = Info_070; return;
+                    case 71: a_twinfo = Info_071; return;
+                    case 72: a_twinfo = Info_072; return;
+                    case 73: a_twinfo = Info_073; return;
+                    case 74: a_twinfo = Info_074; return;
+                    case 75: a_twinfo = Info_075; return;
+                    case 76: a_twinfo = Info_076; return;
+                    case 77: a_twinfo = Info_077; return;
+                    case 78: a_twinfo = Info_078; return;
+                    case 79: a_twinfo = Info_079; return;
+                    case 80: a_twinfo = Info_080; return;
+                    case 81: a_twinfo = Info_081; return;
+                    case 82: a_twinfo = Info_082; return;
+                    case 83: a_twinfo = Info_083; return;
+                    case 84: a_twinfo = Info_084; return;
+                    case 85: a_twinfo = Info_085; return;
+                    case 86: a_twinfo = Info_086; return;
+                    case 87: a_twinfo = Info_087; return;
+                    case 88: a_twinfo = Info_088; return;
+                    case 89: a_twinfo = Info_089; return;
+                    case 90: a_twinfo = Info_090; return;
+                    case 91: a_twinfo = Info_091; return;
+                    case 92: a_twinfo = Info_092; return;
+                    case 93: a_twinfo = Info_093; return;
+                    case 94: a_twinfo = Info_094; return;
+                    case 95: a_twinfo = Info_095; return;
+                    case 96: a_twinfo = Info_096; return;
+                    case 97: a_twinfo = Info_097; return;
+                    case 98: a_twinfo = Info_098; return;
+                    case 99: a_twinfo = Info_099; return;
                     case 100: a_twinfo = Info_100; return;
                     case 101: a_twinfo = Info_101; return;
                     case 102: a_twinfo = Info_102; return;
@@ -2220,106 +2221,106 @@ namespace TWAINWorkingGroup
                 switch (a_uIndex)
                 {
                     default: return;
-                    case   0: Info_000 = a_twinfo; return;
-                    case   1: Info_001 = a_twinfo; return;
-                    case   2: Info_002 = a_twinfo; return;
-                    case   3: Info_003 = a_twinfo; return;
-                    case   4: Info_004 = a_twinfo; return;
-                    case   5: Info_005 = a_twinfo; return;
-                    case   6: Info_006 = a_twinfo; return;
-                    case   7: Info_007 = a_twinfo; return;
-                    case   8: Info_008 = a_twinfo; return;
-                    case   9: Info_009 = a_twinfo; return;
-                    case  10: Info_010 = a_twinfo; return;
-                    case  11: Info_011 = a_twinfo; return;
-                    case  12: Info_012 = a_twinfo; return;
-                    case  13: Info_013 = a_twinfo; return;
-                    case  14: Info_014 = a_twinfo; return;
-                    case  15: Info_015 = a_twinfo; return;
-                    case  16: Info_016 = a_twinfo; return;
-                    case  17: Info_017 = a_twinfo; return;
-                    case  18: Info_018 = a_twinfo; return;
-                    case  19: Info_019 = a_twinfo; return;
-                    case  20: Info_020 = a_twinfo; return;
-                    case  21: Info_021 = a_twinfo; return;
-                    case  22: Info_022 = a_twinfo; return;
-                    case  23: Info_023 = a_twinfo; return;
-                    case  24: Info_024 = a_twinfo; return;
-                    case  25: Info_025 = a_twinfo; return;
-                    case  26: Info_026 = a_twinfo; return;
-                    case  27: Info_027 = a_twinfo; return;
-                    case  28: Info_028 = a_twinfo; return;
-                    case  29: Info_029 = a_twinfo; return;
-                    case  30: Info_030 = a_twinfo; return;
-                    case  31: Info_031 = a_twinfo; return;
-                    case  32: Info_032 = a_twinfo; return;
-                    case  33: Info_033 = a_twinfo; return;
-                    case  34: Info_034 = a_twinfo; return;
-                    case  35: Info_035 = a_twinfo; return;
-                    case  36: Info_036 = a_twinfo; return;
-                    case  37: Info_037 = a_twinfo; return;
-                    case  38: Info_038 = a_twinfo; return;
-                    case  39: Info_039 = a_twinfo; return;
-                    case  40: Info_040 = a_twinfo; return;
-                    case  41: Info_041 = a_twinfo; return;
-                    case  42: Info_042 = a_twinfo; return;
-                    case  43: Info_043 = a_twinfo; return;
-                    case  44: Info_044 = a_twinfo; return;
-                    case  45: Info_045 = a_twinfo; return;
-                    case  46: Info_046 = a_twinfo; return;
-                    case  47: Info_047 = a_twinfo; return;
-                    case  48: Info_048 = a_twinfo; return;
-                    case  49: Info_049 = a_twinfo; return;
-                    case  50: Info_050 = a_twinfo; return;
-                    case  51: Info_051 = a_twinfo; return;
-                    case  52: Info_052 = a_twinfo; return;
-                    case  53: Info_053 = a_twinfo; return;
-                    case  54: Info_054 = a_twinfo; return;
-                    case  55: Info_055 = a_twinfo; return;
-                    case  56: Info_056 = a_twinfo; return;
-                    case  57: Info_057 = a_twinfo; return;
-                    case  58: Info_058 = a_twinfo; return;
-                    case  59: Info_059 = a_twinfo; return;
-                    case  60: Info_060 = a_twinfo; return;
-                    case  61: Info_061 = a_twinfo; return;
-                    case  62: Info_062 = a_twinfo; return;
-                    case  63: Info_063 = a_twinfo; return;
-                    case  64: Info_064 = a_twinfo; return;
-                    case  65: Info_065 = a_twinfo; return;
-                    case  66: Info_066 = a_twinfo; return;
-                    case  67: Info_067 = a_twinfo; return;
-                    case  68: Info_068 = a_twinfo; return;
-                    case  69: Info_069 = a_twinfo; return;
-                    case  70: Info_070 = a_twinfo; return;
-                    case  71: Info_071 = a_twinfo; return;
-                    case  72: Info_072 = a_twinfo; return;
-                    case  73: Info_073 = a_twinfo; return;
-                    case  74: Info_074 = a_twinfo; return;
-                    case  75: Info_075 = a_twinfo; return;
-                    case  76: Info_076 = a_twinfo; return;
-                    case  77: Info_077 = a_twinfo; return;
-                    case  78: Info_078 = a_twinfo; return;
-                    case  79: Info_079 = a_twinfo; return;
-                    case  80: Info_080 = a_twinfo; return;
-                    case  81: Info_081 = a_twinfo; return;
-                    case  82: Info_082 = a_twinfo; return;
-                    case  83: Info_083 = a_twinfo; return;
-                    case  84: Info_084 = a_twinfo; return;
-                    case  85: Info_085 = a_twinfo; return;
-                    case  86: Info_086 = a_twinfo; return;
-                    case  87: Info_087 = a_twinfo; return;
-                    case  88: Info_088 = a_twinfo; return;
-                    case  89: Info_089 = a_twinfo; return;
-                    case  90: Info_090 = a_twinfo; return;
-                    case  91: Info_091 = a_twinfo; return;
-                    case  92: Info_092 = a_twinfo; return;
-                    case  93: Info_093 = a_twinfo; return;
-                    case  94: Info_094 = a_twinfo; return;
-                    case  95: Info_095 = a_twinfo; return;
-                    case  96: Info_096 = a_twinfo; return;
-                    case  97: Info_097 = a_twinfo; return;
-                    case  98: Info_098 = a_twinfo; return;
-                    case  99: Info_099 = a_twinfo; return;
+                    case 0: Info_000 = a_twinfo; return;
+                    case 1: Info_001 = a_twinfo; return;
+                    case 2: Info_002 = a_twinfo; return;
+                    case 3: Info_003 = a_twinfo; return;
+                    case 4: Info_004 = a_twinfo; return;
+                    case 5: Info_005 = a_twinfo; return;
+                    case 6: Info_006 = a_twinfo; return;
+                    case 7: Info_007 = a_twinfo; return;
+                    case 8: Info_008 = a_twinfo; return;
+                    case 9: Info_009 = a_twinfo; return;
+                    case 10: Info_010 = a_twinfo; return;
+                    case 11: Info_011 = a_twinfo; return;
+                    case 12: Info_012 = a_twinfo; return;
+                    case 13: Info_013 = a_twinfo; return;
+                    case 14: Info_014 = a_twinfo; return;
+                    case 15: Info_015 = a_twinfo; return;
+                    case 16: Info_016 = a_twinfo; return;
+                    case 17: Info_017 = a_twinfo; return;
+                    case 18: Info_018 = a_twinfo; return;
+                    case 19: Info_019 = a_twinfo; return;
+                    case 20: Info_020 = a_twinfo; return;
+                    case 21: Info_021 = a_twinfo; return;
+                    case 22: Info_022 = a_twinfo; return;
+                    case 23: Info_023 = a_twinfo; return;
+                    case 24: Info_024 = a_twinfo; return;
+                    case 25: Info_025 = a_twinfo; return;
+                    case 26: Info_026 = a_twinfo; return;
+                    case 27: Info_027 = a_twinfo; return;
+                    case 28: Info_028 = a_twinfo; return;
+                    case 29: Info_029 = a_twinfo; return;
+                    case 30: Info_030 = a_twinfo; return;
+                    case 31: Info_031 = a_twinfo; return;
+                    case 32: Info_032 = a_twinfo; return;
+                    case 33: Info_033 = a_twinfo; return;
+                    case 34: Info_034 = a_twinfo; return;
+                    case 35: Info_035 = a_twinfo; return;
+                    case 36: Info_036 = a_twinfo; return;
+                    case 37: Info_037 = a_twinfo; return;
+                    case 38: Info_038 = a_twinfo; return;
+                    case 39: Info_039 = a_twinfo; return;
+                    case 40: Info_040 = a_twinfo; return;
+                    case 41: Info_041 = a_twinfo; return;
+                    case 42: Info_042 = a_twinfo; return;
+                    case 43: Info_043 = a_twinfo; return;
+                    case 44: Info_044 = a_twinfo; return;
+                    case 45: Info_045 = a_twinfo; return;
+                    case 46: Info_046 = a_twinfo; return;
+                    case 47: Info_047 = a_twinfo; return;
+                    case 48: Info_048 = a_twinfo; return;
+                    case 49: Info_049 = a_twinfo; return;
+                    case 50: Info_050 = a_twinfo; return;
+                    case 51: Info_051 = a_twinfo; return;
+                    case 52: Info_052 = a_twinfo; return;
+                    case 53: Info_053 = a_twinfo; return;
+                    case 54: Info_054 = a_twinfo; return;
+                    case 55: Info_055 = a_twinfo; return;
+                    case 56: Info_056 = a_twinfo; return;
+                    case 57: Info_057 = a_twinfo; return;
+                    case 58: Info_058 = a_twinfo; return;
+                    case 59: Info_059 = a_twinfo; return;
+                    case 60: Info_060 = a_twinfo; return;
+                    case 61: Info_061 = a_twinfo; return;
+                    case 62: Info_062 = a_twinfo; return;
+                    case 63: Info_063 = a_twinfo; return;
+                    case 64: Info_064 = a_twinfo; return;
+                    case 65: Info_065 = a_twinfo; return;
+                    case 66: Info_066 = a_twinfo; return;
+                    case 67: Info_067 = a_twinfo; return;
+                    case 68: Info_068 = a_twinfo; return;
+                    case 69: Info_069 = a_twinfo; return;
+                    case 70: Info_070 = a_twinfo; return;
+                    case 71: Info_071 = a_twinfo; return;
+                    case 72: Info_072 = a_twinfo; return;
+                    case 73: Info_073 = a_twinfo; return;
+                    case 74: Info_074 = a_twinfo; return;
+                    case 75: Info_075 = a_twinfo; return;
+                    case 76: Info_076 = a_twinfo; return;
+                    case 77: Info_077 = a_twinfo; return;
+                    case 78: Info_078 = a_twinfo; return;
+                    case 79: Info_079 = a_twinfo; return;
+                    case 80: Info_080 = a_twinfo; return;
+                    case 81: Info_081 = a_twinfo; return;
+                    case 82: Info_082 = a_twinfo; return;
+                    case 83: Info_083 = a_twinfo; return;
+                    case 84: Info_084 = a_twinfo; return;
+                    case 85: Info_085 = a_twinfo; return;
+                    case 86: Info_086 = a_twinfo; return;
+                    case 87: Info_087 = a_twinfo; return;
+                    case 88: Info_088 = a_twinfo; return;
+                    case 89: Info_089 = a_twinfo; return;
+                    case 90: Info_090 = a_twinfo; return;
+                    case 91: Info_091 = a_twinfo; return;
+                    case 92: Info_092 = a_twinfo; return;
+                    case 93: Info_093 = a_twinfo; return;
+                    case 94: Info_094 = a_twinfo; return;
+                    case 95: Info_095 = a_twinfo; return;
+                    case 96: Info_096 = a_twinfo; return;
+                    case 97: Info_097 = a_twinfo; return;
+                    case 98: Info_098 = a_twinfo; return;
+                    case 99: Info_099 = a_twinfo; return;
                     case 100: Info_100 = a_twinfo; return;
                     case 101: Info_101 = a_twinfo; return;
                     case 102: Info_102 = a_twinfo; return;
@@ -2631,6 +2632,27 @@ namespace TWAINWorkingGroup
             public short PixelType;
             public ushort Compression;
         }
+        [StructLayout(LayoutKind.Sequential, Pack = 2)]
+        public struct TW_IMAGEINFO_LINUX64
+        {
+            public TW_FIX32 XResolution;
+            public TW_FIX32 YResolution;
+            public long ImageWidth;
+            public long ImageLength;
+            public short SamplesPerPixel;
+            public short BitsPerSample_0;
+            public short BitsPerSample_1;
+            public short BitsPerSample_2;
+            public short BitsPerSample_3;
+            public short BitsPerSample_4;
+            public short BitsPerSample_5;
+            public short BitsPerSample_6;
+            public short BitsPerSample_7;
+            public short BitsPerPixel;
+            public ushort Planar;
+            public short PixelType;
+            public ushort Compression;
+        }
 
         /// <summary>
         /// Involves information about the original size of the acquired image.
@@ -2669,6 +2691,20 @@ namespace TWAINWorkingGroup
             public uint YOffset;
             public uint BytesWritten;
             public TW_MEMORY Memory;
+        }
+        [StructLayout(LayoutKind.Sequential, Pack = 2)]
+        public struct TW_IMAGEMEMXFER_LINUX64
+        {
+            public ushort Compression;
+            public UInt64 BytesPerRow;
+            public UInt64 Columns;
+            public UInt64 Rows;
+            public UInt64 XOffset;
+            public UInt64 YOffset;
+            public UInt64 BytesWritten;
+            public UInt64 MemoryFlags;
+            public UInt64 MemoryLength;
+            public IntPtr MemoryTheMem;
         }
         [StructLayout(LayoutKind.Sequential, Pack = 2)]
         public struct TW_IMAGEMEMXFER_MACOSX
@@ -6513,7 +6549,7 @@ namespace TWAINWorkingGroup
             DG dg,
             DAT dat,
             MSG msg,
-            ref TW_IMAGEINFO twimageinfo
+            ref TW_IMAGEINFO_LINUX64 twimageinfolinux64
         );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryImageinfo
@@ -6635,7 +6671,7 @@ namespace TWAINWorkingGroup
             DG dg,
             DAT dat,
             MSG msg,
-            ref TW_IMAGEMEMXFER twimagememxfer
+            ref TW_IMAGEMEMXFER_LINUX64 twimagememxferlinux64
         );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryImagememfilexfer
@@ -6696,7 +6732,7 @@ namespace TWAINWorkingGroup
             DG dg,
             DAT dat,
             MSG msg,
-            ref TW_IMAGEMEMXFER twimagememxfer
+            ref TW_IMAGEMEMXFER_LINUX64 twimagememxferlinux64
         );
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]
         private static extern UInt16 MacosxDsmEntryImagememxfer

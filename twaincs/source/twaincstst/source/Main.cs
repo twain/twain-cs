@@ -19,7 +19,7 @@
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2014 Kodak Alaris Inc.
+//  Copyright (C) 2013-2015 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -151,6 +151,29 @@ namespace TWAINCSTst
             contextmenu = null;
         }
 
+        /// <summary>
+        /// Call the form's filter function to catch stuff like MSG.XFERREADY...
+        /// </summary>
+        /// <param name="a_message">Message to process</param>
+        /// <returns>Result of the processing</returns>
+        public bool PreFilterMessage(ref Message a_message)
+        {
+            if (m_twaincstoolkit != null)
+            {
+                return
+                (
+                    m_twaincstoolkit.PreFilterMessage
+                    (
+                        a_message.HWnd,
+                        a_message.Msg,
+                        a_message.WParam,
+                        a_message.LParam
+                    )
+                );
+            }
+            return (true);
+        }
+
         #endregion
 
 
@@ -173,29 +196,6 @@ namespace TWAINCSTst
                 m_twaincstoolkit = null;
             }
             CleanImage();
-        }
-
-        /// <summary>
-        /// Call the form's filter function to catch stuff like MSG.XFERREADY...
-        /// </summary>
-        /// <param name="a_message">Message to process</param>
-        /// <returns>Result of the processing</returns>
-        public bool PreFilterMessage(ref Message a_message)
-        {
-            if (m_twaincstoolkit != null)
-            {
-                return
-                (
-                    m_twaincstoolkit.PreFilterMessage
-                    (
-                        a_message.HWnd,
-                        a_message.Msg,
-                        a_message.WParam,
-                        a_message.LParam
-                    )
-                );
-            }
-            return (true);
         }
 
         /// <summary>
@@ -488,7 +488,10 @@ namespace TWAINCSTst
         }
 
         /// <summary>
-        /// Handle an image.
+        /// Handle an image.  a_bitmap is passed by reference so that this function can
+        /// dispose and null it out to gain access to the file that's backing it.  The
+        /// calling toolkit function will never perform any action with a_bitmap after
+        /// this function returns.
         /// </summary>
         /// <param name="a_szDg">Data group that preceeded this call</param>
         /// <param name="a_szDat">Data argument type that preceeded this call</param>
@@ -496,7 +499,22 @@ namespace TWAINCSTst
         /// <param name="a_sts">Current status</param>
         /// <param name="a_bitmap">C# bitmap of the image</param>
         /// <param name="a_szFile">File name, if doing a file transfer</param>
-        public TWAINCSToolkit.MSG ReportImage(string a_szDg, string a_szDat, string a_szMsg, TWAINCSToolkit.STS a_sts, Bitmap a_bitmap, string a_szFile)
+        /// <param name="a_szTwimageinfo">data collected for us</param>
+        /// <param name="a_abImage">a byte array of the image</param>
+        /// <param name="a_iImageOffset">byte offset where the image data begins</param>
+        public TWAINCSToolkit.MSG ReportImage
+        (
+            string a_szTag,
+            string a_szDg,
+            string a_szDat,
+            string a_szMsg,
+            TWAINCSToolkit.STS a_sts,
+            Bitmap a_bitmap,
+            string a_szFile,
+            string a_szTwimageinfo,
+            byte[] a_abImage,
+            int a_iImageOffset
+        )
         {
             // We're leaving...
             if (m_blClosing || (m_graphics1 == null) || (a_bitmap == null))
@@ -511,7 +529,7 @@ namespace TWAINCSTst
                 // for the thread to return.  Be careful when using EndInvoke.
                 // It's possible to create a deadlock situation with the Stop
                 // button press.
-                BeginInvoke(new MethodInvoker(delegate() { ReportImage(a_szDg, a_szDat, a_szMsg, a_sts, a_bitmap, a_szFile); }));
+                BeginInvoke(new MethodInvoker(delegate() { ReportImage(a_szTag, a_szDg, a_szDat, a_szMsg, a_sts, a_bitmap, a_szFile, a_szTwimageinfo, a_abImage, a_iImageOffset); }));
                 return (TWAINCSToolkit.MSG.ENDXFER);
             }
 
@@ -648,7 +666,7 @@ namespace TWAINCSTst
         /// <param name="a_szDg">Data group</param>
         /// <param name="a_szDat">Data Argument type</param>
         /// <param name="a_szMsg">Operation</param>
-        void AutoDropdown(string a_szDg, string a_szDat, string a_szMsg)
+        private void AutoDropdown(string a_szDg, string a_szDat, string a_szMsg)
         {
             // We're initializing...
             if ((a_szDg == "") && (a_szDat == "") && (a_szMsg == ""))
@@ -861,7 +879,7 @@ namespace TWAINCSTst
         /// <param name="a_szDg">Data group</param>
         /// <param name="a_szDat">Data argument type</param>
         /// <param name="a_szMsg">Operation</param>
-        void ManageToolkit(string a_szDg, string a_szDat, string a_szMsg)
+        private void ManageToolkit(string a_szDg, string a_szDat, string a_szMsg)
         {
             // Handle MSG_OPENDSM...
             if (a_szMsg == "MSG_OPENDSM")
