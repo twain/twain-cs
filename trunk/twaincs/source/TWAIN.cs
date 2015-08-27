@@ -9,6 +9,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    26-Aug-2015     2.3.1.1     Log fix and sync with TWAIN Direct
 //  M.McLaughlin    13-Mar-2015     2.3.1.0     Numerous fixes
 //  M.McLaughlin    13-Oct-2014     2.3.0.4     Added logging
 //  M.McLaughlin    24-Jun-2014     2.3.0.3     Stability fixes
@@ -1153,7 +1154,7 @@ namespace TWAINWorkingGroup
                         // Set the ItemList...
                         for (ii = 0; ii < u32NumItems; ii++)
                         {
-                            szResult = SetIndexedItem(twty, intptr, ii, asz[ii + 4]);
+                            szResult = SetIndexedItem(a_twcapability.ConType, twty, intptr, ii, asz[ii + 4]);
                             if (szResult != "")
                             {
                                 return (false);
@@ -1211,7 +1212,7 @@ namespace TWAINWorkingGroup
                         // Set the ItemList...
                         for (ii = 0; ii < u32NumItems; ii++)
                         {
-                            szResult = SetIndexedItem(twty, intptr, ii, asz[ii + 6]);
+                            szResult = SetIndexedItem(a_twcapability.ConType, twty, intptr, ii, asz[ii + 6]);
                             if (szResult != "")
                             {
                                 return (false);
@@ -1258,7 +1259,7 @@ namespace TWAINWorkingGroup
                         }
 
                         // Set the Item...
-                        szResult = SetIndexedItem(twty, intptr, 0, asz[3]);
+                        szResult = SetIndexedItem(a_twcapability.ConType, twty, intptr, 0, asz[3]);
                         if (szResult != "")
                         {
                             return (false);
@@ -1472,11 +1473,11 @@ namespace TWAINWorkingGroup
                 a_twfilesystem.Size = uint.Parse(asz[5]);
                 a_twfilesystem.CreateTimeDate.Set(asz[6]);
                 a_twfilesystem.ModifiedTimeDate.Set(asz[7]);
-                a_twfilesystem.FreeSpace = (IntPtr)UInt64.Parse(asz[8]);
-                a_twfilesystem.NewImageSize = (IntPtr)UInt64.Parse(asz[9]);
-                a_twfilesystem.NumberOfFiles = (IntPtr)UInt64.Parse(asz[10]);
-                a_twfilesystem.NumberOfSnippets = (IntPtr)UInt64.Parse(asz[11]);
-                a_twfilesystem.DeviceGroupMask = (IntPtr)UInt64.Parse(asz[12]);
+                a_twfilesystem.FreeSpace = (uint)UInt64.Parse(asz[8]);
+                a_twfilesystem.NewImageSize = (uint)UInt64.Parse(asz[9]);
+                a_twfilesystem.NumberOfFiles = (uint)UInt64.Parse(asz[10]);
+                a_twfilesystem.NumberOfSnippets = (uint)UInt64.Parse(asz[11]);
+                a_twfilesystem.DeviceGroupMask = (uint)UInt64.Parse(asz[12]);
             }
             catch
             {
@@ -7119,12 +7120,13 @@ namespace TWAINWorkingGroup
         /// <summary>
         /// Convert the value of a string into a capability...
         /// </summary>
+        /// <param name="a_twon">Container type</param>
         /// <param name="a_twty">Data type</param>
         /// <param name="a_intptr">Point to the data</param>
         /// <param name="a_iIndex">Index for item in the data</param>
         /// <param name="a_szValue">CSV value to be used to set the data</param>
         /// <returns>Empty string or an error string</returns>
-        public virtual string SetIndexedItem(TWTY a_twty, IntPtr a_intptr, int a_iIndex, string a_szValue)
+        public virtual string SetIndexedItem(TWON a_twon, TWTY a_twty, IntPtr a_intptr, int a_iIndex, string a_szValue)
         {
             IntPtr intptr;
 
@@ -7136,18 +7138,40 @@ namespace TWAINWorkingGroup
 
                 case TWTY.INT8:
                     {
-                        sbyte i8Value = sbyte.Parse(a_szValue);
-                        intptr = (IntPtr)((ulong)a_intptr + (ulong)(1 * a_iIndex));
-                        Marshal.StructureToPtr(i8Value, intptr, true);
-                        return ("");
+                        // We do this to make sure the entire Item value is overwritten...
+                        if (a_twon == TWON.ONEVALUE)
+                        {
+                            int i32Value = sbyte.Parse(a_szValue);
+                            Marshal.StructureToPtr(i32Value, a_intptr, true);
+                            return ("");
+                        }
+                        // These items have to be packed on the type sizes...
+                        else
+                        {
+                            sbyte i8Value = sbyte.Parse(a_szValue);
+                            intptr = (IntPtr)((ulong)a_intptr + (ulong)(1 * a_iIndex));
+                            Marshal.StructureToPtr(i8Value, intptr, true);
+                            return ("");
+                        }
                     }
 
                 case TWTY.INT16:
                     {
-                        short i16Value = short.Parse(a_szValue);
-                        intptr = (IntPtr)((ulong)a_intptr + (ulong)(2 * a_iIndex));
-                        Marshal.StructureToPtr(i16Value, intptr, true);
-                        return ("");
+                        // We do this to make sure the entire Item value is overwritten...
+                        if (a_twon == TWON.ONEVALUE)
+                        {
+                            int i32Value = short.Parse(a_szValue);
+                            Marshal.StructureToPtr(i32Value, a_intptr, true);
+                            return ("");
+                        }
+                        // These items have to be packed on the type sizes...
+                        else
+                        {
+                            short i16Value = short.Parse(a_szValue);
+                            intptr = (IntPtr)((ulong)a_intptr + (ulong)(2 * a_iIndex));
+                            Marshal.StructureToPtr(i16Value, intptr, true);
+                            return ("");
+                        }
                     }
 
                 case TWTY.INT32:
@@ -7160,19 +7184,40 @@ namespace TWAINWorkingGroup
 
                 case TWTY.UINT8:
                     {
-                        byte u8Value = byte.Parse(a_szValue);
-                        intptr = (IntPtr)((ulong)a_intptr + (ulong)(1 * a_iIndex));
-                        Marshal.StructureToPtr(u8Value, intptr, true);
-                        return ("");
+                        // We do this to make sure the entire Item value is overwritten...
+                        if (a_twon == TWON.ONEVALUE)
+                        {
+                            uint u32Value = byte.Parse(a_szValue);
+                            Marshal.StructureToPtr(u32Value, a_intptr, true);
+                            return ("");
+                        }
+                        // These items have to be packed on the type sizes...
+                        else
+                        {
+                            byte u8Value = byte.Parse(a_szValue);
+                            intptr = (IntPtr)((ulong)a_intptr + (ulong)(1 * a_iIndex));
+                            Marshal.StructureToPtr(u8Value, intptr, true);
+                            return ("");
+                        }
                     }
 
                 case TWTY.BOOL:
                 case TWTY.UINT16:
                     {
-                        ushort u16Value = ushort.Parse(a_szValue);
-                        intptr = (IntPtr)((ulong)a_intptr + (ulong)(2 * a_iIndex));
-                        Marshal.StructureToPtr(u16Value, intptr, true);
-                        return ("");
+                        // We do this to make sure the entire Item value is overwritten...
+                        if (a_twon == TWON.ONEVALUE)
+                        {
+                            uint u32Value = ushort.Parse(a_szValue);
+                            Marshal.StructureToPtr(u32Value, a_intptr, true);
+                            return ("");
+                        }
+                        else
+                        {
+                            ushort u16Value = ushort.Parse(a_szValue);
+                            intptr = (IntPtr)((ulong)a_intptr + (ulong)(2 * a_iIndex));
+                            Marshal.StructureToPtr(u16Value, intptr, true);
+                            return ("");
+                        }
                     }
 
                 case TWTY.UINT32:
@@ -8233,17 +8278,16 @@ namespace TWAINWorkingGroup
         // Public Methods...
         #region Public Methods...
 
-        public static void Open(string a_szName, string a_szFile)
+        /// <summary>
+        /// Write an assert message, but only throw with a debug build...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Assert(string a_szMessage)
         {
-            // Init stuff...
-            ms_blFirstPass = true;
-            ms_blOpened = true;
-            ms_blFlush = false;
-            ms_iMessageNumber = 0;
-            ms_iLevel = 1;
-
-            // Turn on the listener...
-            Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(a_szFile, a_szName + ".Log"), a_szName + "Listener"));
+            WriteEntry("A", a_szMessage, true);
+            #if DEBUG
+                throw new Exception(a_szMessage);
+            #endif
         }
 
         /// <summary>
@@ -8262,12 +8306,30 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Write an error message...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Error(string a_szMessage)
+        {
+            WriteEntry("E", a_szMessage, true);
+        }
+
+        /// <summary>
         /// Get the debugging level...
         /// </summary>
         /// <returns>the level</returns>
         public static int GetLevel()
         {
             return (ms_iLevel);
+        }
+
+        /// <summary>
+        /// Write an informational message...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Info(string a_szMessage)
+        {
+            WriteEntry(" ", a_szMessage, true);
         }
 
         /// <summary>
@@ -8302,7 +8364,8 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
-        /// Handle messages...
+        /// Handle messages (deprecated, but I'm keeping it around because
+        /// folks importing the older verion of the assembly may be using it)...
         /// </summary>
         /// <param name="a_eSeverity">Message severity</param>
         /// <param name="a_szMessage">The message</param>
@@ -8327,6 +8390,32 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Turn on the listener for our log file...
+        /// </summary>
+        /// <param name="a_szName">the name of our log</param>
+        /// <param name="a_szPath">the path where we want our log to go</param>
+        /// <param name="a_iLevel">debug level</param>
+        public static void Open(string a_szName, string a_szPath, int a_iLevel)
+        {
+            // Init stuff...
+            ms_blFirstPass = true;
+            ms_blOpened = true;
+            ms_blFlush = false;
+            ms_iMessageNumber = 0;
+            ms_iLevel = a_iLevel;
+
+            // Ask for a TWAINDSM log...
+            if (a_iLevel > 0)
+            {
+                Environment.SetEnvironmentVariable("TWAINDSM_LOG",Path.Combine(a_szPath, "twaindsm.log"));
+                Environment.SetEnvironmentVariable("TWAINDSM_MODE","w");
+            }
+
+            // Turn on the listener...
+            Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(a_szPath, a_szName + ".log"), a_szName + "Listener"));
+        }
+
+        /// <summary>
         /// Set the debugging level
         /// </summary>
         /// <param name="a_iLevel"></param>
@@ -8345,6 +8434,15 @@ namespace TWAINWorkingGroup
             {
                 Trace.Flush();
             }
+        }
+
+        /// <summary>
+        /// Write an warning message...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Warn(string a_szMessage)
+        {
+            WriteEntry("W", a_szMessage, true);
         }
 
         #endregion
@@ -8380,7 +8478,8 @@ namespace TWAINWorkingGroup
             {
                 if (!ms_blOpened)
                 {
-                    Open("Twain.log", ".");
+                    // We'll assume they want logging, since they didn't tell us...
+                    Open("Twain", ".", 1);
                 }
                 Trace.UseGlobalLock = true;
                 ms_blFirstPass = false;

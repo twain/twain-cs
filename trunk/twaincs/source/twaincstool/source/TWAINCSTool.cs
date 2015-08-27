@@ -20,12 +20,13 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            Comment
-//  M.McLaughlin    13-Mar-2015     Numerous fixes
-//  M.McLaughlin    13-Oct-2014     Auto file format, added logging
-//  M.McLaughlin    24-Jun-2014     Stability fixes
-//  M.McLaughlin    21-May-2014     64-bit Linux
-//  M.McLaughlin    27-Feb-2014     ShowImage additions
-//  M.McLaughlin    21-Oct-2013     Initial Release
+//  M.McLaughlin    26-Aug-2015     2.3.1.1     Log fix and sync with TWAIN Direct
+//  M.McLaughlin    13-Mar-2015     2.3.1.0     Numerous fixes
+//  M.McLaughlin    13-Oct-2014     2.3.0.4     Added logging
+//  M.McLaughlin    24-Jun-2014     2.3.0.3     Stability fixes
+//  M.McLaughlin    21-May-2014     2.3.0.2     64-bit Linux
+//  M.McLaughlin    27-Feb-2014     2.3.0.1     ShowImage additions
+//  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Copyright (C) 2013-2015 Kodak Alaris Inc.
 //
@@ -62,7 +63,7 @@ namespace TWAINWorkingGroupToolkit
     /// from the application is presented to us in the constructor, otherwise
     /// we're pretty oblivious to what the application looks like...
     /// </summary>
-    public class TWAINCSToolkit
+    public sealed class TWAINCSToolkit
     {
         ///////////////////////////////////////////////////////////////////////////////
         // Public Functions.  This is the stuff we want to expose to the
@@ -183,7 +184,7 @@ namespace TWAINWorkingGroupToolkit
             }
             else
             {
-                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + TWAIN.GetPlatform());
+                Log.Assert("Unsupported platform..." + TWAIN.GetPlatform());
             }
 
             // We've not been in the scan callback yet...
@@ -196,12 +197,12 @@ namespace TWAINWorkingGroupToolkit
             }
             catch (Exception exception)
             {
-                Log.Msg(Log.Severity.Error, "OpenDSM exception: " + exception.Message);
+                Log.Error("OpenDSM exception: " + exception.Message);
                 sts = TWAIN.STS.FAILURE;
             }
             if (sts != TWAIN.STS.SUCCESS)
             {
-                Log.Msg(Log.Severity.Error, "OpenDSM failed...");
+                Log.Error("OpenDSM failed...");
                 Cleanup();
                 throw new Exception("OpenDSM failed...");
             }
@@ -413,6 +414,24 @@ namespace TWAINWorkingGroupToolkit
         }
 
         /// <summary>
+        /// Close and reopen the DSM...
+        /// </summary>
+        /// <returns>status of the open</returns>
+        public STS ReopenDSM()
+        {
+            TWAIN.STS sts;
+
+            // Close the DSM (we don't care about the status)...
+            m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.CLOSEDSM, ref m_intptrHwnd);
+
+            // Reopen it...
+            sts = m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.OPENDSM, ref m_intptrHwnd);
+
+            // All done...
+            return (CvtSts(sts));
+        }
+
+        /// <summary>
         /// Send the requested command...
         /// </summary>
         /// <param name="a_szDg">Data group</param>
@@ -565,12 +584,20 @@ namespace TWAINWorkingGroupToolkit
             Send("DG_CONTROL", "DAT_CAPABILITY", "MSG_RESETALL", ref szCapability, ref szStatus);
 
             // Get the snapshot from a file...
-            using (FileStream filestream = new FileStream(a_szFile, FileMode.Open))
+            FileStream filestream = null;
+            try
             {
+                filestream = new FileStream(a_szFile, FileMode.Open);
                 u32Length = (UInt32)filestream.Length;
                 abSettings = new byte[u32Length];
                 filestream.Read(abSettings, 0, abSettings.Length);
-                filestream.Close();
+            }
+            finally
+            {
+                if (filestream != null)
+                {
+                    filestream.Dispose();
+                }
             }
 
             // Put it in an intptr...
@@ -612,7 +639,7 @@ namespace TWAINWorkingGroupToolkit
             sts = Send("DG_CONTROL", "DAT_CUSTOMDSDATA", "MSG_GET", ref szCustomdsdata, ref szStatus);
             if (sts != STS.SUCCESS)
             {
-                Log.Msg(Log.Severity.Error, "DAT_CUSTOMDSDATA failed...");
+                Log.Error("DAT_CUSTOMDSDATA failed...");
                 return (sts);
             }
 
@@ -622,12 +649,20 @@ namespace TWAINWorkingGroupToolkit
             IntPtr intptrHandle = (IntPtr)Int64.Parse(aszCustomdsdata[1]);
 
             // Save the data to a file...
-            using (FileStream filestream = new FileStream(a_szFile, FileMode.Create))
+            FileStream filestream = null;
+            try
             {
+                filestream = new FileStream(a_szFile, FileMode.Create);
                 byte[] abSettings = new byte[u32Length];
                 Marshal.Copy(intptrHandle, abSettings, 0, (int)u32Length);
                 filestream.Write(abSettings, 0, abSettings.Length);
-                filestream.Close();
+            }
+            finally
+            {
+                if (filestream != null)
+                {
+                    filestream.Dispose();
+                }
             }
 
             // Free the memory...
@@ -864,7 +899,7 @@ namespace TWAINWorkingGroupToolkit
                 twmemref = Marshal.AllocHGlobal(8192);
                 if (twmemref == IntPtr.Zero)
                 {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
+                    Log.Error("AllocHGlobal failed...");
                     return (STS.LOWMEMORY);
                 }
                 sts = m_twain.DsmEntryNullDest(a_dg, a_dat, a_msg, twmemref);
@@ -878,7 +913,7 @@ namespace TWAINWorkingGroupToolkit
                 twmemref = Marshal.AllocHGlobal(8192);
                 if (twmemref == IntPtr.Zero)
                 {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
+                    Log.Error("AllocHGlobal failed...");
                     return (STS.LOWMEMORY);
                 }
                 sts = m_twain.DsmEntry(a_dg, a_dat, a_msg, twmemref);
@@ -1179,8 +1214,9 @@ namespace TWAINWorkingGroupToolkit
             // Clear or get...
             a_szStatus = "";
             twidentity = default(TWAIN.TW_IDENTITY);
-            if ((a_msg == TWAIN.MSG.SET)
-                || (a_msg == TWAIN.MSG.OPENDS))
+            if (    (a_msg == TWAIN.MSG.SET)
+                ||  (a_msg == TWAIN.MSG.OPENDS)
+                ||  (a_msg == TWAIN.MSG.CLOSEDS))
             {
                 if (!m_twain.CsvToIdentity(ref twidentity, a_szMemref))
                 {
@@ -1194,6 +1230,14 @@ namespace TWAINWorkingGroupToolkit
             {
                 // Get the data...
                 a_szMemref = m_twain.IdentityToCsv(twidentity);
+
+                // If we're pre-MSG_OPENDS, then save the results in
+                // our DS identity variable, so it'll be there when
+                // we make the call to MSG_OPENDS...
+                if (m_twain.GetState() <= TWAIN.STATE.S3)
+                {
+                    m_twidentityDs = twidentity;
+                }
 
                 // If we're MSG_OPENDS and callbacks aren't in use, then
                 // we need to activate the message filter...
@@ -1459,7 +1503,7 @@ namespace TWAINWorkingGroupToolkit
             // Validate...
             if (m_twain == null)
             {
-                Log.Msg(Log.Severity.Error, "m_twain is null...");
+                Log.Error("m_twain is null...");
                 if (ReportImage != null) ReportImage("ScanCallback: 001", "", "", "", CvtSts(TWAIN.STS.FAILURE), null, null, null, null, 0);
                 return (TWAIN.STS.FAILURE);
             }
@@ -3088,6 +3132,11 @@ namespace TWAINWorkingGroupToolkit
         private TWAIN m_twain;
 
         /// <summary>
+        /// Our current Data Source...
+        /// </summary>
+        private TWAIN.TW_IDENTITY m_twidentityDs;
+
+        /// <summary>
         /// This is set in DAT_SETUPFILEXFER and used inside of
         /// DAT_IMAGEFILEXFER...
         /// </summary>
@@ -3165,6 +3214,105 @@ namespace TWAINWorkingGroupToolkit
         /// the TWAIN Specification...
         /// </summary>
         private bool m_blAutomaticJpegOrTiff;
+
+        #endregion
+    }
+
+
+    /// <summary>
+    /// Our logger.  If we bump up to 4.5 (and if mono supports it at compile
+    /// time), then we'll be able to add the following to our traces, which
+    /// seems like it should be more than enough to locate log messages.  For
+    /// now we'll leave the log messages undecorated:
+    ///     [CallerFilePath] string file = "",
+    ///     [CallerMemberName] string member = "",
+    ///     [CallerLineNumber] int line = 0
+    /// </summary>
+    public static class Log
+    {
+        // Public Methods...
+        #region Public Methods...
+
+        /// <summary>
+        /// Write an assert message, but only throw with a debug build...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Assert(string a_szMessage)
+        {
+            TWAINWorkingGroup.Log.Assert(a_szMessage);
+        }
+
+        /// <summary>
+        /// Close tracing...
+        /// </summary>
+        public static void Close()
+        {
+            TWAINWorkingGroup.Log.Close();
+        }
+
+        /// <summary>
+        /// Write an error message...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Error(string a_szMessage)
+        {
+            TWAINWorkingGroup.Log.Error(a_szMessage);
+        }
+
+        /// <summary>
+        /// Get the debugging level...
+        /// </summary>
+        /// <returns>the level</returns>
+        public static int GetLevel()
+        {
+            return (TWAINWorkingGroup.Log.GetLevel());
+        }
+
+        /// <summary>
+        /// Write an informational message...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Info(string a_szMessage)
+        {
+            TWAINWorkingGroup.Log.Info(a_szMessage);
+        }
+
+        /// <summary>
+        /// Turn on the listener for our log file...
+        /// </summary>
+        /// <param name="a_szName">the name of our log</param>
+        /// <param name="a_szPath">the path where we want our log to go</param>
+        /// <param name="a_iLevel">debug level</param>
+        public static void Open(string a_szName, string a_szPath, int a_iLevel)
+        {
+            TWAINWorkingGroup.Log.Open(a_szName, a_szPath, a_iLevel);
+        }
+
+        /// <summary>
+        /// Set the debugging level
+        /// </summary>
+        /// <param name="a_iLevel"></param>
+        public static void SetLevel(int a_iLevel)
+        {
+            TWAINWorkingGroup.Log.SetLevel(a_iLevel);
+        }
+
+        /// <summary>
+        /// Flush data to the file...
+        /// </summary>
+        public static void SetFlush(bool a_blFlush)
+        {
+            TWAINWorkingGroup.Log.SetFlush(a_blFlush);
+        }
+
+        /// <summary>
+        /// Write an warning message...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Warn(string a_szMessage)
+        {
+            TWAINWorkingGroup.Log.Warn(a_szMessage);
+        }
 
         #endregion
     }

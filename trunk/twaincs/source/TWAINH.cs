@@ -8,7 +8,10 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    26-Aug-2015     2.3.1.1     Log fix and sync with TWAIN Direct
 //  M.McLaughlin    13-Mar-2015     2.3.1.0     Numerous fixes
+//  M.McLaughlin    13-Oct-2014     2.3.0.4     Added logging
+//  M.McLaughlin    24-Jun-2014     2.3.0.3     Stability fixes
 //  M.McLaughlin    21-May-2014     2.3.0.2     64-Bit Linux
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
@@ -2427,6 +2430,7 @@ namespace TWAINWorkingGroup
 
         /// <summary>
         /// Provides information about the currently selected device.
+        /// TBD -- need a 32/64 bit solution for this mess
         /// </summary>
         [StructLayout(LayoutKind.Explicit, Pack = 2)]
         public struct TW_FILESYSTEM
@@ -2441,17 +2445,17 @@ namespace TWAINWorkingGroup
             public IntPtr Context;
 
             [FieldOffset(520)]
-            public int Recursive;
+            public Int32 Recursive;
             [FieldOffset(520)]
-            public ushort Subdirectories;
+            public UInt16 Subdirectories;
 
             [FieldOffset(524)]
-            public int FileType;
+            public Int32 FileType;
             [FieldOffset(524)]
-            public uint FileSystemType;
+            public UInt32 FileSystemType;
 
             [FieldOffset(528)]
-            public uint Size;
+            public UInt32 Size;
 
             [FieldOffset(532)]
             public TW_STR32 CreateTimeDate;
@@ -2460,19 +2464,19 @@ namespace TWAINWorkingGroup
             public TW_STR32 ModifiedTimeDate;
 
             [FieldOffset(600)]
-            public IntPtr FreeSpace;
+            public UInt32 FreeSpace;
 
             [FieldOffset(604)]
-            public IntPtr NewImageSize;
+            public UInt32 NewImageSize;
 
             [FieldOffset(608)]
-            public IntPtr NumberOfFiles;
+            public UInt32 NumberOfFiles;
 
             [FieldOffset(612)]
-            public IntPtr NumberOfSnippets;
+            public UInt32 NumberOfSnippets;
 
             [FieldOffset(616)]
-            public IntPtr DeviceGroupMask;
+            public UInt32 DeviceGroupMask;
 
             [FieldOffset(620)]
             public byte Reserved;
@@ -2490,20 +2494,20 @@ namespace TWAINWorkingGroup
             public TW_STR255 OutputName;
 
             [FieldOffset(512)]
-            public uint Context;
+            public UInt32 Context;
 
             [FieldOffset(516)]
-            public int Recursive;
+            public Int32 Recursive;
             [FieldOffset(516)]
-            public ushort Subdirectories;
+            public UInt16 Subdirectories;
 
             [FieldOffset(520)]
-            public int FileType;
+            public Int32 FileType;
             [FieldOffset(520)]
-            public uint FileSystemType;
+            public UInt32 FileSystemType;
 
             [FieldOffset(524)]
-            public uint Size;
+            public UInt32 Size;
 
             [FieldOffset(528)]
             public TW_STR32 CreateTimeDate;
@@ -2512,19 +2516,19 @@ namespace TWAINWorkingGroup
             public TW_STR32 ModifiedTimeDate;
 
             [FieldOffset(596)]
-            public IntPtr FreeSpace;
+            public UInt32 FreeSpace;
 
             [FieldOffset(600)]
-            public IntPtr NewImageSize;
+            public UInt32 NewImageSize;
 
             [FieldOffset(604)]
-            public IntPtr NumberOfFiles;
+            public UInt32 NumberOfFiles;
 
             [FieldOffset(608)]
-            public IntPtr NumberOfSnippets;
+            public UInt32 NumberOfSnippets;
 
             [FieldOffset(612)]
-            public IntPtr DeviceGroupMask;
+            public UInt32 DeviceGroupMask;
 
             [FieldOffset(616)]
             public byte Reserved;
@@ -2539,7 +2543,7 @@ namespace TWAINWorkingGroup
         [StructLayout(LayoutKind.Sequential, Pack = 2)]
         public struct TW_GRAYRESPONSE
         {
-            public TW_ELEMENT8 Reponse_00;
+            public TW_ELEMENT8 Response_00;
         }
 
         /// <summary>
