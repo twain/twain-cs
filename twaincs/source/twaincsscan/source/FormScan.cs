@@ -65,6 +65,10 @@ namespace TWAINCSScan
             // Build our form...
             InitializeComponent();
 
+            // Open the log in our working folder, and say hi...
+            Log.Open("TWAINCSScan", ".", 1);
+            Log.Info("TWAINCSScan v" + System.Reflection.Assembly.GetEntryAssembly().GetName().Version.ToString());
+
             // Init other stuff...
             m_blIndicators = false;
             m_blExit = false;

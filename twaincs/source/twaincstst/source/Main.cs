@@ -77,6 +77,10 @@ namespace TWAINCSTst
             // Init our form...
             InitializeComponent();
 
+            // Open the log in our working folder, and say hi...
+            Log.Open("TWAINCSTst", ".", 1);
+            Log.Info("TWAINCSTst v" + System.Reflection.Assembly.GetEntryAssembly().GetName().Version.ToString());
+
             // Make sure we cleanup if unexpectedly closed...
             this.FormClosing += new FormClosingEventHandler(FormMain_FormClosing);
 
