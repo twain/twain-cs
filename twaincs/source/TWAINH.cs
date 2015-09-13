@@ -8,6 +8,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    13-Sep-2015     2.3.1.2     DsmMem bug fixes
 //  M.McLaughlin    26-Aug-2015     2.3.1.1     Log fix and sync with TWAIN Direct
 //  M.McLaughlin    13-Mar-2015     2.3.1.0     Numerous fixes
 //  M.McLaughlin    13-Oct-2014     2.3.0.4     Added logging
@@ -1714,6 +1715,15 @@ namespace TWAINWorkingGroup
         /// </summary>
         [StructLayout(LayoutKind.Sequential, Pack = 2)]
         public struct TW_ENTRYPOINT
+        {
+            public UInt32 Size;
+            public IntPtr DSM_Entry;
+            public IntPtr DSM_MemAllocate;
+            public IntPtr DSM_MemFree;
+            public IntPtr DSM_MemLock;
+            public IntPtr DSM_MemUnlock;
+        }
+        public struct TW_ENTRYPOINT_DELEGATES
         {
             public UInt32 Size;
             public IntPtr DSM_Entry;

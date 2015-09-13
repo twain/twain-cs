@@ -9,6 +9,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    13-Sep-2015     2.3.1.2     DsmMem bug fixes
 //  M.McLaughlin    26-Aug-2015     2.3.1.1     Log fix and sync with TWAIN Direct
 //  M.McLaughlin    13-Mar-2015     2.3.1.0     Numerous fixes
 //  M.McLaughlin    13-Oct-2014     2.3.0.4     Added logging
@@ -163,7 +164,7 @@ namespace TWAINWorkingGroup
             m_blAutoDatStatus = true;
 
             // Our helper functions from the DSM...
-            m_twentrypoint = default(TW_ENTRYPOINT);
+            m_twentrypointdelegates = default(TW_ENTRYPOINT_DELEGATES);
 
             // Our events...
             m_autoreseteventCaller = new AutoResetEvent(false);
@@ -252,9 +253,9 @@ namespace TWAINWorkingGroup
             IntPtr intptr;
 
             // Use the DSM...
-            if (m_twentrypoint.DSM_MemAllocate != null)
+            if (m_twentrypointdelegates.DSM_MemAllocate != null)
             {
-                intptr = m_twentrypoint.DSM_MemAllocate(a_u32Size);
+                intptr = m_twentrypointdelegates.DSM_MemAllocate(a_u32Size);
                 if (intptr == IntPtr.Zero)
                 {
                     Log.Msg(Log.Severity.Error, "DSM_MemAllocate failed...");
@@ -265,10 +266,10 @@ namespace TWAINWorkingGroup
             // Do it ourselves, Windows...
             if (ms_platform == Platform.WINDOWS)
             {
-                intptr = Marshal.AllocHGlobal((int)a_u32Size);
+                intptr = (IntPtr)GlobalAlloc((uint)a_u32Size, (UIntPtr)0x0042 /* GHND */);
                 if (intptr == IntPtr.Zero)
                 {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
+                    Log.Msg(Log.Severity.Error, "GlobalAlloc failed...");
                 }
                 return (intptr);
             }
@@ -321,15 +322,15 @@ namespace TWAINWorkingGroup
             }
 
             // Use the DSM...
-            if (m_twentrypoint.DSM_MemAllocate != null)
+            if (m_twentrypointdelegates.DSM_MemAllocate != null)
             {
-                m_twentrypoint.DSM_MemFree(a_intptrHandle);
+                m_twentrypointdelegates.DSM_MemFree(a_intptrHandle);
             }
 
             // Do it ourselves, Windows...
             else if (ms_platform == Platform.WINDOWS)
             {
-                Marshal.FreeHGlobal(a_intptrHandle);
+                GlobalFree(a_intptrHandle);
             }
 
             // Do it ourselves, Linux...
@@ -373,15 +374,15 @@ namespace TWAINWorkingGroup
             }
 
             // Use the DSM...
-            if (m_twentrypoint.DSM_MemLock != null)
+            if (m_twentrypointdelegates.DSM_MemLock != null)
             {
-                return (m_twentrypoint.DSM_MemLock(a_intptrHandle));
+                return (m_twentrypointdelegates.DSM_MemLock(a_intptrHandle));
             }
 
             // Do it ourselves, Windows...
             if (ms_platform == Platform.WINDOWS)
             {
-                return (a_intptrHandle);
+                return (GlobalLock(a_intptrHandle));
             }
 
             // Do it ourselves, Linux...
@@ -415,15 +416,16 @@ namespace TWAINWorkingGroup
             }
 
             // Use the DSM...
-            if (m_twentrypoint.DSM_MemLock != null)
+            if (m_twentrypointdelegates.DSM_MemUnlock != null)
             {
-                m_twentrypoint.DSM_MemLock(a_intptrHandle);
+                m_twentrypointdelegates.DSM_MemUnlock(a_intptrHandle);
                 return;
             }
 
             // Do it ourselves, Windows...
             if (ms_platform == Platform.WINDOWS)
             {
+                GlobalUnlock(a_intptrHandle);
                 return;
             }
 
@@ -811,6 +813,7 @@ namespace TWAINWorkingGroup
         public virtual string CapabilityToCsv(TW_CAPABILITY a_twcapability)
         {
             IntPtr intptr;
+            IntPtr intptrLocked;
             TWTY ItemType;
             uint NumItems;
 
@@ -830,20 +833,21 @@ namespace TWAINWorkingGroup
                         {
                             // Crack the container...
                             TW_ARRAY_MACOSX twarraymacosx = default(TW_ARRAY_MACOSX);
-                            intptr = (IntPtr)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(IntPtr));
-                            twarraymacosx = (TW_ARRAY_MACOSX)Marshal.PtrToStructure(intptr, typeof(TW_ARRAY_MACOSX));
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twarraymacosx = (TW_ARRAY_MACOSX)Marshal.PtrToStructure(intptrLocked, typeof(TW_ARRAY_MACOSX));
                             ItemType = (TWTY)twarraymacosx.ItemType;
                             NumItems = twarraymacosx.NumItems;
-                            intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twarraymacosx));
+                            intptr = (IntPtr)((UInt64)intptrLocked + (UInt64)Marshal.SizeOf(twarraymacosx));
                         }
                         else
                         {
                             // Crack the container...
                             TW_ARRAY twarray = default(TW_ARRAY);
-                            twarray = (TW_ARRAY)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(TW_ARRAY));
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twarray = (TW_ARRAY)Marshal.PtrToStructure(intptrLocked, typeof(TW_ARRAY));
                             ItemType = twarray.ItemType;
                             NumItems = twarray.NumItems;
-                            intptr = (IntPtr)((UInt64)a_twcapability.hContainer + (UInt64)Marshal.SizeOf(twarray));
+                            intptr = (IntPtr)((UInt64)intptrLocked + (UInt64)Marshal.SizeOf(twarray));
                         }
 
                         // Start building the string...
@@ -855,6 +859,9 @@ namespace TWAINWorkingGroup
                         {
                             csvArray.Add(GetIndexedItem(ItemType, intptr, (int)uu));
                         }
+
+                        // All done...
+                        DsmMemUnlock(a_twcapability.hContainer);
                         return (csvArray.Get());
                     }
 
@@ -868,11 +875,11 @@ namespace TWAINWorkingGroup
                         {
                             // Crack the container...
                             TW_ENUMERATION_MACOSX twenumerationmacosx = default(TW_ENUMERATION_MACOSX);
-                            intptr = (IntPtr)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(IntPtr));
-                            twenumerationmacosx = (TW_ENUMERATION_MACOSX)Marshal.PtrToStructure(intptr, typeof(TW_ENUMERATION_MACOSX));
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twenumerationmacosx = (TW_ENUMERATION_MACOSX)Marshal.PtrToStructure(intptrLocked, typeof(TW_ENUMERATION_MACOSX));
                             ItemType = (TWTY)twenumerationmacosx.ItemType;
                             NumItems = twenumerationmacosx.NumItems;
-                            intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twenumerationmacosx));
+                            intptr = (IntPtr)((UInt64)intptrLocked + (UInt64)Marshal.SizeOf(twenumerationmacosx));
 
                             // Start building the string...
                             csvEnum = Common(a_twcapability.Cap, a_twcapability.ConType, ItemType);
@@ -884,10 +891,11 @@ namespace TWAINWorkingGroup
                         {
                             // Crack the container...
                             TW_ENUMERATION twenumeration = default(TW_ENUMERATION);
-                            twenumeration = (TW_ENUMERATION)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(TW_ENUMERATION));
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twenumeration = (TW_ENUMERATION)Marshal.PtrToStructure(intptrLocked, typeof(TW_ENUMERATION));
                             ItemType = twenumeration.ItemType;
                             NumItems = twenumeration.NumItems;
-                            intptr = (IntPtr)((UInt64)a_twcapability.hContainer + (UInt64)Marshal.SizeOf(twenumeration));
+                            intptr = (IntPtr)((UInt64)intptrLocked + (UInt64)Marshal.SizeOf(twenumeration));
 
                             // Start building the string...
                             csvEnum = Common(a_twcapability.Cap, a_twcapability.ConType, ItemType);
@@ -901,6 +909,9 @@ namespace TWAINWorkingGroup
                         {
                             csvEnum.Add(GetIndexedItem(ItemType, intptr, (int)uu));
                         }
+
+                        // All done...
+                        DsmMemUnlock(a_twcapability.hContainer);
                         return (csvEnum.Get());
                     }
 
@@ -913,18 +924,19 @@ namespace TWAINWorkingGroup
                         {
                             // Crack the container...
                             TW_ONEVALUE_MACOSX twonevaluemacosx = default(TW_ONEVALUE_MACOSX);
-                            intptr = (IntPtr)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(IntPtr));
-                            twonevaluemacosx = (TW_ONEVALUE_MACOSX)Marshal.PtrToStructure(intptr, typeof(TW_ONEVALUE_MACOSX));
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twonevaluemacosx = (TW_ONEVALUE_MACOSX)Marshal.PtrToStructure(intptrLocked, typeof(TW_ONEVALUE_MACOSX));
                             ItemType = (TWTY)twonevaluemacosx.ItemType;
-                            intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twonevaluemacosx));
+                            intptr = (IntPtr)((UInt64)intptrLocked + (UInt64)Marshal.SizeOf(twonevaluemacosx));
                         }
                         else
                         {
                             // Crack the container...
                             TW_ONEVALUE twonevalue = default(TW_ONEVALUE);
-                            twonevalue = (TW_ONEVALUE)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(TW_ONEVALUE));
-                            ItemType = twonevalue.ItemType;
-                            intptr = (IntPtr)((UInt64)a_twcapability.hContainer + (UInt64)Marshal.SizeOf(twonevalue));
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twonevalue = (TW_ONEVALUE)Marshal.PtrToStructure(intptrLocked, typeof(TW_ONEVALUE));
+                            ItemType = (TWTY)twonevalue.ItemType;
+                            intptr = (IntPtr)((UInt64)intptrLocked + (UInt64)Marshal.SizeOf(twonevalue));
                         }
 
                         // Start building the string...
@@ -932,6 +944,9 @@ namespace TWAINWorkingGroup
 
                         // Tack on the stuff from the Item...
                         csvOnevalue.Add(GetIndexedItem(ItemType, intptr, 0));
+
+                        // All done...
+                        DsmMemUnlock(a_twcapability.hContainer);
                         return (csvOnevalue.Get());
                     }
 
@@ -947,9 +962,9 @@ namespace TWAINWorkingGroup
                         twrange = default(TW_RANGE);
                         if (ms_platform == Platform.MACOSX)
                         {
-                            intptr = (IntPtr)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(IntPtr));
-                            twrangemacosx = (TW_RANGE_MACOSX)Marshal.PtrToStructure(intptr, typeof(TW_RANGE_MACOSX));
-                            twrangefix32macosx = (TW_RANGE_FIX32_MACOSX)Marshal.PtrToStructure(intptr, typeof(TW_RANGE_FIX32_MACOSX));
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twrangemacosx = (TW_RANGE_MACOSX)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE_MACOSX));
+                            twrangefix32macosx = (TW_RANGE_FIX32_MACOSX)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE_FIX32_MACOSX));
                             twrange.ItemType = (TWTY)twrangemacosx.ItemType;
                             twrange.MinValue = twrangemacosx.MinValue;
                             twrange.MaxValue = twrangemacosx.MaxValue;
@@ -965,8 +980,9 @@ namespace TWAINWorkingGroup
                         }
                         else
                         {
-                            twrange = (TW_RANGE)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(TW_RANGE));
-                            twrangefix32 = (TW_RANGE_FIX32)Marshal.PtrToStructure(a_twcapability.hContainer, typeof(TW_RANGE_FIX32));
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twrange = (TW_RANGE)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE));
+                            twrangefix32 = (TW_RANGE_FIX32)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE_FIX32));
                         }
 
                         // Start the string...
@@ -976,6 +992,7 @@ namespace TWAINWorkingGroup
                         switch ((TWTY)twrange.ItemType)
                         {
                             default:
+                                DsmMemUnlock(a_twcapability.hContainer);
                                 return ("(Get Capability: unrecognized data type)");
 
                             case TWTY.INT8:
@@ -984,6 +1001,7 @@ namespace TWAINWorkingGroup
                                 csvRange.Add(((char)(twrange.StepSize)).ToString());
                                 csvRange.Add(((char)(twrange.DefaultValue)).ToString());
                                 csvRange.Add(((char)(twrange.CurrentValue)).ToString());
+                                DsmMemUnlock(a_twcapability.hContainer);
                                 return (csvRange.Get());
 
                             case TWTY.INT16:
@@ -992,6 +1010,7 @@ namespace TWAINWorkingGroup
                                 csvRange.Add(((short)(twrange.StepSize)).ToString());
                                 csvRange.Add(((short)(twrange.DefaultValue)).ToString());
                                 csvRange.Add(((short)(twrange.CurrentValue)).ToString());
+                                DsmMemUnlock(a_twcapability.hContainer);
                                 return (csvRange.Get());
 
                             case TWTY.INT32:
@@ -1000,6 +1019,7 @@ namespace TWAINWorkingGroup
                                 csvRange.Add(((int)(twrange.StepSize)).ToString());
                                 csvRange.Add(((int)(twrange.DefaultValue)).ToString());
                                 csvRange.Add(((int)(twrange.CurrentValue)).ToString());
+                                DsmMemUnlock(a_twcapability.hContainer);
                                 return (csvRange.Get());
 
                             case TWTY.UINT8:
@@ -1008,6 +1028,7 @@ namespace TWAINWorkingGroup
                                 csvRange.Add(((byte)(twrange.StepSize)).ToString());
                                 csvRange.Add(((byte)(twrange.DefaultValue)).ToString());
                                 csvRange.Add(((byte)(twrange.CurrentValue)).ToString());
+                                DsmMemUnlock(a_twcapability.hContainer);
                                 return (csvRange.Get());
 
                             case TWTY.BOOL:
@@ -1017,6 +1038,7 @@ namespace TWAINWorkingGroup
                                 csvRange.Add(((ushort)(twrange.StepSize)).ToString());
                                 csvRange.Add(((ushort)(twrange.DefaultValue)).ToString());
                                 csvRange.Add(((ushort)(twrange.CurrentValue)).ToString());
+                                DsmMemUnlock(a_twcapability.hContainer);
                                 return (csvRange.Get());
 
                             case TWTY.UINT32:
@@ -1025,6 +1047,7 @@ namespace TWAINWorkingGroup
                                 csvRange.Add(((uint)(twrange.StepSize)).ToString());
                                 csvRange.Add(((uint)(twrange.DefaultValue)).ToString());
                                 csvRange.Add(((uint)(twrange.CurrentValue)).ToString());
+                                DsmMemUnlock(a_twcapability.hContainer);
                                 return (csvRange.Get());
 
                             case TWTY.FIX32:
@@ -1033,6 +1056,7 @@ namespace TWAINWorkingGroup
                                 csvRange.Add(((double)twrangefix32.StepSize.Whole + ((double)twrangefix32.StepSize.Frac / 65536.0)).ToString());
                                 csvRange.Add(((double)twrangefix32.DefaultValue.Whole + ((double)twrangefix32.DefaultValue.Frac / 65536.0)).ToString());
                                 csvRange.Add(((double)twrangefix32.CurrentValue.Whole + ((double)twrangefix32.CurrentValue.Frac / 65536.0)).ToString());
+                                DsmMemUnlock(a_twcapability.hContainer);
                                 return (csvRange.Get());
                         }
                     }
@@ -1160,6 +1184,9 @@ namespace TWAINWorkingGroup
                                 return (false);
                             }
                         }
+
+                        // All done...
+                        DsmMemUnlock(a_twcapability.hContainer);
                         return (true);
 
                     case TWON.ENUMERATION:
@@ -1218,6 +1245,9 @@ namespace TWAINWorkingGroup
                                 return (false);
                             }
                         }
+
+                        // All done...
+                        DsmMemUnlock(a_twcapability.hContainer);
                         return (true);
 
                     case TWON.ONEVALUE:
@@ -1264,6 +1294,9 @@ namespace TWAINWorkingGroup
                         {
                             return (false);
                         }
+
+                        // All done...
+                        DsmMemUnlock(a_twcapability.hContainer);
                         return (true);
 
                     case TWON.RANGE:
@@ -1294,6 +1327,9 @@ namespace TWAINWorkingGroup
                         {
                             return (false);
                         }
+
+                        // All done...
+                        DsmMemUnlock(a_twcapability.hContainer);
                         return (true);
                 }
             }
@@ -1403,11 +1439,11 @@ namespace TWAINWorkingGroup
             {
                 CSV csv = new CSV();
                 csv.Add(a_twentrypoint.Size.ToString());
-                csv.Add("0x" + a_twentrypoint.DSM_Entry.ToString("X"));
-                csv.Add("0x" + Marshal.GetFunctionPointerForDelegate(a_twentrypoint.DSM_MemAllocate).ToString("X"));
-                csv.Add("0x" + Marshal.GetFunctionPointerForDelegate(a_twentrypoint.DSM_MemFree).ToString("X"));
-                csv.Add("0x" + Marshal.GetFunctionPointerForDelegate(a_twentrypoint.DSM_MemLock).ToString("X"));
-                csv.Add("0x" + Marshal.GetFunctionPointerForDelegate(a_twentrypoint.DSM_MemUnlock).ToString("X"));
+                csv.Add("0x" + ((a_twentrypoint.DSM_Entry == null)?"0":a_twentrypoint.DSM_Entry.ToString("X")));
+                csv.Add("0x" + ((a_twentrypoint.DSM_MemAllocate == null) ? "0" : a_twentrypoint.DSM_MemAllocate.ToString("X")));
+                csv.Add("0x" + ((a_twentrypoint.DSM_MemFree == null) ? "0" : a_twentrypoint.DSM_MemFree.ToString("X")));
+                csv.Add("0x" + ((a_twentrypoint.DSM_MemLock == null) ? "0" : a_twentrypoint.DSM_MemLock.ToString("X")));
+                csv.Add("0x" + ((a_twentrypoint.DSM_MemUnlock == null) ? "0" : a_twentrypoint.DSM_MemUnlock.ToString("X")));
                 return (csv.Get());
             }
             catch
@@ -3151,7 +3187,25 @@ namespace TWAINWorkingGroup
             // If we were successful, then squirrel away the data...
             if (sts == TWAIN.STS.SUCCESS)
             {
-                m_twentrypoint = a_twentrypoint;
+                m_twentrypointdelegates = default(TWAIN.TW_ENTRYPOINT_DELEGATES);
+                m_twentrypointdelegates.Size = a_twentrypoint.Size;
+                m_twentrypointdelegates.DSM_Entry = a_twentrypoint.DSM_Entry;
+                if (a_twentrypoint.DSM_MemAllocate != null)
+                {
+                    m_twentrypointdelegates.DSM_MemAllocate = (TWAIN.DSM_MEMALLOC)Marshal.GetDelegateForFunctionPointer(a_twentrypoint.DSM_MemAllocate,typeof(TWAIN.DSM_MEMALLOC));
+                }
+                if (a_twentrypoint.DSM_MemFree != null)
+                {
+                    m_twentrypointdelegates.DSM_MemFree = (TWAIN.DSM_MEMFREE)Marshal.GetDelegateForFunctionPointer(a_twentrypoint.DSM_MemFree, typeof(TWAIN.DSM_MEMFREE));
+                }
+                if (a_twentrypoint.DSM_MemLock != null)
+                {
+                    m_twentrypointdelegates.DSM_MemLock = (TWAIN.DSM_MEMLOCK)Marshal.GetDelegateForFunctionPointer(a_twentrypoint.DSM_MemLock, typeof(TWAIN.DSM_MEMLOCK));
+                }
+                if (a_twentrypoint.DSM_MemUnlock != null)
+                {
+                    m_twentrypointdelegates.DSM_MemUnlock = (TWAIN.DSM_MEMUNLOCK)Marshal.GetDelegateForFunctionPointer(a_twentrypoint.DSM_MemUnlock, typeof(TWAIN.DSM_MEMUNLOCK));
+                }
             }
 
             // Log it...
@@ -8087,7 +8141,28 @@ namespace TWAINWorkingGroup
         /// <summary>
         /// Our helper functions from the DSM...
         /// </summary>
-        private TW_ENTRYPOINT m_twentrypoint;
+        private TW_ENTRYPOINT_DELEGATES m_twentrypointdelegates;
+
+        #endregion
+
+
+        ///////////////////////////////////////////////////////////////////////////////
+        // Private P/Invokes...
+        ///////////////////////////////////////////////////////////////////////////////
+        #region Private P/Invokes...
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GlobalFree(IntPtr hMem);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GlobalLock(IntPtr hMem);
+
+        [DllImport("kernel32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GlobalUnlock(IntPtr hMem);
 
         #endregion
     }

@@ -20,6 +20,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            Comment
+//  M.McLaughlin    13-Sep-2015     2.3.1.2     DsmMem bug fixes
 //  M.McLaughlin    26-Aug-2015     2.3.1.1     Log fix and sync with TWAIN Direct
 //  M.McLaughlin    13-Mar-2015     2.3.1.0     Numerous fixes
 //  M.McLaughlin    13-Oct-2014     2.3.0.4     Added logging
@@ -525,6 +526,23 @@ namespace TWAINWorkingGroupToolkit
                     break;
 
                 case TWAIN.DAT.IDENTITY:
+                    // We're being opened...
+                    if (msg == TWAIN.MSG.OPENDS)
+                    {
+                        // If we detect the TWAIN 2.0 flag, then get the entry points,
+                        // this primes the TWAIN object to use them, we don't actually
+                        // do anything with the data ourselves...
+                        if (m_twain.IsDsm2())
+                        {
+                            string szStatus = "";
+                            string szMemref = "";
+                            sts = SendDatEntrypoint(dg, TWAIN.MSG.GET, ref szStatus, ref szMemref);
+                            if (sts != STS.SUCCESS)
+                            {
+                                Log.Error("SendDatEntrypoint failed: " + szStatus + " " + szMemref);
+                            }
+                        }
+                    }
                     sts = SendDatIdentity(dg, msg, ref a_szStatus, ref a_szMemref);
                     break;
 
