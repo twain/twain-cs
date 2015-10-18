@@ -179,7 +179,12 @@ namespace TWAINCSScan
                 {
                     return ("");
                 }
-                return (File.ReadAllText(Path.Combine(szSaveSpot,"folder")));
+                string szFile = Path.Combine(szSaveSpot, "folder");
+                if (File.Exists(szFile))
+                {
+                    return (File.ReadAllText(szFile));
+                }
+                return ("");
             }
             catch
             {
@@ -199,7 +204,12 @@ namespace TWAINCSScan
                 {
                     return ("");
                 }
-                return (File.ReadAllText(Path.Combine(m_szSettingsFolder, "current")));
+                string szFile = Path.Combine(m_szSettingsFolder, "current");
+                if (File.Exists(szFile))
+                {
+                    return (File.ReadAllText(szFile));
+                }
+                return ("");
             }
             catch
             {
@@ -360,7 +370,7 @@ namespace TWAINCSScan
         /// <param name="e"></param>
         private void m_buttonSetup_Click(object sender, EventArgs e)
         {
-            string szTwmemref = "1,0";
+            string szTwmemref = "1,0," + Handle;
             string szStatus = "";
             TWAINCSToolkit.STS sts;
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDSUIONLY", ref szTwmemref, ref szStatus);

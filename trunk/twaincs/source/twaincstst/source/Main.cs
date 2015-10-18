@@ -919,7 +919,9 @@ namespace TWAINCSTst
                         1,
                         0,
                         m_checkboxUseTwain32.Checked,
-                        m_checkboxUseCallbacks.Checked
+                        m_checkboxUseCallbacks.Checked,
+                        RunInUiThread,
+                        this
                     );
                 }
                 catch
@@ -969,6 +971,23 @@ namespace TWAINCSTst
         }
 
         /// <summary>
+        /// TWAIN needs help, if we want it to run stuff in our main
+        /// UI thread...
+        /// </summary>
+        /// <param name="control">the control to run in</param>
+        /// <param name="code">the code to run</param>
+        static public void RunInUiThread(Object a_object, Action a_action)
+        {
+            Control control = (Control)a_object;
+            if (control.InvokeRequired)
+            {
+                control.Invoke(new TWAINCSToolkit.RunInUiThreadDelegate(RunInUiThread), new object[] { a_object, a_action });
+                return;
+            }
+            a_action();
+        }
+
+        /// <summary>
         /// Close the Data Source...
         /// </summary>
         /// <param name="a_dg">Data group</param>
@@ -1014,7 +1033,7 @@ namespace TWAINCSTst
             LoadImage(ref m_pictureboxImage8, ref m_graphics8, ref m_bitmapGraphic8, bitmap);
 
             // Request a scan session...
-            szTwmemref = "0,0";
+            szTwmemref = "0,0," + this.Handle;
             szStatus = "";
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", ref szTwmemref, ref szStatus);
             WriteTriplet("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", sts.ToString());

@@ -96,7 +96,9 @@ namespace TWAINCSScan
                     1,
                     0,
                     false,
-                    true
+                    true,
+                    RunInUiThread,
+                    this
                 );
             }
             catch
@@ -186,11 +188,11 @@ namespace TWAINCSScan
             // otherwise bring up the driver GUI so the user can change settings...
             if (m_formsetup.IsCustomDsDataSupported())
             {
-                szTwmemref = "0,0";
+                szTwmemref = "0,0," + this.Handle;
             }
             else
             {
-                szTwmemref = "1,0";
+                szTwmemref = "1,0," + this.Handle;
             }
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", ref szTwmemref, ref szStatus);
             SetButtons(EBUTTONSTATE.SCANNING);
@@ -338,6 +340,23 @@ namespace TWAINCSScan
         }
 
         /// <summary>
+        /// TWAIN needs help, if we want it to run stuff in our main
+        /// UI thread...
+        /// </summary>
+        /// <param name="control">the control to run in</param>
+        /// <param name="code">the code to run</param>
+        static public void RunInUiThread(Object a_object, Action a_action)
+        {
+            Control control = (Control)a_object;
+            if (control.InvokeRequired)
+            {
+                control.Invoke(new TWAINCSToolkit.RunInUiThreadDelegate(RunInUiThread), new object[] { a_object, a_action });
+                return;
+            }
+            a_action();
+        }
+
+        /// <summary>
         /// Configure our buttons to match our current state...
         /// </summary>
         /// <param name="a_ebuttonstate"></param>
@@ -471,7 +490,7 @@ namespace TWAINCSScan
 
             // Decide whether or not to show the driver's window messages...
             szStatus = "";
-            szCapability = "CAP_INDICATORS,TWON_ONEVALUE,TWTY_UINT16," + (m_blIndicators?"1":"0");
+            szCapability = "CAP_INDICATORS,TWON_ONEVALUE,TWTY_BOOL," + (m_blIndicators?"1":"0");
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_CAPABILITY", "MSG_SET", ref szCapability, ref szStatus);
             if (sts != TWAINCSToolkit.STS.SUCCESS)
             {

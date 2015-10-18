@@ -73,7 +73,73 @@ namespace TWAINWorkingGroupToolkit
         #region Public Functions...
 
         /// <summary>
-        /// Instantiate TWAIN and open the DSM...
+        /// Instantiate TWAIN and open the DSM.  This looks like a ridiculously
+        /// complex function, so lets talk about it for a moment.
+        /// 
+        /// There are four groupings in the argument list (and wouldn't it be nice
+        /// it they were all together):
+        /// 
+        /// The Application Identity (TW_IDENTITY)
+        /// a_szManufacturer, a_szProductFamily, a_szProductName, a_u16ProtocolMajor,
+        /// a_u16ProtocolMinor, a_aszSupportedGroups, a_szTwcy, a_szInfo, a_szTwlg,
+        /// a_u16MajorNum, a_u16MinorNum.
+        /// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        /// One of the goals of the TWAINWorkingGroupToolkit namespace is to make it
+        /// unnecessary for the caller to include the TWAINWorkingGroup namespace.
+        /// So there's no appeal to the TW_IDENTITY structure, instead it's broken
+        /// out piecemeal.  The structure has been unchanged since 1993, so I think
+        /// we can trust that these arguments won't change.  You can read about
+        /// TW_IDENTITY in the TWAIN Specification, but essentially these arguments
+        /// identify the application to the TWAIN DSM and the TWAIN driver.
+        /// 
+        /// The Flags
+        /// a_blUseLegacyDSM, a_blUseCallbacks, a_setmessagefilterdelegate
+        /// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        /// a_blUseLegacyDSM should be false on Windows and Linux and true on the
+        /// Mac (until we get a new DSM).  This causes the toolkit to invoke the
+        /// open source DSM provided by the TWAIN Working Group, which can be found
+        /// here: https://sourceforge.net/projects/twain-dsm/.  a_blUseCallbacks
+        /// should be true, since the callback system is easier to manage and less
+        /// likely to cause an application's user interface to lock up while they
+        /// are scanning (the alternative is the Windows POST message system).  If
+        /// the value is false, then a_setmessagefilterdelegate must point to a
+        /// function that will filter Window's messages sent from the application
+        /// to the driver.
+        /// 
+        /// The Callback Functions
+        /// a_writeoutputdelegate, a_reportimagedelegate
+        /// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        /// a_writeoutputdelegate is only used by the TWAINCStst application to show
+        /// information in the status window.  A regular application might find that
+        /// useful for diagnostics, but it's not necessary, and the value can be set
+        /// to null.  a_reportimagedelegate is the really interesting function, this
+        /// is what's called for every image while scanning.  It receives both the
+        /// metadata and the image.  You'll want to carefully look at the function
+        /// that's used for the TWAINCSscan application.
+        /// 
+        /// Windows Cruft
+        /// a_intptrHwnd, a_runinuithreaddelegate, a_objectRunInUiThreadDelegate
+        /// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        /// TWAIN has been around since 1992, and it's one architectural drawback
+        /// comes from how it tied itself to the Windows message loop (which I'm
+        /// sure seemed like a very good idea at the time).  We have three functions,
+        /// and the motivation for this is to avoid accessing System.Windows.Forms
+        /// inside of TWAINCSToolkit, so that we can seamlessly work with other
+        /// graphical windowing systems, such as are provided with Mono).  I won't
+        /// go into too much detail here.  You must have a Form on Windows.  The
+        /// the this.Handle is passed to a_intptrHwnd, which is used by both the
+        /// DAT_PARENT and DAT_USERINTERFACE operations. a_objectRunInUiThreadDelegate
+        /// is the this value, itself, and is used by the a_runinuithreaddelegate to
+        /// invoke DAT_USERINTERFACE and DAT_IMAGE*XFER calls into the form's main
+        /// UI thread, where the Windows message loop resides.  This is necessary,
+        /// because some TWAIN driver's hook into that message loop, and will crash
+        /// or hang, if not properly invoked from that thread.  If you run into this
+        /// kind of situation, take of note of the operation that caused the problem,
+        /// and if it's clearly an invokation issue it can be fixed by adding new
+        /// TWAIN CS operations to this kind of callback route.  As for the function
+        /// itself, just copy the RunInThreadUi function from TWAINCSscan, and use
+        /// it as-is.
+        /// 
         /// </summary>
         /// <param name="a_intptrHwnd">Parent window (needed for Windows)</param>
         /// <param name="a_writeoutputdelegate">Optional text output callback</param>
@@ -92,12 +158,14 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_u16MinorNum">Application's minor version</param>
         /// <param name="a_blUseLegacyDSM">The the legacy DSM (like TWAIN_32.DLL)</param>
         /// <param name="a_blUseCallbacks">Use callbacks (preferred)</param>
+        /// <param name="a_runinuithreaddelegate">delegate for running in the UI thread</param>
+        /// <param name="a_objectRunInUiThreadDelegate">the form from that thread</param>
         public TWAINCSToolkit
         (
             IntPtr a_intptrHwnd,
             WriteOutputDelegate a_writeoutputdelegate,
             ReportImageDelegate a_reportimagedelegate,
-            SetMessageFilterDelegate m_setmessagefilterdelegate,
+            SetMessageFilterDelegate a_setmessagefilterdelegate,
             string a_szManufacturer,
             string a_szProductFamily,
             string a_szProductName,
@@ -110,7 +178,9 @@ namespace TWAINWorkingGroupToolkit
             ushort a_u16MajorNum,
             ushort a_u16MinorNum,
             bool a_blUseLegacyDSM,
-            bool a_blUseCallbacks
+            bool a_blUseCallbacks,
+            TWAINCSToolkit.RunInUiThreadDelegate a_runinuithreaddelegate,
+            Object a_objectRunInUiThreadDelegate
         )
         {
             TWAIN.STS sts;
@@ -127,9 +197,11 @@ namespace TWAINWorkingGroupToolkit
                 WriteOutput = a_writeoutputdelegate;
             }
             ReportImage = a_reportimagedelegate;
-            SetMessageFilter = m_setmessagefilterdelegate;
+            SetMessageFilter = a_setmessagefilterdelegate;
             m_szImagePath = null;
             m_iImageCount = 0;
+            m_runinuithreaddelegate = a_runinuithreaddelegate;
+            m_objectRunInUiThreadDelegate = a_objectRunInUiThreadDelegate;
 
             // Convert the supported groups from strings to flags...
             u32SupportedGroups = 0;
@@ -159,7 +231,9 @@ namespace TWAINWorkingGroupToolkit
                 a_blUseLegacyDSM,
                 a_blUseCallbacks,
                 DeviceEventCallback,
-                ScanCallback
+                ScanCallback,
+                RunInUiThread,
+                m_intptrHwnd
             );
 
             // Store some values...
@@ -331,6 +405,19 @@ namespace TWAINWorkingGroupToolkit
         public static string GetPlatform()
         {
             return (TWAIN.GetPlatform().ToString());
+        }
+
+        /// <summary>
+        /// Get the TWAIN state...
+        /// </summary>
+        /// <returns>the TWAIN state</returns>
+        public long GetState()
+        {
+            if (m_twain == null)
+            {
+                return (0);
+            }
+            return ((long)m_twain.GetState());
         }
 
         /// <summary>
@@ -771,6 +858,13 @@ namespace TWAINWorkingGroupToolkit
         public delegate void SetMessageFilterDelegate(bool a_blAdd);
 
         /// <summary>
+        /// We use this to run code in the context of the caller's UI thread...
+        /// </summary>
+        /// <param name="a_object">object (really a control)</param>
+        /// <param name="a_action">code to run</param>
+        public delegate void RunInUiThreadDelegate(Object a_object, Action a_action);
+
+        /// <summary>
         /// Our status returns, taken from TWAINCS.H...
         /// </summary>
         private const int STSCC = 0x10000; // get us past the custom space
@@ -1072,6 +1166,10 @@ namespace TWAINWorkingGroupToolkit
             try
             {
                 // Make the call...
+                if (twcapability.Cap == TWAIN.CAP.ICAP_COMPRESSION)
+                {
+                    sts = TWAIN.STS.BADCAP;
+                }
                 sts = m_twain.DatCapability(a_dg, a_msg, ref twcapability);
                 if ((a_msg == TWAIN.MSG.RESETALL) || ((sts != TWAIN.STS.SUCCESS) && (sts != TWAIN.STS.CHECKSTATUS)))
                 {
@@ -1493,6 +1591,16 @@ namespace TWAINWorkingGroupToolkit
 
             // Return a status, in case we ever need it for anything...
             return (TWAIN.STS.SUCCESS);
+        }
+
+        /// <summary>
+        /// TWAIN needs help, if we want it to run stuff in our main
+        /// UI thread...
+        /// </summary>
+        /// <param name="code">the code to run</param>
+        private void RunInUiThread(Action a_action)
+        {
+            m_runinuithreaddelegate(m_objectRunInUiThreadDelegate, a_action);
         }
 
         /// <summary>
@@ -2663,8 +2771,8 @@ namespace TWAINWorkingGroupToolkit
             // Tell TWAIN that we're done with this image, this is the one place
             // that we go downstate without using the Rollback function, so that
             // we can examine the TW_PENDINGXFERS structure...
-            TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
-            sts = m_twain.DatPendingxfers(TWAIN.DG.CONTROL, TWAIN.MSG.ENDXFER, ref twpendingxfers);
+            TWAIN.TW_PENDINGXFERS twpendingxfersEndXfer = default(TWAIN.TW_PENDINGXFERS);
+            sts = m_twain.DatPendingxfers(TWAIN.DG.CONTROL, TWAIN.MSG.ENDXFER, ref twpendingxfersEndXfer);
             if (sts != TWAIN.STS.SUCCESS)
             {
                 WriteOutput("Scanning error: " + sts + Environment.NewLine);
@@ -2689,8 +2797,8 @@ namespace TWAINWorkingGroupToolkit
 
                 // Stop the feeder...
                 case TWAINCSToolkit.MSG.STOPFEEDER:
-                    twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
-                    sts = m_twain.DatPendingxfers(TWAIN.DG.CONTROL, TWAIN.MSG.STOPFEEDER, ref twpendingxfers);
+                    TWAIN.TW_PENDINGXFERS twpendingxfersStopFeeder = default(TWAIN.TW_PENDINGXFERS);
+                    sts = m_twain.DatPendingxfers(TWAIN.DG.CONTROL, TWAIN.MSG.STOPFEEDER, ref twpendingxfersStopFeeder);
                     if (sts != TWAIN.STS.SUCCESS)
                     {
                         // If we can't stop gracefully, then just abort...
@@ -2709,7 +2817,7 @@ namespace TWAINWorkingGroupToolkit
             // whether or not we have a UI running.  If we don't, then state 5
             // is our target, otherwise we want to go to state 4 (programmatic
             // mode)...
-            if (twpendingxfers.Count == 0)
+            if (twpendingxfersEndXfer.Count == 0)
             {
                 WriteOutput(Environment.NewLine + "Scanning done: " + TWAIN.STS.SUCCESS + Environment.NewLine);
 
@@ -3211,6 +3319,18 @@ namespace TWAINWorkingGroupToolkit
         /// used)...
         /// </summary>
         private SetMessageFilterDelegate SetMessageFilter;
+
+        /// <summary>
+        /// Run stuff in a caller's UI thread...
+        /// </summary>
+        private RunInUiThreadDelegate m_runinuithreaddelegate;
+
+        /// <summary>
+        /// The Control we want to run, but in object
+        /// form, so that we don't have to worry about
+        /// whose control it is...
+        /// </summary>
+        private Object m_objectRunInUiThreadDelegate;
 
         /// <summary>
         /// This is where we'll be saving images...
