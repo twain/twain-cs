@@ -109,6 +109,8 @@ namespace TWAINWorkingGroup
         /// <param name="a_blUseCallbacks">Use callbacks instead of Windows post message</param>
         /// <param name="a_deviceeventback">Function to receive device events</param>
         /// <param name="a_scancallback">Function to handle scanning</param>
+        /// <param name="a_runinuithreaddelegate">Help us run in the GUI thread on Windows</param>
+        /// <param name="a_intptrHwnd">window handle</param>
         public TWAIN
         (
             string a_szManufacturer,
@@ -125,7 +127,9 @@ namespace TWAINWorkingGroup
             bool a_blUseLegacyDSM,
             bool a_blUseCallbacks,
             DeviceEventCallback a_deviceeventback,
-            ScanCallback a_scancallback
+            ScanCallback a_scancallback,
+            RunInUiThreadDelegate a_runinuithreaddelegate,
+            IntPtr a_intptrHwnd
         )
         {
             TW_IDENTITY twidentity;
@@ -153,6 +157,8 @@ namespace TWAINWorkingGroup
             m_twidentitymacosxApp = TwidentityToTwidentitymacosx(twidentity);
             m_deviceeventcallback = a_deviceeventback;
             m_scancallback = a_scancallback;
+            m_runinuithreaddelegate = a_runinuithreaddelegate;
+            m_intptrHwnd = a_intptrHwnd;
 
             // Placeholder for our DS identity...
             m_twidentityDs = default(TW_IDENTITY);
@@ -200,12 +206,13 @@ namespace TWAINWorkingGroup
             // Uh-oh, Log will throw an exception for us...
             else
             {
-                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
+                TWAINWorkingGroup.Log.Assert("Unsupported platform..." + ms_platform);
             }
 
             // Activate our thread...
             if (m_threadTwain == null)
             {
+                m_twaincommand = new TwainCommand();
                 m_threadTwain = new Thread(Main);
                 m_threadTwain.Start();
                 if (!m_autoreseteventThreadStarted.WaitOne(5000))
@@ -218,7 +225,7 @@ namespace TWAINWorkingGroup
                     catch
                     {
                         // Log will throw an exception for us...
-                        Log.Msg(Log.Severity.Throw, "Failed to start the TWAIN background thread...");
+                        TWAINWorkingGroup.Log.Assert("Failed to start the TWAIN background thread...");
                     }
                 }
             }
@@ -236,6 +243,9 @@ namespace TWAINWorkingGroup
                 m_threadTwain = null;
             }
 
+            // Clean up our communication thingy...
+            m_twaincommand = null;
+
             // Cleanup...
             m_autoreseteventCaller = null;
             m_autoreseteventThread = null;
@@ -248,7 +258,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_u32Size">Number of bytes to allocate</param>
         /// <returns>Point to memory</returns>
-        public virtual IntPtr DsmMemAlloc(uint a_u32Size)
+        public IntPtr DsmMemAlloc(uint a_u32Size)
         {
             IntPtr intptr;
 
@@ -258,7 +268,7 @@ namespace TWAINWorkingGroup
                 intptr = m_twentrypointdelegates.DSM_MemAllocate(a_u32Size);
                 if (intptr == IntPtr.Zero)
                 {
-                    Log.Msg(Log.Severity.Error, "DSM_MemAllocate failed...");
+                    TWAINWorkingGroup.Log.Error("DSM_MemAllocate failed...");
                 }
                 return (intptr);
             }
@@ -269,7 +279,7 @@ namespace TWAINWorkingGroup
                 intptr = (IntPtr)GlobalAlloc((uint)a_u32Size, (UIntPtr)0x0042 /* GHND */);
                 if (intptr == IntPtr.Zero)
                 {
-                    Log.Msg(Log.Severity.Error, "GlobalAlloc failed...");
+                    TWAINWorkingGroup.Log.Error("GlobalAlloc failed...");
                 }
                 return (intptr);
             }
@@ -280,7 +290,7 @@ namespace TWAINWorkingGroup
                 intptr = Marshal.AllocHGlobal((int)a_u32Size);
                 if (intptr == IntPtr.Zero)
                 {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal failed...");
+                    TWAINWorkingGroup.Log.Error("AllocHGlobal failed...");
                 }
                 return (intptr);
             }
@@ -291,13 +301,13 @@ namespace TWAINWorkingGroup
                 IntPtr intptrIndirect = Marshal.AllocHGlobal((int)a_u32Size);
                 if (intptrIndirect == IntPtr.Zero)
                 {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal(indirect) failed...");
+                    TWAINWorkingGroup.Log.Error("AllocHGlobal(indirect) failed...");
                     return (intptrIndirect);
                 }
                 IntPtr intptrDirect = Marshal.AllocHGlobal(Marshal.SizeOf(intptrIndirect));
                 if (intptrDirect == IntPtr.Zero)
                 {
-                    Log.Msg(Log.Severity.Error, "AllocHGlobal(direct) failed...");
+                    TWAINWorkingGroup.Log.Error("AllocHGlobal(direct) failed...");
                     return (intptrDirect);
                 }
                 Marshal.StructureToPtr(intptrIndirect, intptrDirect, true);
@@ -305,7 +315,7 @@ namespace TWAINWorkingGroup
             }
 
             // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
+            TWAINWorkingGroup.Log.Assert("Unsupported platform..." + ms_platform);
             return (IntPtr.Zero);
         }
 
@@ -313,7 +323,7 @@ namespace TWAINWorkingGroup
         /// Free memory used with the data source...
         /// </summary>
         /// <param name="a_intptrHandle">Pointer to free</param>
-        public virtual void DsmMemFree(ref IntPtr a_intptrHandle)
+        public void DsmMemFree(ref IntPtr a_intptrHandle)
         {
             // Validate...
             if (a_intptrHandle == IntPtr.Zero)
@@ -365,7 +375,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_intptrHandle">Handle to lock</param>
         /// <returns>Locked pointer</returns>
-        public virtual IntPtr DsmMemLock(IntPtr a_intptrHandle)
+        public IntPtr DsmMemLock(IntPtr a_intptrHandle)
         {
             // Validate...
             if (a_intptrHandle == IntPtr.Zero)
@@ -399,7 +409,7 @@ namespace TWAINWorkingGroup
             }
 
             // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
+            TWAINWorkingGroup.Log.Assert("Unsupported platform..." + ms_platform);
             return (IntPtr.Zero);
         }
 
@@ -407,7 +417,7 @@ namespace TWAINWorkingGroup
         /// Unlock memory used with the data source...
         /// </summary>
         /// <param name="a_intptrHandle">Handle to unlock</param>
-        public virtual void DsmMemUnlock(IntPtr a_intptrHandle)
+        public void DsmMemUnlock(IntPtr a_intptrHandle)
         {
             // Validate...
             if (a_intptrHandle == IntPtr.Zero)
@@ -442,14 +452,14 @@ namespace TWAINWorkingGroup
             }
 
             // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
+            TWAINWorkingGroup.Log.Assert("Unsupported platform..." + ms_platform);
         }
 
         /// <summary>
         /// Report the current TWAIN state as we understand it...
         /// </summary>
         /// <returns>The current TWAIN state for the application</returns>
-        public virtual STATE GetState()
+        public STATE GetState()
         {
             return (m_state);
         }
@@ -458,7 +468,7 @@ namespace TWAINWorkingGroup
         /// True if the DSM has the DSM2 flag set...
         /// </summary>
         /// <returns>True if we detect the TWAIN Working Group open source DSM</returns>
-        public virtual bool IsDsm2()
+        public bool IsDsm2()
         {
             // Windows...
             if (ms_platform == Platform.WINDOWS)
@@ -479,7 +489,7 @@ namespace TWAINWorkingGroup
             }
 
             // Trouble, Log will throw an exception for us...
-            Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
+            TWAINWorkingGroup.Log.Assert("Unsupported platform..." + ms_platform);
             return (false);
         }
 
@@ -487,7 +497,7 @@ namespace TWAINWorkingGroup
         /// Have we seen the first image since MSG.ENABLEDS?
         /// </summary>
         /// <returns>True if the driver is ready to transfer images</returns>
-        public virtual bool IsMsgXferReady()
+        public bool IsMsgXferReady()
         {
             return (m_blIsMsgxferready);
         }
@@ -496,7 +506,7 @@ namespace TWAINWorkingGroup
         /// Has the cancel button been pressed since the last MSG.ENABLEDS?
         /// </summary>
         /// <returns>True if the cancel button was pressed</returns>
-        public virtual bool IsMsgCloseDsReq()
+        public bool IsMsgCloseDsReq()
         {
             return (m_blIsMsgclosedsreq);
         }
@@ -505,7 +515,7 @@ namespace TWAINWorkingGroup
         /// Has the OK button been pressed since the last MSG.ENABLEDS?
         /// </summary>
         /// <returns>True if the OK button was pressed</returns>
-        public virtual bool IsMsgCloseDsOk()
+        public bool IsMsgCloseDsOk()
         {
             return (m_blIsMsgclosedsok);
         }
@@ -518,7 +528,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_intptrWparam">a parameter for the message</param>
         /// <param name="a_intptrLparam">another parameter for the message</param>
         /// <returns></returns>
-        public virtual bool PreFilterMessage
+        public bool PreFilterMessage
         (
             IntPtr a_intptrHwnd,
             int a_iMsg,
@@ -571,7 +581,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_stateTarget">The TWAIN state that we want to end up at</param>
         static int s_iCloseDsmDelay = 0;
-        public virtual void Rollback(STATE a_stateTarget)
+        public void Rollback(STATE a_stateTarget)
         {
             int iRetry;
             STS sts;
@@ -583,9 +593,10 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set the command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.stateRollback = a_stateTarget;
-                    m_threaddata.blRollback = true;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.stateRollback = a_stateTarget;
+                    threaddata.blRollback = true;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply, the delay
                     // is needed because Mac OS X doesn't gracefully handle
@@ -596,7 +607,7 @@ namespace TWAINWorkingGroup
                     System.Threading.Thread.Sleep(s_iCloseDsmDelay);
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return;
             }
@@ -706,7 +717,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twcallback">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string CallbackToCsv(TW_CALLBACK a_twcallback)
+        public string CallbackToCsv(TW_CALLBACK a_twcallback)
         {
             try
             {
@@ -728,7 +739,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcallback">A TWAIN structure</param>
         /// <param name="a_szCallback">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToCallback(ref TW_CALLBACK a_twcallback, string a_szCallback)
+        public bool CsvToCallback(ref TW_CALLBACK a_twcallback, string a_szCallback)
         {
             // Init stuff...
             a_twcallback = default(TW_CALLBACK);
@@ -758,7 +769,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twcallback2">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string Callback2ToCsv(TW_CALLBACK2 a_twcallback2)
+        public string Callback2ToCsv(TW_CALLBACK2 a_twcallback2)
         {
             try
             {
@@ -780,7 +791,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcallback2">A TWAIN structure</param>
         /// <param name="a_szCallback2">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToCallback2(ref TW_CALLBACK2 a_twcallback2, string a_szCallback2)
+        public bool CsvToCallback2(ref TW_CALLBACK2 a_twcallback2, string a_szCallback2)
         {
             // Init stuff...
             a_twcallback2 = default(TW_CALLBACK2);
@@ -810,7 +821,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twcapability">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string CapabilityToCsv(TW_CAPABILITY a_twcapability)
+        public string CapabilityToCsv(TW_CAPABILITY a_twcapability)
         {
             IntPtr intptr;
             IntPtr intptrLocked;
@@ -1071,7 +1082,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_szSetting">A CSV string of the TWAIN structure</param>
         /// <param name="a_szValue">The container for this capability</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToCapability(ref TW_CAPABILITY a_twcapability, ref string a_szSetting, string a_szValue)
+        public bool CsvToCapability(ref TW_CAPABILITY a_twcapability, ref string a_szSetting, string a_szValue)
         {
             int ii;
             TWTY twty;
@@ -1346,7 +1357,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twcustomdsdata">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string CustomdsdataToCsv(TW_CUSTOMDSDATA a_twcustomdsdata)
+        public string CustomdsdataToCsv(TW_CUSTOMDSDATA a_twcustomdsdata)
         {
             try
             {
@@ -1369,7 +1380,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcustomdsdata">A TWAIN structure</param>
         /// <param name="a_szCustomdsdata">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToCustomdsdata(ref TW_CUSTOMDSDATA a_twcustomdsdata, string a_szCustomdsdata)
+        public bool CsvToCustomdsdata(ref TW_CUSTOMDSDATA a_twcustomdsdata, string a_szCustomdsdata)
         {
             // Init stuff...
             a_twcustomdsdata = default(TW_CUSTOMDSDATA);
@@ -1403,7 +1414,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twdeviceevent">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string DeviceeventToCsv(TW_DEVICEEVENT a_twdeviceevent)
+        public string DeviceeventToCsv(TW_DEVICEEVENT a_twdeviceevent)
         {
             try
             {
@@ -1433,7 +1444,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twentrypoint">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string EntrypointToCsv(TW_ENTRYPOINT a_twentrypoint)
+        public string EntrypointToCsv(TW_ENTRYPOINT a_twentrypoint)
         {
             try
             {
@@ -1458,7 +1469,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twfilesystem">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string FilesystemToCsv(TW_FILESYSTEM a_twfilesystem)
+        public string FilesystemToCsv(TW_FILESYSTEM a_twfilesystem)
         {
             try
             {
@@ -1490,7 +1501,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twfilesystem">A TWAIN structure</param>
         /// <param name="a_szFilesystem">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToFilesystem(ref TW_FILESYSTEM a_twfilesystem, string a_szFilesystem)
+        public bool CsvToFilesystem(ref TW_FILESYSTEM a_twfilesystem, string a_szFilesystem)
         {
             // Init stuff...
             a_twfilesystem = default(TW_FILESYSTEM);
@@ -1530,7 +1541,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twidentity">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string IdentityToCsv(TW_IDENTITY a_twidentity)
+        public string IdentityToCsv(TW_IDENTITY a_twidentity)
         {
             try
             {
@@ -1561,7 +1572,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twidentity">A TWAIN structure</param>
         /// <param name="a_szIdentity">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToIdentity(ref TW_IDENTITY a_twidentity, string a_szIdentity)
+        public bool CsvToIdentity(ref TW_IDENTITY a_twidentity, string a_szIdentity)
         {
             // Init stuff...
             a_twidentity = default(TW_IDENTITY);
@@ -1600,7 +1611,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twimageinfo">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string ImageinfoToCsv(TW_IMAGEINFO a_twimageinfo)
+        public string ImageinfoToCsv(TW_IMAGEINFO a_twimageinfo)
         {
             try
             {
@@ -1635,7 +1646,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twimageinfo">A TWAIN structure</param>
         /// <param name="a_szImageinfo">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToImageinfo(ref TW_IMAGEINFO a_twimageinfo, string a_szImageinfo)
+        public bool CsvToImageinfo(ref TW_IMAGEINFO a_twimageinfo, string a_szImageinfo)
         {
             // Init stuff...
             a_twimageinfo = default(TW_IMAGEINFO);
@@ -1680,7 +1691,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twimagelayout">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string ImagelayoutToCsv(TW_IMAGELAYOUT a_twimagelayout)
+        public string ImagelayoutToCsv(TW_IMAGELAYOUT a_twimagelayout)
         {
             try
             {
@@ -1706,7 +1717,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twimagelayout">A TWAIN structure</param>
         /// <param name="a_szImagelayout">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToImagelayout(ref TW_IMAGELAYOUT a_twimagelayout, string a_szImagelayout)
+        public bool CsvToImagelayout(ref TW_IMAGELAYOUT a_twimagelayout, string a_szImagelayout)
         {
             // Init stuff...
             a_twimagelayout = default(TW_IMAGELAYOUT);
@@ -1746,7 +1757,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string ImagememferToCsv(TW_IMAGEMEMXFER a_twimagememxfer)
+        public string ImagememferToCsv(TW_IMAGEMEMXFER a_twimagememxfer)
         {
             try
             {
@@ -1775,7 +1786,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string PendingxfersToCsv(TW_PENDINGXFERS a_twpendingxfers)
+        public string PendingxfersToCsv(TW_PENDINGXFERS a_twpendingxfers)
         {
             try
             {
@@ -1796,7 +1807,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string SetupfilexferToCsv(TW_SETUPFILEXFER a_twsetupfilexfer)
+        public string SetupfilexferToCsv(TW_SETUPFILEXFER a_twsetupfilexfer)
         {
             try
             {
@@ -1818,7 +1829,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
         /// <param name="a_szSetupfilexfer">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToSetupfilexfer(ref TW_SETUPFILEXFER a_twsetupfilexfer, string a_szSetupfilexfer)
+        public bool CsvToSetupfilexfer(ref TW_SETUPFILEXFER a_twsetupfilexfer, string a_szSetupfilexfer)
         {
             // Init stuff...
             a_twsetupfilexfer = default(TW_SETUPFILEXFER);
@@ -1848,7 +1859,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twsetupmemxfer">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string SetupmemxferToCsv(TW_SETUPMEMXFER a_twsetupmemxfer)
+        public string SetupmemxferToCsv(TW_SETUPMEMXFER a_twsetupmemxfer)
         {
             try
             {
@@ -1870,7 +1881,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twuserinterface">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string UserinterfaceToCsv(TW_USERINTERFACE a_twuserinterface)
+        public string UserinterfaceToCsv(TW_USERINTERFACE a_twuserinterface)
         {
             try
             {
@@ -1891,7 +1902,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twuserinterface">A TWAIN structure</param>
         /// <param name="a_szUserinterface">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToUserinterface(ref TW_USERINTERFACE a_twuserinterface, string a_szUserinterface)
+        public bool CsvToUserinterface(ref TW_USERINTERFACE a_twuserinterface, string a_szUserinterface)
         {
             // Init stuff...
             a_twuserinterface = default(TW_USERINTERFACE);
@@ -1901,9 +1912,28 @@ namespace TWAINWorkingGroup
             {
                 string[] asz = CSV.Parse(a_szUserinterface);
 
+                // Init stuff...
+                a_twuserinterface.ShowUI = 0;
+                a_twuserinterface.ModalUI = 0;
+                a_twuserinterface.hParent = IntPtr.Zero;
+
                 // Sort out the values...
-                a_twuserinterface.ShowUI = ushort.Parse(asz[0]);
-                a_twuserinterface.ModalUI = ushort.Parse(asz[1]);
+                if (asz.Length >= 1)
+                {
+                     ushort.TryParse(asz[0], out a_twuserinterface.ShowUI);
+                }
+                if (asz.Length >= 2)
+                {
+                     ushort.TryParse(asz[1], out a_twuserinterface.ModalUI);
+                }
+                if (asz.Length >= 3)
+                {
+                    Int64 i64;
+                    if (Int64.TryParse(asz[2], out i64))
+                    {
+                        a_twuserinterface.hParent = (IntPtr)i64;
+                    }
+                }
             }
             catch
             {
@@ -1920,7 +1950,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_u32Xfergroup">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public virtual string XfergroupToCsv(UInt32 a_u32Xfergroup)
+        public string XfergroupToCsv(UInt32 a_u32Xfergroup)
         {
             try
             {
@@ -1940,7 +1970,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcustomdsdata">A TWAIN structure</param>
         /// <param name="a_szCustomdsdata">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public virtual bool CsvToXfergroup(ref UInt32 a_u32Xfergroup, string a_szXfergroup)
+        public bool CsvToXfergroup(ref UInt32 a_u32Xfergroup, string a_szXfergroup)
         {
             // Init stuff...
             a_u32Xfergroup = 0;
@@ -1980,7 +2010,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twmemref">Pointer to data</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DsmEntryNullDest(DG a_dg, DAT a_dat, MSG a_msg, IntPtr a_twmemref)
+        public STS DsmEntryNullDest(DG a_dg, DAT a_dat, MSG a_msg, IntPtr a_twmemref)
         {
             STS sts;
 
@@ -1990,22 +2020,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twmemref = a_twmemref;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.dat = a_dat;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twmemref = a_twmemref;
+                    threaddata.msg = a_msg;
+                    threaddata.dg = a_dg;
+                    threaddata.dat = a_dat;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twmemref = m_threaddata.twmemref;
-                    sts = m_threaddata.sts;
+                    a_twmemref = m_twaincommand.Get(lIndex).twmemref;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2013,7 +2044,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, a_dat, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), a_dat.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -2034,7 +2065,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2057,7 +2088,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2073,7 +2104,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2081,14 +2112,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
+                TWAINWorkingGroup.Log.Assert("Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -2103,7 +2134,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twmemref">Pointer to data</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DsmEntry(DG a_dg, DAT a_dat, MSG a_msg, IntPtr a_twmemref)
+        public STS DsmEntry(DG a_dg, DAT a_dat, MSG a_msg, IntPtr a_twmemref)
         {
             STS sts;
 
@@ -2113,22 +2144,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twmemref = a_twmemref;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = a_dat;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twmemref = a_twmemref;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = a_dat;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twmemref = m_threaddata.twmemref;
-                    sts = m_threaddata.sts;
+                    a_twmemref = m_twaincommand.Get(lIndex).twmemref;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2136,7 +2168,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, a_dat, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), a_dat.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -2157,7 +2189,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2180,7 +2212,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2196,7 +2228,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2204,14 +2236,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -2225,7 +2257,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twaudioinfo">Audio structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatAudioinfo(DG a_dg, MSG a_msg, ref TW_AUDIOINFO a_twaudioinfo)
+        public STS DatAudioinfo(DG a_dg, MSG a_msg, ref TW_AUDIOINFO a_twaudioinfo)
         {
             STS sts;
 
@@ -2235,22 +2267,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twaudioinfo = a_twaudioinfo;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.AUDIOINFO;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twaudioinfo = a_twaudioinfo;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.AUDIOINFO;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twaudioinfo = m_threaddata.twaudioinfo;
-                    sts = m_threaddata.sts;
+                    a_twaudioinfo = m_twaincommand.Get(lIndex).twaudioinfo;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2258,7 +2291,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.AUDIOINFO, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.AUDIOINFO.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -2279,7 +2312,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2302,7 +2335,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2318,7 +2351,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2326,14 +2359,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -2347,7 +2380,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twcallback">Callback structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatCallback(DG a_dg, MSG a_msg, ref TW_CALLBACK a_twcallback)
+        public STS DatCallback(DG a_dg, MSG a_msg, ref TW_CALLBACK a_twcallback)
         {
             STS sts;
 
@@ -2357,22 +2390,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twcallback = a_twcallback;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.CALLBACK;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twcallback = a_twcallback;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.CALLBACK;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twcallback = m_threaddata.twcallback;
-                    sts = m_threaddata.sts;
+                    a_twcallback = m_twaincommand.Get(lIndex).twcallback;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2380,7 +2414,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.CALLBACK, a_msg, CallbackToCsv(a_twcallback));
+                Log.LogSendBefore(a_dg.ToString(), DAT.CALLBACK.ToString(), a_msg.ToString(), CallbackToCsv(a_twcallback));
             }
 
             // Windows...
@@ -2401,7 +2435,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2424,7 +2458,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2440,7 +2474,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2448,14 +2482,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, CallbackToCsv(a_twcallback));
+                Log.LogSendAfter(sts.ToString(), CallbackToCsv(a_twcallback));
             }
 
             // All done...
@@ -2469,7 +2503,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twcallback2">Callback2 structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatCallback2(DG a_dg, MSG a_msg, ref TW_CALLBACK2 a_twcallback2)
+        public STS DatCallback2(DG a_dg, MSG a_msg, ref TW_CALLBACK2 a_twcallback2)
         {
             STS sts;
 
@@ -2479,22 +2513,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twcallback2 = a_twcallback2;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.CALLBACK;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twcallback2 = a_twcallback2;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.CALLBACK;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twcallback2 = m_threaddata.twcallback2;
-                    sts = m_threaddata.sts;
+                    a_twcallback2 = m_twaincommand.Get(lIndex).twcallback2;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2502,7 +2537,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.CALLBACK2, a_msg, Callback2ToCsv(a_twcallback2));
+                Log.LogSendBefore(a_dg.ToString(), DAT.CALLBACK2.ToString(), a_msg.ToString(), Callback2ToCsv(a_twcallback2));
             }
 
             // Windows...
@@ -2523,7 +2558,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2546,7 +2581,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2562,7 +2597,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2570,14 +2605,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, Callback2ToCsv(a_twcallback2));
+                Log.LogSendAfter(sts.ToString(), Callback2ToCsv(a_twcallback2));
             }
 
             // All done...
@@ -2591,7 +2626,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twcapability">CAPABILITY structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatCapability(DG a_dg, MSG a_msg, ref TW_CAPABILITY a_twcapability)
+        public STS DatCapability(DG a_dg, MSG a_msg, ref TW_CAPABILITY a_twcapability)
         {
             STS sts;
 
@@ -2600,23 +2635,45 @@ namespace TWAINWorkingGroup
             {
                 lock (m_lockTwain)
                 {
-                    // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twcapability = a_twcapability;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.CAPABILITY;
+                    ThreadData threaddata = default(ThreadData);
+                    long lIndex = 0;
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                    // TBD: sometimes this doesn't work!  Not sure why
+                    // yet, but a retry takes care of it.
+                    for (int ii = 0; ii < 5; ii++)
+                    {
+                        // Set our command variables...
+                        threaddata = default(ThreadData);
+                        threaddata.twcapability = a_twcapability;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.CAPABILITY;
+                        lIndex = m_twaincommand.Submit(threaddata);
+
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
+
+                        // Hmmm...
+                        if (   (a_msg == MSG.GETCURRENT)
+                            && (m_twaincommand.Get(lIndex).sts == STS.SUCCESS)
+                            && (m_twaincommand.Get(lIndex).twcapability.ConType == (TWON)0)
+                            && (m_twaincommand.Get(lIndex).twcapability.hContainer == IntPtr.Zero))
+                        {
+                            Thread.Sleep(1000);
+                            continue;
+                        }
+
+                        // We're done...
+                        break;
+                    }
 
                     // Return the result...
-                    a_twcapability = m_threaddata.twcapability;
-                    sts = m_threaddata.sts;
+                    a_twcapability = m_twaincommand.Get(lIndex).twcapability;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2624,7 +2681,19 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.CAPABILITY, a_msg, CapabilityToCsv(a_twcapability));
+                if ((a_msg == MSG.SET) || (a_msg == MSG.SETCONSTRAINT))
+                {
+                    Log.LogSendBefore(a_dg.ToString(), DAT.CAPABILITY.ToString(), a_msg.ToString(), CapabilityToCsv(a_twcapability));
+                }
+                else
+                {
+                    string szCap = a_twcapability.Cap.ToString();
+                    if (!szCap.Contains("_"))
+                    {
+                        szCap = "0x" + ((ushort)a_twcapability.Cap).ToString("X");
+                    }
+                    Log.LogSendBefore(a_dg.ToString(), DAT.CAPABILITY.ToString(), a_msg.ToString(), szCap + ",0,0");
+                }
             }
 
             // Windows...
@@ -2645,7 +2714,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2668,7 +2737,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2684,7 +2753,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2692,14 +2761,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, CapabilityToCsv(a_twcapability));
+                if ((a_msg == MSG.RESETALL) || ((sts != STS.SUCCESS) && (sts != STS.CHECKSTATUS)))
+                {
+                    Log.LogSendAfter(sts.ToString(), "");
+                }
+                else
+                {
+                    Log.LogSendAfter(sts.ToString(), CapabilityToCsv(a_twcapability));
+                }
             }
 
             // All done...
@@ -2713,7 +2789,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twceicolor">CIECOLOR structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatCiecolor(DG a_dg, MSG a_msg, ref TW_CIECOLOR a_twciecolor)
+        public STS DatCiecolor(DG a_dg, MSG a_msg, ref TW_CIECOLOR a_twciecolor)
         {
             STS sts;
 
@@ -2723,22 +2799,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twciecolor = a_twciecolor;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.CIECOLOR;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twciecolor = a_twciecolor;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.CIECOLOR;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twciecolor = m_threaddata.twciecolor;
-                    sts = m_threaddata.sts;
+                    a_twciecolor = m_twaincommand.Get(lIndex).twciecolor;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2746,7 +2823,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.CIECOLOR, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.CIECOLOR.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -2767,7 +2844,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2790,7 +2867,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2806,7 +2883,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2814,14 +2891,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -2835,7 +2912,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twcustomdsdata">CUSTOMDSDATA structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatCustomdsdata(DG a_dg, MSG a_msg, ref TW_CUSTOMDSDATA a_twcustomdsdata)
+        public STS DatCustomdsdata(DG a_dg, MSG a_msg, ref TW_CUSTOMDSDATA a_twcustomdsdata)
         {
             STS sts;
 
@@ -2845,22 +2922,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twcustomdsdata = a_twcustomdsdata;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.CUSTOMDSDATA;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twcustomdsdata = a_twcustomdsdata;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.CUSTOMDSDATA;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twcustomdsdata = m_threaddata.twcustomdsdata;
-                    sts = m_threaddata.sts;
+                    a_twcustomdsdata = m_twaincommand.Get(lIndex).twcustomdsdata;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2868,7 +2946,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.CUSTOMDSDATA, a_msg, CustomdsdataToCsv(a_twcustomdsdata));
+                Log.LogSendBefore(a_dg.ToString(), DAT.CUSTOMDSDATA.ToString(), a_msg.ToString(), CustomdsdataToCsv(a_twcustomdsdata));
             }
 
             // Windows...
@@ -2889,7 +2967,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2912,7 +2990,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2928,7 +3006,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -2936,14 +3014,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, CustomdsdataToCsv(a_twcustomdsdata));
+                Log.LogSendAfter(sts.ToString(), CustomdsdataToCsv(a_twcustomdsdata));
             }
 
             // All done...
@@ -2957,7 +3035,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twdeviceevent">DEVICEEVENT structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatDeviceevent(DG a_dg, MSG a_msg, ref TW_DEVICEEVENT a_twdeviceevent)
+        public STS DatDeviceevent(DG a_dg, MSG a_msg, ref TW_DEVICEEVENT a_twdeviceevent)
         {
             STS sts;
 
@@ -2967,22 +3045,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twdeviceevent = a_twdeviceevent;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.DEVICEEVENT;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twdeviceevent = a_twdeviceevent;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.DEVICEEVENT;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twdeviceevent = m_threaddata.twdeviceevent;
-                    sts = m_threaddata.sts;
+                    a_twdeviceevent = m_twaincommand.Get(lIndex).twdeviceevent;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -2990,7 +3069,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.DEVICEEVENT, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.DEVICEEVENT.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -3011,7 +3090,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3034,7 +3113,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3050,7 +3129,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3058,14 +3137,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, DeviceeventToCsv(a_twdeviceevent));
+                Log.LogSendAfter(sts.ToString(), DeviceeventToCsv(a_twdeviceevent));
             }
 
             // All done...
@@ -3079,7 +3158,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twentrypoint">ENTRYPOINT structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatEntrypoint(DG a_dg, MSG a_msg, ref TW_ENTRYPOINT a_twentrypoint)
+        public STS DatEntrypoint(DG a_dg, MSG a_msg, ref TW_ENTRYPOINT a_twentrypoint)
         {
             STS sts;
 
@@ -3089,22 +3168,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twentrypoint = a_twentrypoint;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.ENTRYPOINT;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twentrypoint = a_twentrypoint;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.ENTRYPOINT;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twentrypoint = m_threaddata.twentrypoint;
-                    sts = m_threaddata.sts;
+                    a_twentrypoint = m_twaincommand.Get(lIndex).twentrypoint;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -3112,7 +3192,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.ENTRYPOINT, a_msg, EntrypointToCsv(a_twentrypoint));
+                Log.LogSendBefore(a_dg.ToString(), DAT.ENTRYPOINT.ToString(), a_msg.ToString(), EntrypointToCsv(a_twentrypoint));
             }
 
             // Windows...
@@ -3133,7 +3213,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3156,7 +3236,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3172,7 +3252,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3180,7 +3260,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
@@ -3211,7 +3291,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, EntrypointToCsv(a_twentrypoint));
+                Log.LogSendAfter(sts.ToString(), EntrypointToCsv(a_twentrypoint));
             }
 
             // All done...
@@ -3225,14 +3305,14 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twevent">EVENT structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatEvent(DG a_dg, MSG a_msg, ref TW_EVENT a_twevent)
+        public STS DatEvent(DG a_dg, MSG a_msg, ref TW_EVENT a_twevent)
         {
             STS sts;
 
             // Log it...
             if (Log.GetLevel() > 1)
             {
-                Log.LogSendBefore(a_dg, DAT.EVENT, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.EVENT.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -3253,7 +3333,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3276,7 +3356,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3292,7 +3372,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3300,14 +3380,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 1)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // Check the event for anything interesting...
@@ -3327,7 +3407,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twextimageinfo">EXTIMAGEINFO structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatExtimageinfo(DG a_dg, MSG a_msg, ref TW_EXTIMAGEINFO a_twextimageinfo)
+        public STS DatExtimageinfo(DG a_dg, MSG a_msg, ref TW_EXTIMAGEINFO a_twextimageinfo)
         {
             STS sts;
 
@@ -3337,22 +3417,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twextimageinfo = a_twextimageinfo;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.EXTIMAGEINFO;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twextimageinfo = a_twextimageinfo;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.EXTIMAGEINFO;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twextimageinfo = m_threaddata.twextimageinfo;
-                    sts = m_threaddata.sts;
+                    a_twextimageinfo = m_twaincommand.Get(lIndex).twextimageinfo;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -3360,7 +3441,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.EXTIMAGEINFO, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.EXTIMAGEINFO.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -3381,7 +3462,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3404,7 +3485,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3420,7 +3501,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3428,14 +3509,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -3449,7 +3530,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twfilesystem">FILESYSTEM structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatFilesystem(DG a_dg, MSG a_msg, ref TW_FILESYSTEM a_twfilesystem)
+        public STS DatFilesystem(DG a_dg, MSG a_msg, ref TW_FILESYSTEM a_twfilesystem)
         {
             STS sts;
 
@@ -3459,22 +3540,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twfilesystem = a_twfilesystem;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.FILESYSTEM;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twfilesystem = a_twfilesystem;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.FILESYSTEM;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twfilesystem = m_threaddata.twfilesystem;
-                    sts = m_threaddata.sts;
+                    a_twfilesystem = m_twaincommand.Get(lIndex).twfilesystem;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -3482,7 +3564,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.FILESYSTEM, a_msg, FilesystemToCsv(a_twfilesystem));
+                Log.LogSendBefore(a_dg.ToString(), DAT.FILESYSTEM.ToString(), a_msg.ToString(), FilesystemToCsv(a_twfilesystem));
             }
 
             // Windows...
@@ -3503,7 +3585,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3526,7 +3608,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3542,7 +3624,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3550,14 +3632,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, FilesystemToCsv(a_twfilesystem));
+                Log.LogSendAfter(sts.ToString(), FilesystemToCsv(a_twfilesystem));
             }
 
             // All done...
@@ -3571,7 +3653,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twfilter">FILTER structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatFilter(DG a_dg, MSG a_msg, ref TW_FILTER a_twfilter)
+        public STS DatFilter(DG a_dg, MSG a_msg, ref TW_FILTER a_twfilter)
         {
             STS sts;
 
@@ -3581,22 +3663,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twfilter = a_twfilter;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.FILTER;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twfilter = a_twfilter;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.FILTER;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twfilter = m_threaddata.twfilter;
-                    sts = m_threaddata.sts;
+                    a_twfilter = m_twaincommand.Get(lIndex).twfilter;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -3604,7 +3687,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.FILTER, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.FILTER.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -3625,7 +3708,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3648,7 +3731,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3664,7 +3747,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3672,14 +3755,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -3693,7 +3776,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twgrayresponse">GRAYRESPONSE structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatGrayresponse(DG a_dg, MSG a_msg, ref TW_GRAYRESPONSE a_twgrayresponse)
+        public STS DatGrayresponse(DG a_dg, MSG a_msg, ref TW_GRAYRESPONSE a_twgrayresponse)
         {
             STS sts;
 
@@ -3703,22 +3786,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twgrayresponse = a_twgrayresponse;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.GRAYRESPONSE;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twgrayresponse = a_twgrayresponse;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.GRAYRESPONSE;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twgrayresponse = m_threaddata.twgrayresponse;
-                    sts = m_threaddata.sts;
+                    a_twgrayresponse = m_twaincommand.Get(lIndex).twgrayresponse;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -3726,7 +3810,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.GRAYRESPONSE, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.GRAYRESPONSE.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -3747,7 +3831,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3770,7 +3854,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3786,7 +3870,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3794,14 +3878,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -3815,7 +3899,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twmemory">ICCPROFILE structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatIccprofile(DG a_dg, MSG a_msg, ref TW_MEMORY a_twmemory)
+        public STS DatIccprofile(DG a_dg, MSG a_msg, ref TW_MEMORY a_twmemory)
         {
             STS sts;
 
@@ -3825,22 +3909,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twmemory = a_twmemory;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.ICCPROFILE;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twmemory = a_twmemory;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.ICCPROFILE;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twmemory = m_threaddata.twmemory;
-                    sts = m_threaddata.sts;
+                    a_twmemory = m_twaincommand.Get(lIndex).twmemory;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -3848,7 +3933,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.ICCPROFILE, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.ICCPROFILE.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -3869,7 +3954,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3892,7 +3977,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3908,7 +3993,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -3916,14 +4001,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -3937,7 +4022,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twidentity">IDENTITY structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatIdentity(DG a_dg, MSG a_msg, ref TW_IDENTITY a_twidentity)
+        public STS DatIdentity(DG a_dg, MSG a_msg, ref TW_IDENTITY a_twidentity)
         {
             STS sts;
 
@@ -3947,22 +4032,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twidentity = a_twidentity;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.IDENTITY;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twidentity = a_twidentity;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.IDENTITY;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twidentity = m_threaddata.twidentity;
-                    sts = m_threaddata.sts;
+                    a_twidentity = m_twaincommand.Get(lIndex).twidentity;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -3970,7 +4056,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.IDENTITY, a_msg, ((a_msg == MSG.OPENDS) ? IdentityToCsv(a_twidentity) : ""));
+                Log.LogSendBefore(a_dg.ToString(), DAT.IDENTITY.ToString(), a_msg.ToString(), ((a_msg == MSG.OPENDS) ? IdentityToCsv(a_twidentity) : ""));
             }
 
             // Windows...
@@ -3992,7 +4078,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
                 a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
@@ -4018,7 +4104,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4035,7 +4121,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
                 a_twidentity = TwidentitymacosxToTwidentity(twidentitymacosx);
@@ -4044,14 +4130,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, IdentityToCsv(a_twidentity));
+                Log.LogSendAfter(sts.ToString(), IdentityToCsv(a_twidentity));
             }
 
             // If we opened, go to state 4...
@@ -4077,7 +4163,7 @@ namespace TWAINWorkingGroup
                             // Log it...
                             if (Log.GetLevel() > 0)
                             {
-                                Log.LogSendBefore(a_dg, DAT.CALLBACK, a_msg, CallbackToCsv(twcallback));
+                                Log.LogSendBefore(a_dg.ToString(), DAT.CALLBACK.ToString(), a_msg.ToString(), CallbackToCsv(twcallback));
                             }
                             // Issue the command...
                             try
@@ -4094,13 +4180,13 @@ namespace TWAINWorkingGroup
                             catch
                             {
                                 // The driver crashed...
-                                Log.LogSendAfter(STS.BUMMER, "");
+                                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                                 return (STS.BUMMER);
                             }
                             // Log it...
                             if (Log.GetLevel() > 0)
                             {
-                                Log.LogSendAfter(sts, "");
+                                Log.LogSendAfter(sts.ToString(), "");
                             }
                         }
                     }
@@ -4113,7 +4199,7 @@ namespace TWAINWorkingGroup
                         // Log it...
                         if (Log.GetLevel() > 0)
                         {
-                            Log.LogSendBefore(a_dg, DAT.CALLBACK, MSG.REGISTER_CALLBACK, CallbackToCsv(twcallback));
+                            Log.LogSendBefore(a_dg.ToString(), DAT.CALLBACK.ToString(), MSG.REGISTER_CALLBACK.ToString(), CallbackToCsv(twcallback));
                         }
                         // Issue the command...
                         try
@@ -4130,13 +4216,13 @@ namespace TWAINWorkingGroup
                         catch
                         {
                             // The driver crashed...
-                            Log.LogSendAfter(STS.BUMMER, "");
+                            Log.LogSendAfter(STS.BUMMER.ToString(), "");
                             return (STS.BUMMER);
                         }
                         // Log it...
                         if (Log.GetLevel() > 0)
                         {
-                            Log.LogSendAfter(sts, "");
+                            Log.LogSendAfter(sts.ToString(), "");
                         }
                     }
 
@@ -4149,7 +4235,7 @@ namespace TWAINWorkingGroup
                         // Log it...
                         if (Log.GetLevel() > 0)
                         {
-                            Log.LogSendBefore(a_dg, DAT.CALLBACK, a_msg, CallbackToCsv(twcallback));
+                            Log.LogSendBefore(a_dg.ToString(), DAT.CALLBACK.ToString(), a_msg.ToString(), CallbackToCsv(twcallback));
                         }
                         // Issue the command...
                         try
@@ -4159,13 +4245,13 @@ namespace TWAINWorkingGroup
                         catch
                         {
                             // The driver crashed...
-                            Log.LogSendAfter(STS.BUMMER, "");
+                            Log.LogSendAfter(STS.BUMMER.ToString(), "");
                             return (STS.BUMMER);
                         }
                         // Log it...
                         if (Log.GetLevel() > 0)
                         {
-                            Log.LogSendAfter(sts, "");
+                            Log.LogSendAfter(sts.ToString(), "");
                         }
                     }
                 }
@@ -4191,7 +4277,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twimageinfo">IMAGEINFO structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatImageinfo(DG a_dg, MSG a_msg, ref TW_IMAGEINFO a_twimageinfo)
+        public STS DatImageinfo(DG a_dg, MSG a_msg, ref TW_IMAGEINFO a_twimageinfo)
         {
             STS sts;
 
@@ -4201,22 +4287,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twimageinfo = a_twimageinfo;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.IMAGEINFO;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twimageinfo = a_twimageinfo;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.IMAGEINFO;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twimageinfo = m_threaddata.twimageinfo;
-                    sts = m_threaddata.sts;
+                    a_twimageinfo = m_twaincommand.Get(lIndex).twimageinfo;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -4224,7 +4311,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.IMAGEINFO, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.IMAGEINFO.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -4245,7 +4332,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4286,7 +4373,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4302,7 +4389,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4310,14 +4397,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, ImageinfoToCsv(a_twimageinfo));
+                Log.LogSendAfter(sts.ToString(), ImageinfoToCsv(a_twimageinfo));
             }
 
             // All done...
@@ -4331,7 +4418,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twimagelayout">IMAGELAYOUT structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatImagelayout(DG a_dg, MSG a_msg, ref TW_IMAGELAYOUT a_twimagelayout)
+        public STS DatImagelayout(DG a_dg, MSG a_msg, ref TW_IMAGELAYOUT a_twimagelayout)
         {
             STS sts;
 
@@ -4341,22 +4428,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twimagelayout = a_twimagelayout;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.IMAGELAYOUT;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twimagelayout = a_twimagelayout;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.IMAGELAYOUT;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twimagelayout = m_threaddata.twimagelayout;
-                    sts = m_threaddata.sts;
+                    a_twimagelayout = m_twaincommand.Get(lIndex).twimagelayout;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -4364,7 +4452,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.IMAGELAYOUT, a_msg, ImagelayoutToCsv(a_twimagelayout));
+                Log.LogSendBefore(a_dg.ToString(), DAT.IMAGELAYOUT.ToString(), a_msg.ToString(), ImagelayoutToCsv(a_twimagelayout));
             }
 
             // Windows...
@@ -4385,7 +4473,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4408,7 +4496,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4424,7 +4512,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4432,14 +4520,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, ImagelayoutToCsv(a_twimagelayout));
+                Log.LogSendAfter(sts.ToString(), ImagelayoutToCsv(a_twimagelayout));
             }
 
             // All done...
@@ -4452,38 +4540,80 @@ namespace TWAINWorkingGroup
         /// <param name="a_dg">Data group</param>
         /// <param name="a_msg">Operation</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatImagefilexfer(DG a_dg, MSG a_msg)
+        private void DatImagefilexferWindowsTwain32()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagefilexfer);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwain32DsmEntryImagefilexfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                IntPtr.Zero
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatImagefilexfer, threaddata);
+        }
+        private void DatImagefilexferWindowsTwainDsm()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagefilexfer);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwaindsmDsmEntryImagefilexfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                IntPtr.Zero
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatImagefilexfer, threaddata);
+        }
+        public STS DatImagefilexfer(DG a_dg, MSG a_msg)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (this.m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.IMAGEFILEXFER;
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.IMAGEFILEXFER;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    sts = m_threaddata.sts;
+                        // Return the result...
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.IMAGEFILEXFER, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.IMAGEFILEXFER.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -4492,19 +4622,53 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (this.m_runinuithreaddelegate == null)
                     {
-                        sts = (STS)WindowsTwain32DsmEntryImagefilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)WindowsTwain32DsmEntryImagefilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
+                        }
+                        else
+                        {
+                            sts = (STS)WindowsTwaindsmDsmEntryImagefilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
+                        }
                     }
                     else
                     {
-                        sts = (STS)WindowsTwaindsmDsmEntryImagefilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGEFILEXFER;
+                                m_lIndexDatImagefilexfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagefilexferWindowsTwain32);
+                                sts = m_twaincommand.Get(m_lIndexDatImagefilexfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagefilexfer);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGEFILEXFER;
+                                m_lIndexDatImagefilexfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagefilexferWindowsTwainDsm);
+                                sts = m_twaincommand.Get(m_lIndexDatImagefilexfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagefilexfer);
+                            }
+                        }
                     }
                 }
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4527,7 +4691,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4543,7 +4707,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4551,14 +4715,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // If we had a successful transfer, then change state...
@@ -4578,40 +4742,82 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twimagememxfer">IMAGEMEMXFER structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatImagememfilexfer(DG a_dg, MSG a_msg, ref TW_IMAGEMEMXFER a_twimagememxfer)
+        private void DatImagememfilexferWindowsTwain32()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagememfilexfer);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwain32DsmEntryImagememfilexfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                ref threaddata.twimagememxfer
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatImagememfilexfer, threaddata);
+        }
+        private void DatImagememfilexferWindowsTwainDsm()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagememfilexfer);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwaindsmDsmEntryImagememfilexfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                ref threaddata.twimagememxfer
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatImagememfilexfer, threaddata);
+        }
+        public STS DatImagememfilexfer(DG a_dg, MSG a_msg, ref TW_IMAGEMEMXFER a_twimagememxfer)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (this.m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twimagememxfer = a_twimagememxfer;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.IMAGEMEMFILEXFER;
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twimagememxfer = a_twimagememxfer;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.IMAGEMEMFILEXFER;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twimagememxfer = m_threaddata.twimagememxfer;
-                    sts = m_threaddata.sts;
+                        // Return the result...
+                        a_twimagememxfer = m_twaincommand.Get(lIndex).twimagememxfer;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ImagememferToCsv(a_twimagememxfer));
+                Log.LogSendBefore(a_dg.ToString(), DAT.IMAGEMEMFILEXFER.ToString(), a_msg.ToString(), ImagememferToCsv(a_twimagememxfer));
             }
 
             // Windows...
@@ -4620,19 +4826,57 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (this.m_runinuithreaddelegate == null)
                     {
-                        sts = (STS)WindowsTwain32DsmEntryImagememfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref a_twimagememxfer);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)WindowsTwain32DsmEntryImagememfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref a_twimagememxfer);
+                        }
+                        else
+                        {
+                            sts = (STS)WindowsTwaindsmDsmEntryImagememfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref a_twimagememxfer);
+                        }
                     }
                     else
                     {
-                        sts = (STS)WindowsTwaindsmDsmEntryImagememfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref a_twimagememxfer);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.twimagememxfer = a_twimagememxfer;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGEMEMFILEXFER;
+                                m_lIndexDatImagememfilexfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagememfilexferWindowsTwain32);
+                                a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememfilexfer).twimagememxfer;
+                                sts = m_twaincommand.Get(m_lIndexDatImagememfilexfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagememfilexfer);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.twimagememxfer = a_twimagememxfer;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGEMEMFILEXFER;
+                                m_lIndexDatImagememfilexfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagememfilexferWindowsTwainDsm);
+                                a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememfilexfer).twimagememxfer;
+                                sts = m_twaincommand.Get(m_lIndexDatImagememfilexfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagememfilexfer);
+                            }
+                        }
                     }
                 }
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4676,7 +4920,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4713,7 +4957,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4721,14 +4965,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, ImagememferToCsv(a_twimagememxfer));
+                Log.LogSendAfter(sts.ToString(), ImagememferToCsv(a_twimagememxfer));
             }
 
             // If we had a successful transfer, then change state...
@@ -4748,40 +4992,82 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twimagememxfer">IMAGEMEMXFER structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatImagememxfer(DG a_dg, MSG a_msg, ref TW_IMAGEMEMXFER a_twimagememxfer)
+        private void DatImagememxferWindowsTwain32()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagememxfer);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwain32DsmEntryImagememxfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                ref threaddata.twimagememxfer
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatImagememxfer, threaddata);
+        }
+        private void DatImagememxferWindowsTwainDsm()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagememxfer);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwaindsmDsmEntryImagememxfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                ref threaddata.twimagememxfer
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatImagememxfer, threaddata);
+        }
+        public STS DatImagememxfer(DG a_dg, MSG a_msg, ref TW_IMAGEMEMXFER a_twimagememxfer)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (this.m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twimagememxfer = a_twimagememxfer;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.IMAGEMEMXFER;
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twimagememxfer = a_twimagememxfer;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.IMAGEMEMXFER;
+                        m_lIndexDatImagememxfer = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twimagememxfer = m_threaddata.twimagememxfer;
-                    sts = m_threaddata.sts;
+                        // Return the result...
+                        a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememxfer).twimagememxfer;
+                        sts = m_twaincommand.Get(m_lIndexDatImagememxfer).sts;
 
-                    // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(m_lIndexDatImagememxfer);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.IMAGEMEMXFER, a_msg, ImagememferToCsv(a_twimagememxfer));
+                Log.LogSendBefore(a_dg.ToString(), DAT.IMAGEMEMXFER.ToString(), a_msg.ToString(), ImagememferToCsv(a_twimagememxfer));
             }
 
             // Windows...
@@ -4790,19 +5076,57 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (this.m_runinuithreaddelegate == null)
                     {
-                        sts = (STS)WindowsTwain32DsmEntryImagememxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref a_twimagememxfer);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)WindowsTwain32DsmEntryImagememxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref a_twimagememxfer);
+                        }
+                        else
+                        {
+                            sts = (STS)WindowsTwaindsmDsmEntryImagememxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref a_twimagememxfer);
+                        }
                     }
                     else
                     {
-                        sts = (STS)WindowsTwaindsmDsmEntryImagememxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref a_twimagememxfer);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.twimagememxfer = a_twimagememxfer;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGEMEMXFER;
+                                m_lIndexDatImagememxfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagememxferWindowsTwain32);
+                                a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememxfer).twimagememxfer;
+                                sts = m_twaincommand.Get(m_lIndexDatImagememxfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagememxfer);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.twimagememxfer = a_twimagememxfer;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGEMEMXFER;
+                                m_lIndexDatImagememxfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagememxferWindowsTwainDsm);
+                                a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememxfer).twimagememxfer;
+                                sts = m_twaincommand.Get(m_lIndexDatImagememxfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagememxfer);
+                            }
+                        }
                     }
                 }
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4846,7 +5170,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4883,7 +5207,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4891,14 +5215,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, ImagememferToCsv(a_twimagememxfer));
+                Log.LogSendAfter(sts.ToString(), ImagememferToCsv(a_twimagememxfer));
             }
 
             // If we had a successful transfer, then change state...
@@ -4918,41 +5242,83 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_bitmap">BITMAP structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatImagenativexfer(DG a_dg, MSG a_msg, ref Bitmap a_bitmap)
+        private void DatImagenativexferWindowsTwain32()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagenativexfer);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwain32DsmEntryImagenativexfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                ref threaddata.intptrBitmap
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatImagenativexfer, threaddata);
+        }
+        private void DatImagenativexferWindowsTwainDsm()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagenativexfer);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwaindsmDsmEntryImagenativexfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                ref threaddata.intptrBitmap
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatImagenativexfer, threaddata);
+        }
+        public STS DatImagenativexfer(DG a_dg, MSG a_msg, ref Bitmap a_bitmap)
         {
             STS sts;
             IntPtr intptrBitmap = IntPtr.Zero;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (this.m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.bitmap = a_bitmap;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.IMAGENATIVEXFER;
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.bitmap = a_bitmap;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.IMAGENATIVEXFER;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_bitmap = m_threaddata.bitmap;
-                    sts = m_threaddata.sts;
+                        // Return the result...
+                        a_bitmap = m_twaincommand.Get(lIndex).bitmap;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.IMAGENATIVEXFER, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.IMAGENATIVEXFER.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -4963,17 +5329,61 @@ namespace TWAINWorkingGroup
                 {
                     if (m_blUseLegacyDSM)
                     {
-                        sts = (STS)WindowsTwain32DsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
                     }
                     else
                     {
-                        sts = (STS)WindowsTwaindsmDsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
+                    }
+                    if (this.m_runinuithreaddelegate == null)
+                    {
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)WindowsTwain32DsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
+                        }
+                        else
+                        {
+                            sts = (STS)WindowsTwaindsmDsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
+                        }
+                    }
+                    else
+                    {
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.intptrBitmap = IntPtr.Zero;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGENATIVEXFER;
+                                m_lIndexDatImagenativexfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagenativexferWindowsTwain32);
+                                intptrBitmap = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrBitmap;
+                                sts = m_twaincommand.Get(m_lIndexDatImagenativexfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagenativexfer);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.intptrBitmap = IntPtr.Zero;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGENATIVEXFER;
+                                m_lIndexDatImagenativexfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagenativexferWindowsTwainDsm);
+                                intptrBitmap = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrBitmap;
+                                sts = m_twaincommand.Get(m_lIndexDatImagenativexfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagenativexfer);
+                            }
+                        }
                     }
                 }
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -4996,7 +5406,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5013,7 +5423,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5021,14 +5431,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // If we had a successful transfer, then convert the data...
@@ -5056,7 +5466,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twjpegcompression">JPEGCOMPRESSION structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatJpegcompression(DG a_dg, MSG a_msg, ref TW_JPEGCOMPRESSION a_twjpegcompression)
+        public STS DatJpegcompression(DG a_dg, MSG a_msg, ref TW_JPEGCOMPRESSION a_twjpegcompression)
         {
             STS sts;
 
@@ -5066,22 +5476,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twjpegcompression = a_twjpegcompression;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.JPEGCOMPRESSION;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twjpegcompression = a_twjpegcompression;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.JPEGCOMPRESSION;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twjpegcompression = m_threaddata.twjpegcompression;
-                    sts = m_threaddata.sts;
+                    a_twjpegcompression = m_twaincommand.Get(lIndex).twjpegcompression;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -5089,7 +5500,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.JPEGCOMPRESSION, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.JPEGCOMPRESSION.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -5110,7 +5521,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5133,7 +5544,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5149,7 +5560,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5157,14 +5568,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -5178,7 +5589,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twpalette8">PALETTE8 structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatPalette8(DG a_dg, MSG a_msg, ref TW_PALETTE8 a_twpalette8)
+        public STS DatPalette8(DG a_dg, MSG a_msg, ref TW_PALETTE8 a_twpalette8)
         {
             STS sts;
 
@@ -5188,22 +5599,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twpalette8 = a_twpalette8;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.PALETTE8;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twpalette8 = a_twpalette8;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.PALETTE8;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twpalette8 = m_threaddata.twpalette8;
-                    sts = m_threaddata.sts;
+                    a_twpalette8 = m_twaincommand.Get(lIndex).twpalette8;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -5211,7 +5623,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.PALETTE8, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.PALETTE8.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -5232,7 +5644,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5255,7 +5667,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5271,7 +5683,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5279,14 +5691,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -5300,7 +5712,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_intptrHwnd">PARENT structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatParent(DG a_dg, MSG a_msg, ref IntPtr a_intptrHwnd)
+        public STS DatParent(DG a_dg, MSG a_msg, ref IntPtr a_intptrHwnd)
         {
             STS sts;
 
@@ -5310,22 +5722,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.intptrHwnd = a_intptrHwnd;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.PARENT;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.intptrHwnd = a_intptrHwnd;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.PARENT;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_intptrHwnd = m_threaddata.intptrHwnd;
-                    sts = m_threaddata.sts;
+                    a_intptrHwnd = m_twaincommand.Get(lIndex).intptrHwnd;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -5333,7 +5746,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.PARENT, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.PARENT.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -5354,7 +5767,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5377,7 +5790,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5393,7 +5806,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5401,31 +5814,35 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
-            // If we opened, go to state 3...
+            // If we opened, go to state 3, and start tracking
+            // TWAIN's state in the log file...
             if (a_msg == MSG.OPENDSM)
             {
                 if (sts == STS.SUCCESS)
                 {
                     m_state = STATE.S3;
+                    Log.RegisterTwain(this);
                 }
             }
 
-            // If we closed, go to state 2...
+            // If we closed, go to state 2, and stop tracking
+            // TWAIN's state in the log file...
             else if (a_msg == MSG.CLOSEDSM)
             {
                 if (sts == STS.SUCCESS)
                 {
                     m_state = STATE.S2;
+                    Log.RegisterTwain(null);
                 }
             }
 
@@ -5440,7 +5857,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twpassthru">PASSTHRU structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatPassthru(DG a_dg, MSG a_msg, ref TW_PASSTHRU a_twpassthru)
+        public STS DatPassthru(DG a_dg, MSG a_msg, ref TW_PASSTHRU a_twpassthru)
         {
             STS sts;
 
@@ -5450,22 +5867,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twpassthru = a_twpassthru;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.PASSTHRU;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twpassthru = a_twpassthru;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.PASSTHRU;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twpassthru = m_threaddata.twpassthru;
-                    sts = m_threaddata.sts;
+                    a_twpassthru = m_twaincommand.Get(lIndex).twpassthru;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -5473,7 +5891,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.PASSTHRU, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.PASSTHRU.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -5494,7 +5912,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5517,7 +5935,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5533,7 +5951,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5541,14 +5959,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -5562,7 +5980,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twpendingxfers">PENDINGXFERS structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatPendingxfers(DG a_dg, MSG a_msg, ref TW_PENDINGXFERS a_twpendingxfers)
+        public STS DatPendingxfers(DG a_dg, MSG a_msg, ref TW_PENDINGXFERS a_twpendingxfers)
         {
             STS sts;
 
@@ -5572,22 +5990,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twpendingxfers = a_twpendingxfers;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.PENDINGXFERS;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twpendingxfers = a_twpendingxfers;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.PENDINGXFERS;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twpendingxfers = m_threaddata.twpendingxfers;
-                    sts = m_threaddata.sts;
+                    a_twpendingxfers = m_twaincommand.Get(lIndex).twpendingxfers;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -5595,7 +6014,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.PENDINGXFERS, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.PENDINGXFERS.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -5616,7 +6035,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5639,7 +6058,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5655,7 +6074,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5663,14 +6082,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, PendingxfersToCsv(a_twpendingxfers));
+                Log.LogSendAfter(sts.ToString(), PendingxfersToCsv(a_twpendingxfers));
             }
 
             // If we endxfer, go to state 5 or 6...
@@ -5711,7 +6130,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twrgbresponse">RGBRESPONSE structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatRgbresponse(DG a_dg, MSG a_msg, ref TW_RGBRESPONSE a_twrgbresponse)
+        public STS DatRgbresponse(DG a_dg, MSG a_msg, ref TW_RGBRESPONSE a_twrgbresponse)
         {
             STS sts;
 
@@ -5721,22 +6140,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twrgbresponse = a_twrgbresponse;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.RGBRESPONSE;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twrgbresponse = a_twrgbresponse;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.RGBRESPONSE;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twrgbresponse = m_threaddata.twrgbresponse;
-                    sts = m_threaddata.sts;
+                    a_twrgbresponse = m_twaincommand.Get(lIndex).twrgbresponse;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -5744,7 +6164,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.RGBRESPONSE, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.RGBRESPONSE.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -5765,7 +6185,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5788,7 +6208,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5804,7 +6224,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5812,14 +6232,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -5833,7 +6253,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twsetupfilexfer">SETUPFILEXFER structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatSetupfilexfer(DG a_dg, MSG a_msg, ref TW_SETUPFILEXFER a_twsetupfilexfer)
+        public STS DatSetupfilexfer(DG a_dg, MSG a_msg, ref TW_SETUPFILEXFER a_twsetupfilexfer)
         {
             STS sts;
 
@@ -5843,22 +6263,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twsetupfilexfer = a_twsetupfilexfer;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.SETUPFILEXFER;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twsetupfilexfer = a_twsetupfilexfer;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.SETUPFILEXFER;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twsetupfilexfer = m_threaddata.twsetupfilexfer;
-                    sts = m_threaddata.sts;
+                    a_twsetupfilexfer = m_twaincommand.Get(lIndex).twsetupfilexfer;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -5866,7 +6287,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.SETUPFILEXFER, a_msg, SetupfilexferToCsv(a_twsetupfilexfer));
+                Log.LogSendBefore(a_dg.ToString(), DAT.SETUPFILEXFER.ToString(), a_msg.ToString(), SetupfilexferToCsv(a_twsetupfilexfer));
             }
 
             // Windows...
@@ -5887,7 +6308,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5910,7 +6331,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5926,7 +6347,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -5934,14 +6355,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, SetupfilexferToCsv(a_twsetupfilexfer));
+                Log.LogSendAfter(sts.ToString(), SetupfilexferToCsv(a_twsetupfilexfer));
             }
 
             // All done...
@@ -5955,7 +6376,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twsetupmemxfer">SETUPMEMXFER structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatSetupmemxfer(DG a_dg, MSG a_msg, ref TW_SETUPMEMXFER a_twsetupmemxfer)
+        public STS DatSetupmemxfer(DG a_dg, MSG a_msg, ref TW_SETUPMEMXFER a_twsetupmemxfer)
         {
             STS sts;
 
@@ -5965,22 +6386,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twsetupmemxfer = a_twsetupmemxfer;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.SETUPMEMXFER;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twsetupmemxfer = a_twsetupmemxfer;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.SETUPMEMXFER;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twsetupmemxfer = m_threaddata.twsetupmemxfer;
-                    sts = m_threaddata.sts;
+                    a_twsetupmemxfer = m_twaincommand.Get(lIndex).twsetupmemxfer;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -5988,7 +6410,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.SETUPMEMXFER, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.SETUPMEMXFER.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -6009,7 +6431,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6032,7 +6454,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6048,7 +6470,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6056,14 +6478,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, SetupmemxferToCsv(a_twsetupmemxfer));
+                Log.LogSendAfter(sts.ToString(), SetupmemxferToCsv(a_twsetupmemxfer));
             }
 
             // All done...
@@ -6077,7 +6499,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twstatusutf8">STATUSUTF8 structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatStatusutf8(DG a_dg, MSG a_msg, ref TW_STATUSUTF8 a_twstatusutf8)
+        public STS DatStatusutf8(DG a_dg, MSG a_msg, ref TW_STATUSUTF8 a_twstatusutf8)
         {
             STS sts;
 
@@ -6087,22 +6509,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twstatusutf8 = a_twstatusutf8;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.STATUSUTF8;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twstatusutf8 = a_twstatusutf8;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.STATUSUTF8;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twstatusutf8 = m_threaddata.twstatusutf8;
-                    sts = m_threaddata.sts;
+                    a_twstatusutf8 = m_twaincommand.Get(lIndex).twstatusutf8;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -6110,7 +6533,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.STATUSUTF8, a_msg, "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.STATUSUTF8.ToString(), a_msg.ToString(), "");
             }
 
             // Windows...
@@ -6131,7 +6554,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6154,7 +6577,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6170,7 +6593,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6178,14 +6601,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // All done...
@@ -6199,52 +6622,100 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twuserinterface">USERINTERFACE structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatUserinterface(DG a_dg, MSG a_msg, ref TW_USERINTERFACE a_twuserinterface)
+        private void DatUserinterfaceWindowsTwain32()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatUserinterface);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwain32DsmEntryUserinterface
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                ref threaddata.twuserinterface
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatUserinterface, threaddata);
+        }
+        private void DatUserinterfaceWindowsTwainDsm()
+        {
+            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatUserinterface);
+
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            threaddata.sts = (STS)WindowsTwaindsmDsmEntryUserinterface
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                threaddata.dg,
+                threaddata.dat,
+                threaddata.msg,
+                ref threaddata.twuserinterface
+            );
+
+            // Update the data block...
+            m_twaincommand.Update(m_lIndexDatUserinterface, threaddata);
+        }
+        public STS DatUserinterface(DG a_dg, MSG a_msg, ref TW_USERINTERFACE a_twuserinterface)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            //
-            // Normally this would be a good thing, however we have a problem on Windows,
-            // in that any window created by this call has to appear in the same thread as
-            // the HINSTANCE that was passed to the TWAIN driver's DllMain.  Otherwise the
-            // dispatcher won't be able to make the connection to forward events to the
-            // driver's window.
-            //
-            // The same problem could occur on destroy, especially when trying to free
-            // resources.  So we're not forwarding this message to our thread.  It'll run
-            // in the context of the caller's thread.
-            /*
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (this.m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twuserinterface = a_twuserinterface;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.USERINTERFACE;
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twuserinterface = a_twuserinterface;
+                        threaddata.twuserinterface.hParent = m_intptrHwnd;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.USERINTERFACE;
+                        m_lIndexDatUserinterface = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twuserinterface = m_threaddata.twuserinterface;
-                    sts = m_threaddata.sts;
+                        // Return the result...
+                        a_twuserinterface = m_twaincommand.Get(m_lIndexDatUserinterface).twuserinterface;
+                        sts = m_twaincommand.Get(m_lIndexDatUserinterface).sts;
 
-                    // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(m_lIndexDatUserinterface);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
-            */
+
+            // Well this is weird.  I'm not sure how this design snuck past,
+            // I assume it's because of the async nature of the button presses,
+            // so it's easier to monitor a boolean.  Regardless, we need to
+            // use this data to do the right thing...
+            if (m_blIsMsgclosedsok || m_blIsMsgclosedsreq)
+            {
+                a_msg = MSG.DISABLEDS;
+            }
+
+            // If we're doing a DISABLEDS, use the values we remembered from
+            // the last ENABLEDS...
+            TW_USERINTERFACE twuserinterface = a_twuserinterface;
+            if (a_msg == MSG.DISABLEDS)
+            {
+                twuserinterface = m_twuserinterface;
+            }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.USERINTERFACE, a_msg, UserinterfaceToCsv(a_twuserinterface));
+                Log.LogSendBefore(a_dg.ToString(), DAT.USERINTERFACE.ToString(), a_msg.ToString(), UserinterfaceToCsv(twuserinterface));
             }
 
             // We need this to handle data sources that return MSG_XFERREADY in
@@ -6260,19 +6731,59 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (this.m_runinuithreaddelegate == null)
                     {
-                        sts = (STS)WindowsTwain32DsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)WindowsTwain32DsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                        }
+                        else
+                        {
+                            sts = (STS)WindowsTwaindsmDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                        }
                     }
                     else
                     {
-                        sts = (STS)WindowsTwaindsmDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.twuserinterface = a_twuserinterface;
+                                threaddata.twuserinterface.hParent = m_intptrHwnd;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.USERINTERFACE;
+                                m_lIndexDatUserinterface = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatUserinterfaceWindowsTwain32);
+                                a_twuserinterface = m_twaincommand.Get(m_lIndexDatUserinterface).twuserinterface;
+                                sts = m_twaincommand.Get(m_lIndexDatUserinterface).sts;
+                                m_twaincommand.Delete(m_lIndexDatUserinterface);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.twuserinterface = a_twuserinterface;
+                                threaddata.twuserinterface.hParent = m_intptrHwnd;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.USERINTERFACE;
+                                m_lIndexDatUserinterface = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatUserinterfaceWindowsTwainDsm);
+                                a_twuserinterface = m_twaincommand.Get(m_lIndexDatUserinterface).twuserinterface;
+                                sts = m_twaincommand.Get(m_lIndexDatUserinterface).sts;
+                                m_twaincommand.Delete(m_lIndexDatUserinterface);
+                            }
+                        }
                     }
                 }
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6285,17 +6796,17 @@ namespace TWAINWorkingGroup
                 {
                     if (GetMachineWordBitSize() == 32)
                     {
-                        sts = (STS)LinuxDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
+                        sts = (STS)LinuxDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
                     }
                     else
                     {
-                        sts = (STS)Linux64DsmEntryUserinterface(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
+                        sts = (STS)Linux64DsmEntryUserinterface(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
                     }
                 }
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6306,12 +6817,12 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
+                    sts = (STS)MacosxDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
                 }
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6319,14 +6830,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, "");
+                Log.LogSendAfter(sts.ToString(), "");
             }
 
             // If we opened, go to state 5...
@@ -6336,11 +6847,19 @@ namespace TWAINWorkingGroup
                 {
                     m_state = STATE.S5;
 
+                    // Remember the setting...
+                    m_twuserinterface = a_twuserinterface;
+
                     // MSG_XFERREADY showed up while we were still processing MSG_ENABLEDS
                     if ((sts == STS.SUCCESS) && m_blAcceptXferReady && m_blIsMsgxferready)
                     {
                         m_blAcceptXferReady = false;
                         m_state = STATE.S6;
+                        // TBD
+                        //lock (m_lockTwain)
+                        //{
+                        //    m_threaddata = default(ThreadData);
+                        //}
                         CallerToThreadSet();
                     }
                 }
@@ -6368,7 +6887,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twuint32">XFERGROUP structure</param>
         /// <returns>TWAIN status</returns>
-        public virtual STS DatXferGroup(DG a_dg, MSG a_msg, ref UInt32 a_twuint32)
+        public STS DatXferGroup(DG a_dg, MSG a_msg, ref UInt32 a_twuint32)
         {
             STS sts;
 
@@ -6378,22 +6897,23 @@ namespace TWAINWorkingGroup
                 lock (m_lockTwain)
                 {
                     // Set our command variables...
-                    m_threaddata = default(ThreadData);
-                    m_threaddata.twuint32 = a_twuint32;
-                    m_threaddata.dg = a_dg;
-                    m_threaddata.msg = a_msg;
-                    m_threaddata.dat = DAT.XFERGROUP;
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twuint32 = a_twuint32;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.XFERGROUP;
+                    long lIndex = m_twaincommand.Submit(threaddata);
 
                     // Submit the command and wait for the reply...
                     CallerToThreadSet();
                     ThreadToCallerWaitOne();
 
                     // Return the result...
-                    a_twuint32 = m_threaddata.twuint32;
-                    sts = m_threaddata.sts;
+                    a_twuint32 = m_twaincommand.Get(lIndex).twuint32;
+                    sts = m_twaincommand.Get(lIndex).sts;
 
                     // Clear the command variables...
-                    m_threaddata = default(ThreadData);
+                    m_twaincommand.Delete(lIndex);
                 }
                 return (sts);
             }
@@ -6401,7 +6921,7 @@ namespace TWAINWorkingGroup
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg, DAT.XFERGROUP, a_msg, XfergroupToCsv(a_twuint32));
+                Log.LogSendBefore(a_dg.ToString(), DAT.XFERGROUP.ToString(), a_msg.ToString(), XfergroupToCsv(a_twuint32));
             }
 
             // Windows...
@@ -6422,7 +6942,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6445,7 +6965,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6461,7 +6981,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER, "");
+                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
                     return (STS.BUMMER);
                 }
             }
@@ -6469,14 +6989,14 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER, "");
+                Log.LogSendAfter(STS.BUMMER.ToString(), "");
                 return (STS.BUMMER);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts, XfergroupToCsv(a_twuint32));
+                Log.LogSendAfter(sts.ToString(), XfergroupToCsv(a_twuint32));
             }
 
             // All done...
@@ -6507,6 +7027,12 @@ namespace TWAINWorkingGroup
         /// <returns></returns>
         public delegate STS ScanCallback(bool a_blClosing);
 
+        /// <summary>
+        /// We use this to run code in the context of the caller's UI thread...
+        /// </summary>
+        /// <param name="a_action">code to run</param>
+        public delegate void RunInUiThreadDelegate(Action a_action);
+
         #endregion
 
 
@@ -6524,21 +7050,12 @@ namespace TWAINWorkingGroup
         {
             bool blRunning;
             bool blScanning;
-
-            // Make sure our command data is clean...
-            m_threaddata = default(ThreadData);
-
-            // If we're on Windows, prime the messaging system...
-            /*
-            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
-            {
-                MSG msg;
-                GetMessage(out msg, IntPtr.Zero, 0, 0);
-            }
-            */
+            long lIndex;
+            ThreadData threaddata;
 
             // Okay, we're ready to run...
             m_autoreseteventThreadStarted.Set();
+            Log.Info("main>>> thread started...");
 
             //
             // We have three different ways of driving the TWAIN driver...
@@ -6563,12 +7080,17 @@ namespace TWAINWorkingGroup
             blScanning = false;
             while (blRunning)
             {
-                // Wait for a command from the caller, if we detect that we have
-                // a pending scancallback request, rollback or direct command,
-                // then skip the wait...
-                if (!blScanning && !m_threaddata.blRollback && (m_threaddata.dat == default(DAT)))
+                // Get the next item, if we don't have anything, then we may
+                // need to wait...
+                if (!m_twaincommand.GetNext(out lIndex, out threaddata))
                 {
-                    CallerToThreadWaitOne();
+                    // If we're not scanning, then wait for a command to wake
+                    // us up...
+                    if (!blScanning)
+                    {
+                        CallerToThreadWaitOne();
+                        m_twaincommand.GetNext(out lIndex, out threaddata);
+                    }
                 }
 
                 // Process device events...
@@ -6580,15 +7102,15 @@ namespace TWAINWorkingGroup
                 // We don't have a direct command, it's either a rollback request,
                 // a request to run the scan callback, or its a false positive,
                 // which we can safely ignore...
-                if (m_threaddata.dat == default(DAT))
+                if (threaddata.dat == default(DAT))
                 {
                     // The caller has asked us to rollback the state machine...
-                    if (m_threaddata.blRollback)
+                    if (threaddata.blRollback)
                     {
-                        m_threaddata.blRollback = false;
-                        Rollback(m_threaddata.stateRollback);
-                        blScanning = (m_threaddata.stateRollback >= STATE.S5);
-                        blRunning = (m_threaddata.stateRollback > STATE.S2);
+                        threaddata.blRollback = false;
+                        Rollback(threaddata.stateRollback);
+                        blScanning = (threaddata.stateRollback >= STATE.S5);
+                        blRunning = (threaddata.stateRollback > STATE.S2);
                         if (!blRunning)
                         {
                             m_scancallback(true);
@@ -6603,168 +7125,191 @@ namespace TWAINWorkingGroup
                         blScanning = true;
                     }
 
+                    // We're done scanning...
+                    else
+                    {
+                        blScanning = false;
+                    }
+
+                    // Tag the command as complete...
+                    m_twaincommand.Complete(lIndex, threaddata);
+
                     // Go back to the top...
                     continue;
                 }
 
                 // Otherwise, directly issue the command...
-                switch (m_threaddata.dat)
+                switch (threaddata.dat)
                 {
                     // Unrecognized DAT...
                     default:
                         if (m_state < STATE.S4)
                         {
-                            m_threaddata.sts = DsmEntryNullDest(m_threaddata.dg, m_threaddata.dat, m_threaddata.msg, m_threaddata.twmemref);
+                            threaddata.sts = DsmEntryNullDest(threaddata.dg, threaddata.dat, threaddata.msg, threaddata.twmemref);
                         }
                         else
                         {
-                            m_threaddata.sts = DsmEntry(m_threaddata.dg, m_threaddata.dat, m_threaddata.msg, m_threaddata.twmemref);
+                            threaddata.sts = DsmEntry(threaddata.dg, threaddata.dat, threaddata.msg, threaddata.twmemref);
                         }
                         break;
 
                     // I have no idea why I'm including this...
                     case DAT.AUDIOINFO:
-                        m_threaddata.sts = DatAudioinfo(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twaudioinfo);
+                        threaddata.sts = DatAudioinfo(threaddata.dg, threaddata.msg, ref threaddata.twaudioinfo);
                         break;
 
                     // Negotiation commands...
                     case DAT.CAPABILITY:
-                        m_threaddata.sts = DatCapability(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twcapability);
+                        threaddata.sts = DatCapability(threaddata.dg, threaddata.msg, ref threaddata.twcapability);
                         break;
 
                     // CIE color...
                     case DAT.CIECOLOR:
-                        m_threaddata.sts = DatCiecolor(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twciecolor);
+                        threaddata.sts = DatCiecolor(threaddata.dg, threaddata.msg, ref threaddata.twciecolor);
                         break;
 
                     // Snapshots...
                     case DAT.CUSTOMDSDATA:
-                        m_threaddata.sts = DatCustomdsdata(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twcustomdsdata);
+                        threaddata.sts = DatCustomdsdata(threaddata.dg, threaddata.msg, ref threaddata.twcustomdsdata);
                         break;
 
                     // Functions...
                     case DAT.ENTRYPOINT:
-                        m_threaddata.sts = DatEntrypoint(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twentrypoint);
+                        threaddata.sts = DatEntrypoint(threaddata.dg, threaddata.msg, ref threaddata.twentrypoint);
                         break;
 
                     // Image meta data...
                     case DAT.EXTIMAGEINFO:
-                        m_threaddata.sts = DatExtimageinfo(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twextimageinfo);
+                        threaddata.sts = DatExtimageinfo(threaddata.dg, threaddata.msg, ref threaddata.twextimageinfo);
                         break;
 
                     // Filesystem...
                     case DAT.FILESYSTEM:
-                        m_threaddata.sts = DatFilesystem(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twfilesystem);
+                        threaddata.sts = DatFilesystem(threaddata.dg, threaddata.msg, ref threaddata.twfilesystem);
                         break;
 
                     // Filter...
                     case DAT.FILTER:
-                        m_threaddata.sts = DatFilter(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twfilter);
+                        threaddata.sts = DatFilter(threaddata.dg, threaddata.msg, ref threaddata.twfilter);
                         break;
 
                     // Grayscale...
                     case DAT.GRAYRESPONSE:
-                        m_threaddata.sts = DatGrayresponse(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twgrayresponse);
+                        threaddata.sts = DatGrayresponse(threaddata.dg, threaddata.msg, ref threaddata.twgrayresponse);
                         break;
 
                     // ICC color profiles...
                     case DAT.ICCPROFILE:
-                        m_threaddata.sts = DatIccprofile(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twmemory);
+                        threaddata.sts = DatIccprofile(threaddata.dg, threaddata.msg, ref threaddata.twmemory);
                         break;
 
                     // Enumerate and Open commands...
                     case DAT.IDENTITY:
-                        m_threaddata.sts = DatIdentity(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twidentity);
+                        threaddata.sts = DatIdentity(threaddata.dg, threaddata.msg, ref threaddata.twidentity);
                         break;
 
                     // More meta data...
                     case DAT.IMAGEINFO:
-                        m_threaddata.sts = DatImageinfo(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twimageinfo);
+                        threaddata.sts = DatImageinfo(threaddata.dg, threaddata.msg, ref threaddata.twimageinfo);
                         break;
 
                     // File xfer...
                     case DAT.IMAGEFILEXFER:
-                        m_threaddata.sts = DatImagefilexfer(m_threaddata.dg, m_threaddata.msg);
+                        threaddata.sts = DatImagefilexfer(threaddata.dg, threaddata.msg);
                         break;
 
                     // Image layout commands...
                     case DAT.IMAGELAYOUT:
-                        m_threaddata.sts = DatImagelayout(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twimagelayout);
+                        threaddata.sts = DatImagelayout(threaddata.dg, threaddata.msg, ref threaddata.twimagelayout);
                         break;
 
                     // Memory file transfer (yes, we're using TW_IMAGEMEMXFER, that's okay)...
                     case DAT.IMAGEMEMFILEXFER:
-                        m_threaddata.sts = DatImagememfilexfer(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twimagememxfer);
+                        threaddata.sts = DatImagememfilexfer(threaddata.dg, threaddata.msg, ref threaddata.twimagememxfer);
                         break;
 
                     // Memory transfer...
                     case DAT.IMAGEMEMXFER:
-                        m_threaddata.sts = DatImagememxfer(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twimagememxfer);
+                        threaddata.sts = DatImagememxfer(threaddata.dg, threaddata.msg, ref threaddata.twimagememxfer);
                         break;
 
                     // Native transfer...
                     case DAT.IMAGENATIVEXFER:
-                        m_threaddata.sts = DatImagenativexfer(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.bitmap);
+                        threaddata.sts = DatImagenativexfer(threaddata.dg, threaddata.msg, ref threaddata.bitmap);
                         break;
 
                     // JPEG compression...
                     case DAT.JPEGCOMPRESSION:
-                        m_threaddata.sts = DatJpegcompression(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twjpegcompression);
+                        threaddata.sts = DatJpegcompression(threaddata.dg, threaddata.msg, ref threaddata.twjpegcompression);
                         break;
 
                     // Palette8...
                     case DAT.PALETTE8:
-                        m_threaddata.sts = DatPalette8(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twpalette8);
+                        threaddata.sts = DatPalette8(threaddata.dg, threaddata.msg, ref threaddata.twpalette8);
                         break;
 
                     // DSM commands...
                     case DAT.PARENT:
-                        m_threaddata.sts = DatParent(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.intptrHwnd);
+                        threaddata.sts = DatParent(threaddata.dg, threaddata.msg, ref threaddata.intptrHwnd);
                         break;
 
                     // Raw commands...
                     case DAT.PASSTHRU:
-                        m_threaddata.sts = DatPassthru(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twpassthru);
+                        threaddata.sts = DatPassthru(threaddata.dg, threaddata.msg, ref threaddata.twpassthru);
                         break;
 
                     // Pending transfers...
                     case DAT.PENDINGXFERS:
-                        m_threaddata.sts = DatPendingxfers(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twpendingxfers);
+                        threaddata.sts = DatPendingxfers(threaddata.dg, threaddata.msg, ref threaddata.twpendingxfers);
                         break;
 
                     // RGB...
                     case DAT.RGBRESPONSE:
-                        m_threaddata.sts = DatRgbresponse(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twrgbresponse);
+                        threaddata.sts = DatRgbresponse(threaddata.dg, threaddata.msg, ref threaddata.twrgbresponse);
                         break;
 
                     // Setup file transfer...
                     case DAT.SETUPFILEXFER:
-                        m_threaddata.sts = DatSetupfilexfer(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twsetupfilexfer);
+                        threaddata.sts = DatSetupfilexfer(threaddata.dg, threaddata.msg, ref threaddata.twsetupfilexfer);
                         break;
 
                     // Get memory info...
                     case DAT.SETUPMEMXFER:
-                        m_threaddata.sts = DatSetupmemxfer(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twsetupmemxfer);
+                        threaddata.sts = DatSetupmemxfer(threaddata.dg, threaddata.msg, ref threaddata.twsetupmemxfer);
                         break;
 
                     // Status text...
                     case DAT.STATUSUTF8:
-                        m_threaddata.sts = DatStatusutf8(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twstatusutf8);
+                        threaddata.sts = DatStatusutf8(threaddata.dg, threaddata.msg, ref threaddata.twstatusutf8);
                         break;
 
                     // Scan and GUI commands...
                     case DAT.USERINTERFACE:
-                        m_threaddata.sts = DatUserinterface(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twuserinterface);
+                        threaddata.sts = DatUserinterface(threaddata.dg, threaddata.msg, ref threaddata.twuserinterface);
+                        if (threaddata.sts == STS.SUCCESS)
+                        {
+                            if ((threaddata.dg == DG.CONTROL) && (threaddata.dat == DAT.USERINTERFACE) && (threaddata.msg == MSG.DISABLEDS))
+                            {
+                                blScanning = false;
+                            }
+                            else if ((threaddata.dg == DG.CONTROL) && (threaddata.dat == DAT.USERINTERFACE) && (threaddata.msg == MSG.DISABLEDS))
+                            {
+                                if (threaddata.twuserinterface.ShowUI == 0)
+                                {
+                                    blScanning = true;
+                                }
+                            }
+                        }
                         break;
 
                     // Transfer group...
                     case DAT.XFERGROUP:
-                        m_threaddata.sts = DatXferGroup(m_threaddata.dg, m_threaddata.msg, ref m_threaddata.twuint32);
+                        threaddata.sts = DatXferGroup(threaddata.dg, threaddata.msg, ref threaddata.twuint32);
                         break;
                 }
 
                 // Report to the caller that we're done, and loop back up for another...
-                m_threaddata.dat = default(DAT);
+                m_twaincommand.Complete(lIndex, threaddata);
                 ThreadToCallerSet();
             }
 
@@ -6804,6 +7349,11 @@ namespace TWAINWorkingGroup
                             m_blAcceptXferReady = false;
                             m_state = STATE.S6;
                             m_blIsMsgxferready = true;
+                            // TBD
+                            //lock (m_lockTwain)
+                            //{
+                            //    m_threaddata = default(ThreadData);
+                            //}
                             CallerToThreadSet();
                         }
                     }
@@ -6827,6 +7377,16 @@ namespace TWAINWorkingGroup
                     CallerToThreadSet();
                     break;
             }
+        }
+
+        /// <summary>
+        /// TWAIN needs help, if we want it to run stuff in our main
+        /// UI thread...
+        /// </summary>
+        /// <param name="code">the code to run</param>
+        private void RunInUiThread(Action a_action)
+        {
+            m_runinuithreaddelegate(a_action);
         }
 
         /// <summary>
@@ -6957,7 +7517,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
+                    TWAINWorkingGroup.Log.Error("Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -6973,7 +7533,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
+                    TWAINWorkingGroup.Log.Error("Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -6989,7 +7549,7 @@ namespace TWAINWorkingGroup
                 catch
                 {
                     // The driver crashed...
-                    Log.Msg(Log.Severity.Error, "Driver crash...");
+                    TWAINWorkingGroup.Log.Error("Driver crash...");
                     return (STS.BUMMER);
                 }
             }
@@ -6997,7 +7557,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
+                TWAINWorkingGroup.Log.Assert("Unsupported platform..." + ms_platform);
                 return (STS.BUMMER);
             }
 
@@ -7054,7 +7614,7 @@ namespace TWAINWorkingGroup
                 else
                 {
                     ms_platform = Platform.UNKNOWN;
-                    Log.Msg(Log.Severity.Throw, "Unsupported platform..." + ms_platform);
+                    TWAINWorkingGroup.Log.Assert("Unsupported platform..." + ms_platform);
                 }
             }
 
@@ -7069,7 +7629,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_intptr">Pointer to the data</param>
         /// <param name="a_iIndex">Index of the item in the data</param>
         /// <returns>Data in CSV form</returns>
-        public virtual string GetIndexedItem(TWTY a_twty, IntPtr a_intptr, int a_iIndex)
+        public string GetIndexedItem(TWTY a_twty, IntPtr a_intptr, int a_iIndex)
         {
             IntPtr intptr;
 
@@ -7180,7 +7740,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_iIndex">Index for item in the data</param>
         /// <param name="a_szValue">CSV value to be used to set the data</param>
         /// <returns>Empty string or an error string</returns>
-        public virtual string SetIndexedItem(TWON a_twon, TWTY a_twty, IntPtr a_intptr, int a_iIndex, string a_szValue)
+        public string SetIndexedItem(TWON a_twon, TWTY a_twty, IntPtr a_intptr, int a_iIndex, string a_szValue)
         {
             IntPtr intptr;
 
@@ -7354,7 +7914,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_intptr">Pointer to the data</param>
         /// <param name="a_asz">List of strings</param>
         /// <returns>Empty string or an error string</returns>
-        public virtual string SetRangeItem(TWTY a_twty, IntPtr a_intptr, string[] a_asz)
+        public string SetRangeItem(TWTY a_twty, IntPtr a_intptr, string[] a_asz)
         {
             TW_RANGE twrange = default(TW_RANGE);
             TW_RANGE_MACOSX twrangemacosx = default(TW_RANGE_MACOSX);
@@ -7639,11 +8199,15 @@ namespace TWAINWorkingGroup
         /// <param name="a_platform">Our operating system</param>
         /// <param name="a_intptrNative">The pointer to something (presumably a BITMAP or a TIFF image)</param>
         /// <returns>C# Bitmap of image</returns>
-        private static Bitmap NativeToBitmap(Platform a_platform, IntPtr a_intptrNative)
+        private Bitmap NativeToBitmap(Platform a_platform, IntPtr a_intptrNative)
         {
-            // We need the first two bytes to decide if we have a DIB or a TIFF...
             ushort u16Magic;
-            u16Magic = (ushort)Marshal.PtrToStructure(a_intptrNative, typeof(ushort));
+            IntPtr intptrNative;
+
+            // We need the first two bytes to decide if we have a DIB or a TIFF.  Don't
+            // forget to lock the silly thing...
+            intptrNative = DsmMemLock(a_intptrNative);
+            u16Magic = (ushort)Marshal.PtrToStructure(intptrNative, typeof(ushort));
 
             // Windows uses a DIB, the first usigned short is 40...
             if (u16Magic == 40)
@@ -7653,7 +8217,7 @@ namespace TWAINWorkingGroup
                 BITMAPINFOHEADER bitmapinfoheader;
 
                 // Our incoming DIB is a bitmap info header...
-                bitmapinfoheader = (BITMAPINFOHEADER)Marshal.PtrToStructure(a_intptrNative, typeof(BITMAPINFOHEADER));
+                bitmapinfoheader = (BITMAPINFOHEADER)Marshal.PtrToStructure(intptrNative, typeof(BITMAPINFOHEADER));
 
                 // Build our file header...
                 bitmapfileheader = new BITMAPFILEHEADER();
@@ -7677,7 +8241,7 @@ namespace TWAINWorkingGroup
                 intptr = IntPtr.Zero;
 
                 // Copy the rest of the DIB into our byte array......
-                Marshal.Copy(a_intptrNative, bBitmap, Marshal.SizeOf(typeof(BITMAPFILEHEADER)), (int)bitmapfileheader.bfSize - Marshal.SizeOf(typeof(BITMAPFILEHEADER)));
+                Marshal.Copy(intptrNative, bBitmap, Marshal.SizeOf(typeof(BITMAPFILEHEADER)), (int)bitmapfileheader.bfSize - Marshal.SizeOf(typeof(BITMAPFILEHEADER)));
 
                 // Now we can turn the in-memory bitmap file into a Bitmap object...
                 MemoryStream memorystream = new MemoryStream(bBitmap);
@@ -7696,6 +8260,7 @@ namespace TWAINWorkingGroup
                 bBitmap = null;
 
                 // Return our bitmap...
+                DsmMemUnlock(a_intptrNative);
                 return (bitmap);
             }
 
@@ -7719,10 +8284,10 @@ namespace TWAINWorkingGroup
 
                 // Find the size of the image so we can turn it into a memory stream...
                 iTiffSize = 0;
-                tiffheader = (TIFFHEADER)Marshal.PtrToStructure(a_intptrNative, typeof(TIFFHEADER));
+                tiffheader = (TIFFHEADER)Marshal.PtrToStructure(intptrNative, typeof(TIFFHEADER));
                 for (u64 = 0; u64 < 999; u64++)
                 {
-                    u64Pointer = (ulong)a_intptrNative + u64TiffHeaderSize + (u64TiffTagSize * u64);
+                    u64Pointer = (ulong)intptrNative + u64TiffHeaderSize + (u64TiffTagSize * u64);
                     tifftag = (TIFFTAG)Marshal.PtrToStructure((IntPtr)u64Pointer, typeof(TIFFTAG));
 
                     // StripOffsets...
@@ -7741,12 +8306,13 @@ namespace TWAINWorkingGroup
                 // No joy...
                 if (iTiffSize == 0)
                 {
+                    DsmMemUnlock(a_intptrNative);
                     return (null);
                 }
 
                 // Copy the data to our byte array...
                 abTiff = new byte[iTiffSize];
-                Marshal.Copy(a_intptrNative, abTiff, 0, iTiffSize);
+                Marshal.Copy(intptrNative, abTiff, 0, iTiffSize);
 
                 // Move the image into a memory stream...
                 MemoryStream memorystream = new MemoryStream(abTiff);
@@ -7763,10 +8329,12 @@ namespace TWAINWorkingGroup
                 imageTiff = null;
 
                 // Return our bitmap...
+                DsmMemUnlock(a_intptrNative);
                 return (bitmap);
             }
 
             // Uh-oh...
+            DsmMemUnlock(a_intptrNative);
             return (null);
         }
 
@@ -7876,6 +8444,10 @@ namespace TWAINWorkingGroup
         /// </summary>
         private struct ThreadData
         {
+            // The state of the structure...
+            public bool blIsInuse;
+            public bool blIsComplete;
+
             // Command...
             public DG dg;
             public DAT dat;
@@ -7885,6 +8457,7 @@ namespace TWAINWorkingGroup
 
             // Payload...
             public IntPtr intptrHwnd;
+            public IntPtr intptrBitmap;
             public IntPtr twmemref;
             public Bitmap bitmap;
             public UInt32 twuint32;
@@ -8113,7 +8686,7 @@ namespace TWAINWorkingGroup
         /// <summary>
         /// The data we share with the thread...
         /// </summary>
-        private ThreadData m_threaddata;
+        //private ThreadData m_threaddata;
 
         /// <summary>
         /// Our callback for device events...
@@ -8124,6 +8697,11 @@ namespace TWAINWorkingGroup
         /// Our callback function for scanning...
         /// </summary>
         private ScanCallback m_scancallback;
+
+        /// <summary>
+        /// Run stuff in a caller's UI thread...
+        /// </summary>
+        private RunInUiThreadDelegate m_runinuithreaddelegate;
 
         /// <summary>
         /// The event calls don't go through the thread...
@@ -8139,9 +8717,30 @@ namespace TWAINWorkingGroup
         private Thread m_threadTwain;
 
         /// <summary>
+        /// How we talk to our thread...
+        /// </summary>
+        private TwainCommand m_twaincommand;
+
+        /// <summary>
+        ///  Indecies for commands that have to do something a
+        ///  bit more fancy, such as running the command in the
+        ///  context of a GUI thread...
+        /// </summary>
+        private long m_lIndexDatImagefilexfer;
+        private long m_lIndexDatImagememfilexfer;
+        private long m_lIndexDatImagememxfer;
+        private long m_lIndexDatImagenativexfer;
+        private long m_lIndexDatUserinterface;
+
+        /// <summary>
         /// Our helper functions from the DSM...
         /// </summary>
         private TW_ENTRYPOINT_DELEGATES m_twentrypointdelegates;
+
+        /// <summary>
+        /// Remember the user interface settings for DISABLEDS...
+        /// </summary>
+        private TW_USERINTERFACE m_twuserinterface;
 
         #endregion
 
@@ -8165,8 +8764,217 @@ namespace TWAINWorkingGroup
         private static extern bool GlobalUnlock(IntPtr hMem);
 
         #endregion
-    }
 
+
+
+        ///////////////////////////////////////////////////////////////////////////////
+        // TwainCommand...
+        ///////////////////////////////////////////////////////////////////////////////
+        #region TwainCommand...
+
+        /// <summary>
+        /// We have TWAIN commands that can be called by the application from any
+        /// thread they want.  We do a lock, and then build a command and submit
+        /// it to the Main thread.  The Main thread runs without locks, so all it
+        /// is allowed to do is examine TwainCommands to see if it has work.  If
+        /// it finds an item, it takes care of it, and changes it to complete.
+        /// </summary>
+        private sealed class TwainCommand
+        {
+            ///////////////////////////////////////////////////////////////////////////
+            // Public Functions...
+            ///////////////////////////////////////////////////////////////////////////
+            #region Public Functions...
+
+            /// <summary>
+            /// Initialize an array that we'll be sharing between the TWAIN operations
+            /// and the Main thread...
+            /// </summary>
+            public TwainCommand()
+            {
+                m_athreaddata = new ThreadData[8];
+            }
+
+            /// <summary>
+            /// Complete a command
+            /// </summary>
+            /// <param name="a_lIndex">index to update</param>
+            /// <param name="a_threaddata">data to use</param>
+            public void Complete(long a_lIndex, ThreadData a_threaddata)
+            {
+                // If we're out of bounds, return an empty structure...
+                if ((a_lIndex < 0) || (a_lIndex >= m_athreaddata.Length))
+                {
+                    return;
+                }
+
+                // We're not really a command...
+                if (!m_athreaddata[a_lIndex].blIsInuse)
+                {
+                    return;
+                }
+
+                // Do the update and tag it complete...
+                m_athreaddata[a_lIndex] = a_threaddata;
+                m_athreaddata[a_lIndex].blIsComplete = true;
+            }
+
+            /// <summary>
+            /// Delete a command...
+            /// </summary>
+            /// <returns>the requested command</returns>
+            public void Delete(long a_lIndex)
+            {
+                // If we're out of bounds, return an empty structure...
+                if ((a_lIndex < 0) || (a_lIndex >= m_athreaddata.Length))
+                {
+                    return;
+                }
+
+                // Clear the record...
+                m_athreaddata[a_lIndex] = default(ThreadData);
+            }
+
+            /// <summary>
+            /// Get a command...
+            /// </summary>
+            /// <returns>the requested command</returns>
+            public ThreadData Get(long a_lIndex)
+            {
+                // If we're out of bounds, return an empty structure...
+                if ((a_lIndex < 0) || (a_lIndex >= m_athreaddata.Length))
+                {
+                    return (new ThreadData());
+                }
+
+                // Return what we found...
+                return (m_athreaddata[a_lIndex]);
+            }
+
+            /// <summary>
+            /// Get the next command in the list...
+            /// </summary>
+            /// <param name="a_lIndex">the index of the data</param>
+            /// <param name="a_threaddata">the command we'll return</param>
+            /// <returns>true if we found something</returns>
+            public bool GetNext(out long a_lIndex, out ThreadData a_threaddata)
+            {
+                long lIndex;
+
+                // Init stuff...
+                lIndex = m_lIndex;
+                a_lIndex = 0;
+                a_threaddata = default(ThreadData);
+
+                // Cycle once through the commands to see if we have any...
+                for (;;)
+                {
+                    // We found something, copy it out, point to the next
+                    // item (so we know we're looking at the whole list)
+                    // and return...
+                    if (m_athreaddata[lIndex].blIsInuse && !m_athreaddata[lIndex].blIsComplete)
+                    {
+                        a_threaddata = m_athreaddata[lIndex];
+                        a_lIndex = lIndex;
+                        m_lIndex = lIndex + 1;
+                        if (m_lIndex >= m_athreaddata.Length)
+                        {
+                            m_lIndex = 0;
+                        }
+                        return (true);
+                    }
+
+                    // Next item...
+                    lIndex += 1;
+                    if (lIndex >= m_athreaddata.Length)
+                    {
+                        lIndex = 0;
+                    }
+
+                    // We've cycled, and we didn't find anything...
+                    if (lIndex == m_lIndex)
+                    {
+                        a_lIndex = lIndex;
+                        return (false);
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Submit a new command...
+            /// </summary>
+            /// <returns></returns>
+            public long Submit(ThreadData a_threadata)
+            {
+                long ll;
+
+                // We won't leave until we've submitted the beastie...
+                for (;;)
+                {
+                    // Look for a free slot...
+                    for (ll = 0; ll < m_athreaddata.Length; ll++)
+                    {
+                        if (!m_athreaddata[ll].blIsInuse)
+                        {
+                            m_athreaddata[ll] = a_threadata;
+                            m_athreaddata[ll].blIsInuse = true;
+                            return (ll);
+                        }
+                    }
+
+                    // Wait a little...
+                    Thread.Sleep(0);
+                }
+            }
+
+            /// <summary>
+            /// Update a command
+            /// </summary>
+            /// <param name="a_lIndex">index to update</param>
+            /// <param name="a_threaddata">data to use</param>
+            public void Update(long a_lIndex, ThreadData a_threaddata)
+            {
+                // If we're out of bounds, return an empty structure...
+                if ((a_lIndex < 0) || (a_lIndex >= m_athreaddata.Length))
+                {
+                    return;
+                }
+
+                // We're not really a command...
+                if (!m_athreaddata[a_lIndex].blIsInuse)
+                {
+                    return;
+                }
+
+                // Do the update...
+                m_athreaddata[a_lIndex] = a_threaddata;
+            }
+
+            #endregion
+
+
+            ///////////////////////////////////////////////////////////////////////////
+            // Private Attributes...
+            ///////////////////////////////////////////////////////////////////////////
+            #region Private Attributes...
+
+            /// <summary>
+            /// The data we're sharing.  A null in a position means its available for
+            /// use.  The Main thread only consumes items, it never creates or
+            /// destroys them, that's done by the various commands.
+            /// </summary>
+            private ThreadData[] m_athreaddata;
+
+            /// <summary>
+            /// Index for browsing m_athreaddata for work...
+            /// </summary>
+            private long m_lIndex;
+
+            #endregion
+        }
+
+        #endregion
+    }
 
     /// <summary>
     /// A quick and dirty CSV reader/writer...
@@ -8354,6 +9162,53 @@ namespace TWAINWorkingGroup
         #region Public Methods...
 
         /// <summary>
+        /// Initialize our delegates...
+        /// </summary>
+        static Log()
+        {
+            Close = CloseLocal;
+            GetLevel =  GetLevelLocal;
+            Open = OpenLocal;
+            RegisterTwain = RegisterTwainLocal;
+            SetFlush = SetFlushLocal;
+            SetLevel = SetLevelLocal;
+            WriteEntry = WriteEntryLocal;
+        }
+
+        /// <summary>
+        /// Let the caller override our delegates with their own functions...
+        /// </summary>
+        /// <param name="a_closedelegate">use this to close the logging session</param>
+        /// <param name="a_getleveldelegate">get the current log level</param>
+        /// <param name="a_opendelegate">open the logging session</param>
+        /// <param name="a_registertwaindelegate">not needed at this time</param>
+        /// <param name="a_setflushdelegate">turn flushing on and off</param>
+        /// <param name="a_setleveldelegate">set the new log level</param>
+        /// <param name="a_writeentrydelegate">the function that actually writes to the log</param>
+        /// <param name="a_getstatedelegate">returns a way to get the current TWAIN state</param>
+        public static void Override
+        (
+            CloseDelegate a_closedelegate,
+            GetLevelDelegate a_getleveldelegate,
+            OpenDelegate a_opendelegate,
+            RegisterTwainDelegate a_registertwaindelegate,
+            SetFlushDelegate a_setflushdelegate,
+            SetLevelDelegate a_setleveldelegate,
+            WriteEntryDelegate a_writeentrydelegate,
+            out GetStateDelegate a_getstatedelegate
+        )
+        {
+            Close = (a_closedelegate != null) ? a_closedelegate : CloseLocal;
+            GetLevel = (a_getleveldelegate != null) ? a_getleveldelegate : GetLevelLocal;
+            Open = (a_opendelegate != null) ? a_opendelegate : OpenLocal;
+            RegisterTwain = (a_registertwaindelegate != null) ? a_registertwaindelegate : RegisterTwainLocal;
+            SetFlush = (a_setflushdelegate != null) ? a_setflushdelegate : SetFlushLocal;
+            SetLevel = (a_setleveldelegate != null) ? a_setleveldelegate : SetLevelLocal;
+            WriteEntry = (a_writeentrydelegate != null) ? a_writeentrydelegate : WriteEntryLocal;
+            a_getstatedelegate = GetStateLocal;
+        }
+
+        /// <summary>
         /// Write an assert message, but only throw with a debug build...
         /// </summary>
         /// <param name="a_szMessage">message to log</param>
@@ -8366,21 +9221,6 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
-        /// Close tracing...
-        /// </summary>
-        public static void Close()
-        {
-            if (!ms_blFirstPass)
-            {
-                Trace.Close();
-            }
-            ms_blFirstPass = true;
-            ms_blOpened = false;
-            ms_blFlush = false;
-            ms_iMessageNumber = 0;
-        }
-
-        /// <summary>
         /// Write an error message...
         /// </summary>
         /// <param name="a_szMessage">message to log</param>
@@ -8390,35 +9230,26 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
-        /// Get the debugging level...
-        /// </summary>
-        /// <returns>the level</returns>
-        public static int GetLevel()
-        {
-            return (ms_iLevel);
-        }
-
-        /// <summary>
         /// Write an informational message...
         /// </summary>
         /// <param name="a_szMessage">message to log</param>
         public static void Info(string a_szMessage)
         {
-            WriteEntry(" ", a_szMessage, true);
+            WriteEntry(".", a_szMessage, true);
         }
 
         /// <summary>
         /// Log after sending to the TWAIN driver...
         /// </summary>
-        /// <param name="sts">status</param>
+        /// <param name="a_szSts">status</param>
         /// <param name="a_szMemref">data</param>
-        public static void LogSendAfter(TWAIN.STS sts, string a_szMemref)
+        public static void LogSendAfter(string a_szSts, string a_szMemref)
         {
             if ((a_szMemref != null) && (a_szMemref != "") && (a_szMemref[0] != '('))
             {
-                Log.Msg(Log.Severity.Info, "twn> " + a_szMemref);
+                Log.Info("twn> " + a_szMemref);
             }
-            Log.Msg(Log.Severity.Info, "twn> " + sts);
+            Log.Info("twn> " + a_szSts);
         }
 
         /// <summary>
@@ -8428,86 +9259,13 @@ namespace TWAINWorkingGroup
         /// <param name="a_szDat">data argument type</param>
         /// <param name="a_szMsg">message</param>
         /// <param name="a_szMemref">data</param>
-        public static void LogSendBefore(TWAIN.DG a_dg, TWAIN.DAT a_dat, TWAIN.MSG a_msg, string a_szMemref)
+        public static void LogSendBefore(string a_szDg, string a_szDat, string a_szMsg, string a_szMemref)
         {
-            Log.Msg(Log.Severity.Info, "");
-            Log.Msg(Log.Severity.Info, "twn> DG_" + a_dg + "/DAT_" + a_dat + "/MSG_" + a_msg);
+            Log.Info("");
+            Log.Info("twn> DG_" + a_szDg + "/DAT_" + a_szDat + "/MSG_" + a_szMsg);
             if ((a_szMemref != null) && (a_szMemref != "") && (a_szMemref[0] != '('))
             {
-                Log.Msg(Log.Severity.Info, "twn> " + a_szMemref);
-            }
-        }
-
-        /// <summary>
-        /// Handle messages (deprecated, but I'm keeping it around because
-        /// folks importing the older verion of the assembly may be using it)...
-        /// </summary>
-        /// <param name="a_eSeverity">Message severity</param>
-        /// <param name="a_szMessage">The message</param>
-        public static void Msg(Severity a_eSeverity, string a_szMessage)
-        {
-            switch (a_eSeverity)
-            {
-                case Severity.Info:
-                    WriteEntry(" ", a_szMessage, ms_blFlush);
-                    break;
-                case Severity.Warning:
-                    WriteEntry("W", a_szMessage, ms_blFlush);
-                    break;
-                case Severity.Error:
-                    WriteEntry("E", a_szMessage, true);
-                    break;
-                default:
-                case Severity.Throw:
-                    WriteEntry("T", a_szMessage, true);
-                    throw new Exception(a_szMessage);
-            }
-        }
-
-        /// <summary>
-        /// Turn on the listener for our log file...
-        /// </summary>
-        /// <param name="a_szName">the name of our log</param>
-        /// <param name="a_szPath">the path where we want our log to go</param>
-        /// <param name="a_iLevel">debug level</param>
-        public static void Open(string a_szName, string a_szPath, int a_iLevel)
-        {
-            // Init stuff...
-            ms_blFirstPass = true;
-            ms_blOpened = true;
-            ms_blFlush = false;
-            ms_iMessageNumber = 0;
-            ms_iLevel = a_iLevel;
-
-            // Ask for a TWAINDSM log...
-            if (a_iLevel > 0)
-            {
-                Environment.SetEnvironmentVariable("TWAINDSM_LOG",Path.Combine(a_szPath, "twaindsm.log"));
-                Environment.SetEnvironmentVariable("TWAINDSM_MODE","w");
-            }
-
-            // Turn on the listener...
-            Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(a_szPath, a_szName + ".log"), a_szName + "Listener"));
-        }
-
-        /// <summary>
-        /// Set the debugging level
-        /// </summary>
-        /// <param name="a_iLevel"></param>
-        public static void SetLevel(int a_iLevel)
-        {
-            ms_iLevel = a_iLevel;
-        }
-
-        /// <summary>
-        /// Flush data to the file...
-        /// </summary>
-        public static void SetFlush(bool a_blFlush)
-        {
-            ms_blFlush = a_blFlush;
-            if (a_blFlush)
-            {
-                Trace.Flush();
+                Log.Info("twn> " + a_szMemref);
             }
         }
 
@@ -8526,19 +9284,141 @@ namespace TWAINWorkingGroup
         // Public Definitions...
         #region Public Definitions...
 
-        public enum Severity
-        {
-            Info,
-            Warning,
-            Error,
-            Throw
-        }
+        // The public methods that need attributes, here offered
+        // as delegates, so that a caller will be able to override
+        // them...
+        public delegate void CloseDelegate();
+        public delegate int GetLevelDelegate();
+        public delegate string GetStateDelegate();
+        public delegate void OpenDelegate(string a_szName, string a_szPath, int a_iLevel);
+        public delegate void RegisterTwainDelegate(TWAIN a_twain);
+        public delegate void SetFlushDelegate(bool a_blFlush);
+        public delegate void SetLevelDelegate(int a_iLevel);
+        public delegate void WriteEntryDelegate(string a_szSeverity, string a_szMessage, bool a_blFlush);
+
+        #endregion
+
+
+        // Public Attributes...
+        #region Public Attributes...
+
+        // The public methods that need attributes, here offered
+        // as delegates, so that a caller will be able to override
+        // them...
+        public static CloseDelegate Close;
+        public static GetLevelDelegate GetLevel;
+        public static OpenDelegate Open;
+        public static RegisterTwainDelegate RegisterTwain;
+        public static SetFlushDelegate SetFlush;
+        public static SetLevelDelegate SetLevel;
+        public static WriteEntryDelegate WriteEntry;
+
+        #endregion
+
+
+        // Public Definitions...
+        #region Private Definitions
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
 
         #endregion
 
 
         // Private Methods...
-        #region Private Methods
+        #region Private Methods...
+
+        /// <summary>
+        /// Close tracing...
+        /// </summary>
+        private static void CloseLocal()
+        {
+            if (!ms_blFirstPass)
+            {
+                Trace.Close();
+                ms_filestream.Close();
+                ms_filestream = null;
+            }
+            ms_blFirstPass = true;
+            ms_blOpened = false;
+            ms_blFlush = false;
+            ms_iMessageNumber = 0;
+        }
+
+        /// <summary>
+        /// Get the debugging level...
+        /// </summary>
+        /// <returns>the level</returns>
+        private static int GetLevelLocal()
+        {
+            return (ms_iLevel);
+        }
+
+        /// <summary>
+        /// Get the state...
+        /// </summary>
+        /// <returns>the level</returns>
+        private static string GetStateLocal()
+        {
+            return ((ms_twain == null) ? "S0" : ms_twain.GetState().ToString());
+        }
+
+        /// <summary>
+        /// Turn on the listener for our log file...
+        /// </summary>
+        /// <param name="a_szName">the name of our log</param>
+        /// <param name="a_szPath">the path where we want our log to go</param>
+        /// <param name="a_iLevel">debug level</param>
+        private static void OpenLocal(string a_szName, string a_szPath, int a_iLevel)
+        {
+            // Init stuff...
+            ms_blFirstPass = true;
+            ms_blOpened = true;
+            ms_blFlush = false;
+            ms_iMessageNumber = 0;
+            ms_iLevel = a_iLevel;
+
+            // Ask for a TWAINDSM log...
+            if (a_iLevel > 0)
+            {
+                Environment.SetEnvironmentVariable("TWAINDSM_LOG", Path.Combine(a_szPath, "twaindsm.log"));
+                Environment.SetEnvironmentVariable("TWAINDSM_MODE", "w");
+            }
+
+            // Turn on the listener...
+            ms_filestream = File.Open(Path.Combine(a_szPath, a_szName + ".log"), FileMode.Append, FileAccess.Write, FileShare.Read);
+            Trace.Listeners.Add(new TextWriterTraceListener(ms_filestream, a_szName + "Listener"));
+        }
+
+        /// <summary>
+        /// Register the TWAIN object so we can get some extra info...
+        /// </summary>
+        /// <param name="a_twain">twain object or null</param>
+        private static void RegisterTwainLocal(TWAIN a_twain)
+        {
+            ms_twain = a_twain;
+        }
+
+        /// <summary>
+        /// Flush data to the file...
+        /// </summary>
+        private static void SetFlushLocal(bool a_blFlush)
+        {
+            ms_blFlush = a_blFlush;
+            if (a_blFlush)
+            {
+                Trace.Flush();
+            }
+        }
+
+        /// <summary>
+        /// Set the debugging level
+        /// </summary>
+        /// <param name="a_iLevel"></param>
+        private static void SetLevelLocal(int a_iLevel)
+        {
+            ms_iLevel = a_iLevel;
+        }
 
         /// <summary>
         /// Do this for all of them...
@@ -8546,11 +9426,48 @@ namespace TWAINWorkingGroup
         /// <param name="a_szMessage">The message</param>
         /// <param name="a_szSeverity">Message severity</param>
         /// <param name="a_blFlush">Flush it to disk</param>
-        private static void WriteEntry(string a_szSeverity, string a_szMessage, bool a_blFlush)
+        private static void WriteEntryLocal(string a_szSeverity, string a_szMessage, bool a_blFlush)
         {
+            long lThreadId;
+
+            // Get our thread id...
+            if (ms_blIsWindows)
+            {
+                lThreadId = GetCurrentThreadId();
+            }
+            else
+            {
+                lThreadId = Thread.CurrentThread.ManagedThreadId;
+            }
+
             // First pass...
             if (ms_blFirstPass)
             {
+                string szPlatform;
+
+                // We're Windows...
+                if (Environment.OSVersion.ToString().Contains("Microsoft Windows"))
+                {
+                    szPlatform = "windows";
+                }
+
+                // We're Mac OS X (this has to come before LINUX!!!)...
+                else if (Directory.Exists("/Library/Application Support"))
+                {
+                    szPlatform = "macosx";
+                }
+
+                // We're Linux...
+                else if (Environment.OSVersion.ToString().Contains("Unix"))
+                {
+                    szPlatform = "linux";
+                }
+
+                // We have a problem, Log will throw for us...
+                else
+                {
+                    szPlatform = "unknown";
+                }
                 if (!ms_blOpened)
                 {
                     // We'll assume they want logging, since they didn't tell us...
@@ -8562,11 +9479,14 @@ namespace TWAINWorkingGroup
                 (
                     string.Format
                     (
-                        "{0:D6} {1} {2} {3}",
+                        "{0:D6} {1} {2} T{3:D8} V{4} ts:{5} os:{6}",
                         ms_iMessageNumber++,
                         DateTime.Now.ToString("HHmmssffffff"),
+                        (ms_twain != null) ? ms_twain.GetState().ToString() : "S0",
+                        lThreadId,
                         a_szSeverity.ToString(),
-                        DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss.ffffff")
+                        DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss.ffffff"),
+                        szPlatform
                     )
                 );
             }
@@ -8576,9 +9496,11 @@ namespace TWAINWorkingGroup
             (
                 string.Format
                 (
-                    "{0:D6} {1} {2} {3}",
+                    "{0:D6} {1} {2} T{3:D8} V{4} {5}",
                     ms_iMessageNumber++,
                     DateTime.Now.ToString("HHmmssffffff"),
+                    (ms_twain != null) ? ms_twain.GetState().ToString() : "S0",
+                    lThreadId,
                     a_szSeverity.ToString(),
                     a_szMessage
                 )
@@ -8602,6 +9524,9 @@ namespace TWAINWorkingGroup
         private static bool ms_blFlush = false;
         private static int ms_iMessageNumber = 0;
         private static int ms_iLevel = 0;
+        private static TWAIN ms_twain = null;
+        private static bool ms_blIsWindows = false;
+        private static FileStream ms_filestream;
 
         #endregion
     }
