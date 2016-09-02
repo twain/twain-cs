@@ -153,6 +153,18 @@ namespace TWAINCSTst
             contextmenu.MenuItems.Add(menuitem);
             m_richtextboxOutput.ContextMenu = contextmenu;
             contextmenu = null;
+
+            // Set the capbility box to our app info...
+            m_richtextboxCapability.Text =
+                "TWAIN Working Group," +
+                "TWAIN Sharp," +
+                "TWAIN Sharp Test App," +
+                "2," +
+                "3," +
+                "0x20000003," +
+                "USA," +
+                "testing...," +
+                "ENGLISH_USA";
         }
 
         /// <summary>
@@ -901,28 +913,57 @@ namespace TWAINCSTst
                 // Create our image capture object...
                 try
                 {
-                    m_twaincstoolkit = new TWAINCSToolkit
-                    (
-                        this.Handle,
-                        WriteOutput,
-                        ReportImage,
-                        SetMessageFilter,
-                        "TWAIN Working Group",
-                        "TWAIN Sharp",
-                        "TWAIN Sharp Test App",
-                        2,
-                        3,
-                        new string[] { "DF_APP2", "DG_CONTROL", "DG_IMAGE" },
-                        "USA",
-                        "testing...",
-                        "ENGLISH_USA",
-                        1,
-                        0,
-                        m_checkboxUseTwain32.Checked,
-                        m_checkboxUseCallbacks.Checked,
-                        RunInUiThread,
-                        this
-                    );
+                    string[] aszTwidentity = m_richtextboxCapability.Text.Split(',');
+                    if ((aszTwidentity == null) || (aszTwidentity.Length < 9))
+                    {
+                        m_twaincstoolkit = new TWAINCSToolkit
+                        (
+                            this.Handle,
+                            WriteOutput,
+                            ReportImage,
+                            SetMessageFilter,
+                            "TWAIN Working Group",
+                            "TWAIN Sharp",
+                            "TWAIN Sharp Test App",
+                            2,
+                            3,
+                            new string[] { "DF_APP2", "DG_CONTROL", "DG_IMAGE" },
+                            "USA",
+                            "testing...",
+                            "ENGLISH_USA",
+                            1,
+                            0,
+                            m_checkboxUseTwain32.Checked,
+                            m_checkboxUseCallbacks.Checked,
+                            RunInUiThread,
+                            this
+                        );
+                    }
+                    else
+                    {
+                        m_twaincstoolkit = new TWAINCSToolkit
+                        (
+                            this.Handle,
+                            WriteOutput,
+                            ReportImage,
+                            SetMessageFilter,
+                            aszTwidentity[0],
+                            aszTwidentity[1],
+                            aszTwidentity[2],
+                            ushort.Parse(aszTwidentity[3]),
+                            ushort.Parse(aszTwidentity[4]),
+                            new string[] { "DF_APP2", "DG_CONTROL", "DG_IMAGE" },
+                            aszTwidentity[6],
+                            aszTwidentity[7],
+                            aszTwidentity[8],
+                            1,
+                            0,
+                            m_checkboxUseTwain32.Checked,
+                            m_checkboxUseCallbacks.Checked,
+                            RunInUiThread,
+                            this
+                        );
+                    }
                 }
                 catch
                 {
