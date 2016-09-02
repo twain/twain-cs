@@ -1745,6 +1745,8 @@ namespace TWAINWorkingGroupToolkit
                 else
                 {
                     msgPendingxfers = ReportImage("ScanCallback: 006", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGENATIVEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null, null, null, 0);
+                    // We don't dispose of the bitmap here, because we've given it to the application,
+                    // be we do null out our reference to it...
                     bitmap = null;
                     blXferDone = true;
                 }
@@ -1850,6 +1852,7 @@ namespace TWAINWorkingGroupToolkit
                         image.Dispose();
                         image = null;
                         msgPendingxfers = ReportImage("ScanCallback: 010", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, szFilename, m_twain.ImageinfoToCsv(twimageinfo), null, 0);
+                        bitmap.Dispose();
                         bitmap = null;
                         blXferDone = true;
                     }
@@ -2017,6 +2020,7 @@ namespace TWAINWorkingGroupToolkit
                             image.Dispose();
                             image = null;
                             msgPendingxfers = ReportImage("ScanCallback: 017", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null, null, abImage, iSpaceForHeader);
+                            bitmap.Dispose();
                             bitmap = null;
                             memorystream = null;
                             blXferDone = true;
@@ -2268,6 +2272,7 @@ namespace TWAINWorkingGroupToolkit
                                 }
 
                                 // Cleanup...
+                                bitmap.Dispose();
                                 bitmap = null;
                                 memorystream = null;
                                 blXferDone = true;
@@ -2394,6 +2399,7 @@ namespace TWAINWorkingGroupToolkit
                                 }
 
                                 // Cleanup...
+                                bitmap.Dispose();
                                 bitmap = null;
                                 memorystream = null;
                                 blXferDone = true;
@@ -2520,6 +2526,7 @@ namespace TWAINWorkingGroupToolkit
                                 }
 
                                 // Cleanup...
+                                bitmap.Dispose();
                                 bitmap = null;
                                 memorystream = null;
                                 blXferDone = true;
@@ -2673,6 +2680,7 @@ namespace TWAINWorkingGroupToolkit
                     image.Dispose();
                     image = null;
                     msgPendingxfers = ReportImage("ScanCallback: 049", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEMEMFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), CvtSts(sts), bitmap, null, null, null, 0);
+                    bitmap.Dispose();
                     bitmap = null;
                     blXferDone = true;
                 }
