@@ -40,6 +40,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace TWAINWorkingGroup
 {
@@ -86,6 +87,153 @@ namespace TWAINWorkingGroup
             LINUX,
             MACOSX
         };
+
+        /// <summary>
+        /// Convert a TWAIN TWLG_* value to a code page...
+        /// </summary>
+        /// <param name="a_u16Language">TWAIN TWLG_* value</param>
+        /// <returns>a code page</returns>
+        private static int s_iCodePage = Encoding.Default.CodePage;
+        public static int GetCodePage()
+        {
+            return (s_iCodePage);
+        }
+        public static void SetCodePage(TWLG a_twlgLanguage)
+        {
+            switch (a_twlgLanguage)
+            {
+                default:                        s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.USERLOCALE:           s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.DAN:                  s_iCodePage = 1252; break;
+                case TWLG.DUT:                  s_iCodePage = 1252; break;
+                case TWLG.ENG:                  s_iCodePage = 1252; break;
+                case TWLG.FCF:                  s_iCodePage = 1252; break;
+                case TWLG.FIN:                  s_iCodePage = 1252; break;
+                case TWLG.FRN:                  s_iCodePage = 1252; break;
+                case TWLG.GER:                  s_iCodePage = 1252; break;
+                case TWLG.ICE:                  s_iCodePage = 1252; break;
+                case TWLG.ITN:                  s_iCodePage = 1252; break;
+                case TWLG.NOR:                  s_iCodePage = 1252; break;
+                case TWLG.POR:                  s_iCodePage = 1252; break;
+                case TWLG.SPA:                  s_iCodePage = 1252; break;
+                case TWLG.SWE:                  s_iCodePage = 1252; break;
+                case TWLG.USA:                  s_iCodePage = 1252; break;
+                case TWLG.AFRIKAANS:            s_iCodePage = 1252; break;
+                case TWLG.ALBANIA:              s_iCodePage = 1250; break;
+                case TWLG.ARABIC:               s_iCodePage = 1256; break;
+                case TWLG.ARABIC_ALGERIA:       s_iCodePage = 1256; break;
+                case TWLG.ARABIC_BAHRAIN:       s_iCodePage = 1256; break;
+                case TWLG.ARABIC_EGYPT:         s_iCodePage = 1256; break;
+                case TWLG.ARABIC_IRAQ:          s_iCodePage = 1256; break;
+                case TWLG.ARABIC_JORDAN:        s_iCodePage = 1256; break;
+                case TWLG.ARABIC_KUWAIT:        s_iCodePage = 1256; break;
+                case TWLG.ARABIC_LEBANON:       s_iCodePage = 1256; break;
+                case TWLG.ARABIC_LIBYA:         s_iCodePage = 1256; break;
+                case TWLG.ARABIC_MOROCCO:       s_iCodePage = 1256; break;
+                case TWLG.ARABIC_OMAN:          s_iCodePage = 1256; break;
+                case TWLG.ARABIC_QATAR:         s_iCodePage = 1256; break;
+                case TWLG.ARABIC_SAUDIARABIA:   s_iCodePage = 1256; break;
+                case TWLG.ARABIC_SYRIA:         s_iCodePage = 1256; break;
+                case TWLG.ARABIC_TUNISIA:       s_iCodePage = 1256; break;
+                case TWLG.ARABIC_UAE:           s_iCodePage = 1256; break;
+                case TWLG.ARABIC_YEMEN:         s_iCodePage = 1256; break;
+                case TWLG.BASQUE:               s_iCodePage = 1252; break;
+                case TWLG.BYELORUSSIAN:         s_iCodePage = 1251; break;
+                case TWLG.BULGARIAN:            s_iCodePage = 1251; break;
+                case TWLG.CATALAN:              s_iCodePage = 1252; break;
+                case TWLG.CHINESE:              s_iCodePage = 936; break;
+                case TWLG.CHINESE_HONGKONG:     s_iCodePage = 950; break;
+                case TWLG.CHINESE_PRC:          s_iCodePage = 936; break;
+                case TWLG.CHINESE_SINGAPORE:    s_iCodePage = 936; break;
+                case TWLG.CHINESE_SIMPLIFIED:   s_iCodePage = 936; break;
+                case TWLG.CHINESE_TAIWAN:       s_iCodePage = 950; break;
+                case TWLG.CHINESE_TRADITIONAL:  s_iCodePage = 936; break;
+                case TWLG.CROATIA:              s_iCodePage = 1250; break;
+                case TWLG.CZECH:                s_iCodePage = 1250; break;
+                //case TWLG.DANISH:             s_iCodePage = 1252; break;
+                //case TWLG.DUTCH:              s_iCodePage = 1252; break;
+                case TWLG.DUTCH_BELGIAN:        s_iCodePage = 1252; break;
+                //case TWLG.ENGLISH:            s_iCodePage = 1252; break;
+                case TWLG.ENGLISH_AUSTRALIAN:   s_iCodePage = 1252; break;
+                case TWLG.ENGLISH_CANADIAN:     s_iCodePage = 1252; break;
+                case TWLG.ENGLISH_IRELAND:      s_iCodePage = 1252; break;
+                case TWLG.ENGLISH_NEWZEALAND:   s_iCodePage = 1252; break;
+                case TWLG.ENGLISH_SOUTHAFRICA:  s_iCodePage = 1252; break;
+                case TWLG.ENGLISH_UK:           s_iCodePage = 1252; break;
+                //case TWLG.ENGLISH_USA:        s_iCodePage = 1252; break;
+                case TWLG.ESTONIAN:             s_iCodePage = 1252; break;
+                case TWLG.FAEROESE:             s_iCodePage = 1252; break;
+                case TWLG.FARSI:                s_iCodePage = 1256; break;
+                //case TWLG.FINNISH:            s_iCodePage = 1252; break;
+                //case TWLG.FRENCH:             s_iCodePage = 1252; break;
+                case TWLG.FRENCH_BELGIAN:       s_iCodePage = 1252; break;
+                //case TWLG.FRENCH_CANADIAN:    s_iCodePage = 1252; break;
+                case TWLG.FRENCH_LUXEMBOURG:    s_iCodePage = 1252; break;
+                case TWLG.FRENCH_SWISS:         s_iCodePage = 1252; break;
+                //case TWLG.GERMAN:             s_iCodePage = 1252; break;
+                case TWLG.GERMAN_AUSTRIAN:      s_iCodePage = 1252; break;
+                case TWLG.GERMAN_LUXEMBOURG:    s_iCodePage = 1252; break;
+                case TWLG.GERMAN_LIECHTENSTEIN: s_iCodePage = 1252; break;
+                case TWLG.GERMAN_SWISS:         s_iCodePage = 1252; break;
+                case TWLG.GREEK:                s_iCodePage = 1253; break;
+                case TWLG.HEBREW:               s_iCodePage = 1255; break;
+                case TWLG.HUNGARIAN:            s_iCodePage = 1250; break;
+                //case TWLG.ICELANDIC:          s_iCodePage = 1252; break;
+                case TWLG.INDONESIAN:           s_iCodePage = 1252; break;
+                //case TWLG.ITALIAN:            s_iCodePage = 1252; break;
+                case TWLG.ITALIAN_SWISS:        s_iCodePage = 1252; break;
+                case TWLG.JAPANESE:             s_iCodePage = 932; break;
+                case TWLG.KOREAN:               s_iCodePage = 949; break;
+                case TWLG.KOREAN_JOHAB:         s_iCodePage = 949; break;
+                case TWLG.LATVIAN:              s_iCodePage = 1257; break;
+                case TWLG.LITHUANIAN:           s_iCodePage = 1257; break;
+                //case TWLG.NORWEGIAN:          s_iCodePage = 1252; break;
+                case TWLG.NORWEGIAN_BOKMAL:     s_iCodePage = 1252; break;
+                case TWLG.NORWEGIAN_NYNORSK:    s_iCodePage = 1252; break;
+                case TWLG.POLISH:               s_iCodePage = 1250; break;
+                //case TWLG.PORTUGUESE:         s_iCodePage = 1252; break;
+                case TWLG.PORTUGUESE_BRAZIL:    s_iCodePage = 1252; break;
+                case TWLG.ROMANIAN:             s_iCodePage = 1250; break;
+                case TWLG.RUSSIAN:              s_iCodePage = 1251; break;
+                case TWLG.SERBIAN_LATIN:        s_iCodePage = 1250; break;
+                case TWLG.SLOVAK:               s_iCodePage = 1250; break;
+                case TWLG.SLOVENIAN:            s_iCodePage = 1250; break;
+                //case TWLG.SPANISH:            s_iCodePage = 1252; break;
+                case TWLG.SPANISH_MEXICAN:      s_iCodePage = 1252; break;
+                case TWLG.SPANISH_MODERN:       s_iCodePage = 1252; break;
+                //case TWLG.SWEDISH:            s_iCodePage = 1252; break;
+                case TWLG.THAI:                 s_iCodePage = 874; break;
+                case TWLG.TURKISH:              s_iCodePage = 1254; break;
+                case TWLG.UKRANIAN:             s_iCodePage = 1251; break;
+                case TWLG.ASSAMESE:             s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.BENGALI:              s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.BIHARI:               s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.BODO:                 s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.DOGRI:                s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.GUJARATI:             s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.HARYANVI:             s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.HINDI:                s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.KANNADA:              s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.KASHMIRI:             s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.MALAYALAM:            s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.MARATHI:              s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.MARWARI:              s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.MEGHALAYAN:           s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.MIZO:                 s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.NAGA:                 s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.ORISSI:               s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.PUNJABI:              s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.PUSHTU:               s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.SERBIAN_CYRILLIC:     s_iCodePage = 1251; break;
+                case TWLG.SIKKIMI:              s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.SWEDISH_FINLAND:      s_iCodePage = 1252; break;
+                case TWLG.TAMIL:                s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.TELUGU:               s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.TRIPURI:              s_iCodePage = Encoding.Default.CodePage; break;
+                case TWLG.URDU:                 s_iCodePage = 1256; break;
+                case TWLG.VIETNAMESE:           s_iCodePage = 1258; break;
+            }
+        }
 
         /// <summary>
         /// Used for strings that go up to 32-bytes...
@@ -140,59 +288,88 @@ namespace TWAINWorkingGroup
             /// <returns></returns>
             private string GetValue(bool a_blMayHavePrefix)
             {
-                // Unpack what we have into a string...
-                string sz =
-                    Convert.ToChar(sz32Item_00 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_00 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_01 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_01 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_02 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_02 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_03 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_03 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_04 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_04 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_05 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_05 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_06 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_06 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_07 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_07 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_08 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_08 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_09 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_09 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_10 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_10 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_11 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_11 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_12 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_12 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_13 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_13 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_14 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_14 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_15 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_15 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_16 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_16 >> 8) & 0xFF).ToString();
+                byte[] ab = new byte[34];
+
+                ab[0] = (byte)(sz32Item_00 & 0xFF);
+                ab[1] = (byte)((sz32Item_00 >> 8) & 0xFF);
+
+                ab[2] = (byte)(sz32Item_01 & 0xFF);
+                ab[3] = (byte)((sz32Item_01 >> 8) & 0xFF);
+
+                ab[4] = (byte)(sz32Item_02 & 0xFF);
+                ab[5] = (byte)((sz32Item_02 >> 8) & 0xFF);
+
+                ab[6] = (byte)(sz32Item_03 & 0xFF);
+                ab[7] = (byte)((sz32Item_03 >> 8) & 0xFF);
+
+                ab[8] = (byte)(sz32Item_04 & 0xFF);
+                ab[9] = (byte)((sz32Item_04 >> 8) & 0xFF);
+
+                ab[10] = (byte)(sz32Item_05 & 0xFF);
+                ab[11] = (byte)((sz32Item_05 >> 8) & 0xFF);
+
+                ab[12] = (byte)(sz32Item_06 & 0xFF);
+                ab[13] = (byte)((sz32Item_06 >> 8) & 0xFF);
+
+                ab[14] = (byte)(sz32Item_07 & 0xFF);
+                ab[15] = (byte)((sz32Item_07 >> 8) & 0xFF);
+
+                ab[16] = (byte)(sz32Item_08 & 0xFF);
+                ab[17] = (byte)((sz32Item_08 >> 8) & 0xFF);
+
+                ab[18] = (byte)(sz32Item_09 & 0xFF);
+                ab[19] = (byte)((sz32Item_09 >> 8) & 0xFF);
+
+                ab[20] = (byte)(sz32Item_10 & 0xFF);
+                ab[21] = (byte)((sz32Item_10 >> 8) & 0xFF);
+
+                ab[22] = (byte)(sz32Item_11 & 0xFF);
+                ab[23] = (byte)((sz32Item_11 >> 8) & 0xFF);
+
+                ab[24] = (byte)(sz32Item_12 & 0xFF);
+                ab[25] = (byte)((sz32Item_12 >> 8) & 0xFF);
+
+                ab[26] = (byte)(sz32Item_13 & 0xFF);
+                ab[27] = (byte)((sz32Item_13 >> 8) & 0xFF);
+
+                ab[28] = (byte)(sz32Item_14 & 0xFF);
+                ab[29] = (byte)((sz32Item_14 >> 8) & 0xFF);
+
+                ab[30] = (byte)(sz32Item_15 & 0xFF);
+                ab[31] = (byte)((sz32Item_15 >> 8) & 0xFF);
+
+                ab[32] = (byte)(sz32Item_16 & 0xFF);
+                ab[33] = (byte)((sz32Item_16 >> 8) & 0xFF);
 
                 // If the first character is a NUL, then return the empty string...
-                while ((sz.Length > 0) && (sz[0] == '\0'))
-                {
-                    sz = sz.Remove(0, 1);
-                }
-
-                // We have an emptry string...
-                if (sz.Length == 0)
+                if (ab[0] == '\0')
                 {
                     return ("");
                 }
 
+                string sz;
+
                 // If we're running on a Mac, take off the prefix 'byte'...
-                if (a_blMayHavePrefix && (TWAIN.GetPlatform() == Platform.MACOSX))
+                switch (TWAIN.GetPlatform())
                 {
-                    sz = sz.Remove(0, 1);
+                    default:
+                    case Platform.WINDOWS:
+                        // Windows needs the current code page...
+                        sz = Encoding.GetEncoding(GetCodePage()).GetString(ab);
+                        break;
+                    case Platform.LINUX:
+                        sz = Encoding.UTF8.GetString(ab);
+                        break;
+                    case Platform.MACOSX:
+                        if (a_blMayHavePrefix)
+                        {
+                            sz = Encoding.UTF8.GetString(ab, 1, ab.Length - 1);
+                        }
+                        else
+                        {
+                            sz = Encoding.UTF8.GetString(ab);
+                        }
+                        break;
                 }
 
                 // If we detect a NUL, then split around it...
@@ -230,43 +407,62 @@ namespace TWAINWorkingGroup
             /// <param name="a_sz"></param>
             private void SetValue(string a_sz, bool a_blMayHavePrefix)
             {
-                // If we're running on a Mac, tack on the prefix 'byte'...
-                if (a_sz == null)
+                byte[] ab;
+
+                // Validate...
+                if (a_sz.Length > 33)
                 {
-                    a_sz = "";
-                }
-                else if (a_blMayHavePrefix && (TWAIN.GetPlatform() == Platform.MACOSX))
-                {
-                    a_sz = (char)a_sz.Length + a_sz;
+                    a_sz = a_sz.Remove(33);
                 }
 
-                // Make sure that we're NUL padded...
-                string sz = a_sz +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0";
-                if (sz.Length > 34)
+                // If we're running on a Mac, tack on the prefix 'byte'...
+                switch (TWAIN.GetPlatform())
                 {
-                    sz = sz.Remove(34);
+                    default:
+                    case Platform.WINDOWS:
+                        // Windows needs the current code page...
+                        ab = Encoding.GetEncoding(GetCodePage()).GetBytes(a_sz);
+                        Array.Resize(ref ab, 34);
+                        break;
+                    case Platform.LINUX:
+                        ab = Encoding.UTF8.GetBytes(a_sz);
+                        Array.Resize(ref ab, 34);
+                        break;
+                    case Platform.MACOSX:
+                        if (a_blMayHavePrefix)
+                        {
+                            ab = Encoding.UTF8.GetBytes(a_sz);
+                            byte bLength = (byte)ab.Length;
+                            Array.Resize(ref ab, 34);
+                            Array.ConstrainedCopy(ab, 0, ab, 1, 33);
+                            ab[0] = bLength;
+                        }
+                        else
+                        {
+                            ab = Encoding.UTF8.GetBytes(a_sz);
+                            Array.Resize(ref ab, 34);
+                        }
+                        break;
                 }
 
                 // Pack the data...
-                sz32Item_00 = (ushort)((sz[1] << 8) + sz[0]);
-                sz32Item_01 = (ushort)((sz[3] << 8) + sz[2]);
-                sz32Item_02 = (ushort)((sz[5] << 8) + sz[4]);
-                sz32Item_03 = (ushort)((sz[7] << 8) + sz[6]);
-                sz32Item_04 = (ushort)((sz[9] << 8) + sz[8]);
-                sz32Item_05 = (ushort)((sz[11] << 8) + sz[10]);
-                sz32Item_06 = (ushort)((sz[13] << 8) + sz[12]);
-                sz32Item_07 = (ushort)((sz[15] << 8) + sz[14]);
-                sz32Item_08 = (ushort)((sz[17] << 8) + sz[16]);
-                sz32Item_09 = (ushort)((sz[19] << 8) + sz[18]);
-                sz32Item_10 = (ushort)((sz[21] << 8) + sz[20]);
-                sz32Item_11 = (ushort)((sz[23] << 8) + sz[22]);
-                sz32Item_12 = (ushort)((sz[25] << 8) + sz[24]);
-                sz32Item_13 = (ushort)((sz[27] << 8) + sz[26]);
-                sz32Item_14 = (ushort)((sz[29] << 8) + sz[28]);
-                sz32Item_15 = (ushort)((sz[31] << 8) + sz[30]);
-                sz32Item_16 = (ushort)((sz[33] << 8) + sz[32]);
+                sz32Item_00 = (ushort)((ab[1] << 8) + ab[0]);
+                sz32Item_01 = (ushort)((ab[3] << 8) + ab[2]);
+                sz32Item_02 = (ushort)((ab[5] << 8) + ab[4]);
+                sz32Item_03 = (ushort)((ab[7] << 8) + ab[6]);
+                sz32Item_04 = (ushort)((ab[9] << 8) + ab[8]);
+                sz32Item_05 = (ushort)((ab[11] << 8) + ab[10]);
+                sz32Item_06 = (ushort)((ab[13] << 8) + ab[12]);
+                sz32Item_07 = (ushort)((ab[15] << 8) + ab[14]);
+                sz32Item_08 = (ushort)((ab[17] << 8) + ab[16]);
+                sz32Item_09 = (ushort)((ab[19] << 8) + ab[18]);
+                sz32Item_10 = (ushort)((ab[21] << 8) + ab[20]);
+                sz32Item_11 = (ushort)((ab[23] << 8) + ab[22]);
+                sz32Item_12 = (ushort)((ab[25] << 8) + ab[24]);
+                sz32Item_13 = (ushort)((ab[27] << 8) + ab[26]);
+                sz32Item_14 = (ushort)((ab[29] << 8) + ab[28]);
+                sz32Item_15 = (ushort)((ab[31] << 8) + ab[30]);
+                sz32Item_16 = (ushort)((ab[33] << 8) + ab[32]);
             }
         }
 
@@ -339,84 +535,136 @@ namespace TWAINWorkingGroup
             /// <returns></returns>
             private string GetValue(bool a_blMayHavePrefix)
             {
-                string sz =
-                    Convert.ToChar(sz32Item_000 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_000 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_001 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_001 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_002 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_002 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_003 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_003 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_004 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_004 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_005 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_005 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_006 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_006 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_007 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_007 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_008 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_008 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_009 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_009 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_010 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_010 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_011 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_011 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_012 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_012 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_013 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_013 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_014 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_014 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_015 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_015 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_016 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_016 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_017 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_017 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_018 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_018 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_019 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_019 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_020 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_020 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_021 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_021 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_022 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_022 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_023 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_023 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_024 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_024 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_025 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_025 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_026 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_026 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_027 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_027 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_028 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_028 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_029 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_029 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_030 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_030 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_031 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_031 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_032 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_032 >> 8) & 0xFF).ToString();
+                byte[] ab = new byte[66];
+
+                ab[0] = (byte)(sz32Item_000 & 0xFF);
+                ab[1] = (byte)((sz32Item_000 >> 8) & 0xFF);
+
+                ab[2] = (byte)(sz32Item_001 & 0xFF);
+                ab[3] = (byte)((sz32Item_001 >> 8) & 0xFF);
+
+                ab[4] = (byte)(sz32Item_002 & 0xFF);
+                ab[5] = (byte)((sz32Item_002 >> 8) & 0xFF);
+
+                ab[6] = (byte)(sz32Item_003 & 0xFF);
+                ab[7] = (byte)((sz32Item_003 >> 8) & 0xFF);
+
+                ab[8] = (byte)(sz32Item_004 & 0xFF);
+                ab[9] = (byte)((sz32Item_004 >> 8) & 0xFF);
+
+                ab[10] = (byte)(sz32Item_005 & 0xFF);
+                ab[11] = (byte)((sz32Item_005 >> 8) & 0xFF);
+
+                ab[12] = (byte)(sz32Item_006 & 0xFF);
+                ab[13] = (byte)((sz32Item_006 >> 8) & 0xFF);
+
+                ab[14] = (byte)(sz32Item_007 & 0xFF);
+                ab[15] = (byte)((sz32Item_007 >> 8) & 0xFF);
+
+                ab[16] = (byte)(sz32Item_008 & 0xFF);
+                ab[17] = (byte)((sz32Item_008 >> 8) & 0xFF);
+
+                ab[18] = (byte)(sz32Item_009 & 0xFF);
+                ab[19] = (byte)((sz32Item_009 >> 8) & 0xFF);
+
+                ab[20] = (byte)(sz32Item_010 & 0xFF);
+                ab[21] = (byte)((sz32Item_010 >> 8) & 0xFF);
+
+                ab[22] = (byte)(sz32Item_011 & 0xFF);
+                ab[23] = (byte)((sz32Item_011 >> 8) & 0xFF);
+
+                ab[24] = (byte)(sz32Item_012 & 0xFF);
+                ab[25] = (byte)((sz32Item_012 >> 8) & 0xFF);
+
+                ab[26] = (byte)(sz32Item_013 & 0xFF);
+                ab[27] = (byte)((sz32Item_013 >> 8) & 0xFF);
+
+                ab[28] = (byte)(sz32Item_014 & 0xFF);
+                ab[29] = (byte)((sz32Item_014 >> 8) & 0xFF);
+
+                ab[30] = (byte)(sz32Item_015 & 0xFF);
+                ab[31] = (byte)((sz32Item_015 >> 8) & 0xFF);
+
+                ab[32] = (byte)(sz32Item_016 & 0xFF);
+                ab[33] = (byte)((sz32Item_016 >> 8) & 0xFF);
+
+                ab[34] = (byte)(sz32Item_017 & 0xFF);
+                ab[35] = (byte)((sz32Item_017 >> 8) & 0xFF);
+
+                ab[36] = (byte)(sz32Item_018 & 0xFF);
+                ab[37] = (byte)((sz32Item_018 >> 8) & 0xFF);
+
+                ab[38] = (byte)(sz32Item_019 & 0xFF);
+                ab[39] = (byte)((sz32Item_019 >> 8) & 0xFF);
+
+                ab[40] = (byte)(sz32Item_020 & 0xFF);
+                ab[41] = (byte)((sz32Item_020 >> 8) & 0xFF);
+
+                ab[42] = (byte)(sz32Item_021 & 0xFF);
+                ab[43] = (byte)((sz32Item_021 >> 8) & 0xFF);
+
+                ab[44] = (byte)(sz32Item_022 & 0xFF);
+                ab[45] = (byte)((sz32Item_022 >> 8) & 0xFF);
+
+                ab[46] = (byte)(sz32Item_023 & 0xFF);
+                ab[47] = (byte)((sz32Item_023 >> 8) & 0xFF);
+
+                ab[48] = (byte)(sz32Item_024 & 0xFF);
+                ab[49] = (byte)((sz32Item_024 >> 8) & 0xFF);
+
+                ab[50] = (byte)(sz32Item_025 & 0xFF);
+                ab[51] = (byte)((sz32Item_025 >> 8) & 0xFF);
+
+                ab[52] = (byte)(sz32Item_026 & 0xFF);
+                ab[53] = (byte)((sz32Item_026 >> 8) & 0xFF);
+
+                ab[54] = (byte)(sz32Item_027 & 0xFF);
+                ab[55] = (byte)((sz32Item_027 >> 8) & 0xFF);
+
+                ab[56] = (byte)(sz32Item_028 & 0xFF);
+                ab[57] = (byte)((sz32Item_028 >> 8) & 0xFF);
+
+                ab[58] = (byte)(sz32Item_029 & 0xFF);
+                ab[59] = (byte)((sz32Item_029 >> 8) & 0xFF);
+
+                ab[60] = (byte)(sz32Item_030 & 0xFF);
+                ab[61] = (byte)((sz32Item_030 >> 8) & 0xFF);
+
+                ab[62] = (byte)(sz32Item_031 & 0xFF);
+                ab[63] = (byte)((sz32Item_031 >> 8) & 0xFF);
+
+                ab[64] = (byte)(sz32Item_032 & 0xFF);
+                ab[65] = (byte)((sz32Item_032 >> 8) & 0xFF);
 
                 // If the first character is a NUL, then return the empty string...
-                if (sz[0] == '\0')
+                if (ab[0] == '\0')
                 {
                     return ("");
                 }
 
+                string sz;
+
                 // If we're running on a Mac, take off the prefix 'byte'...
-                if (a_blMayHavePrefix && (TWAIN.GetPlatform() == Platform.MACOSX))
+                switch (TWAIN.GetPlatform())
                 {
-                    sz = sz.Remove(0, 1);
+                    default:
+                    case Platform.WINDOWS:
+                        // Windows needs the current code page...
+                        sz = Encoding.GetEncoding(GetCodePage()).GetString(ab);
+                        break;
+                    case Platform.LINUX:
+                        sz = Encoding.UTF8.GetString(ab);
+                        break;
+                    case Platform.MACOSX:
+                        if (a_blMayHavePrefix)
+                        {
+                            sz = Encoding.UTF8.GetString(ab, 1, ab.Length - 1);
+                        }
+                        else
+                        {
+                            sz = Encoding.UTF8.GetString(ab);
+                        }
+                        break;
                 }
 
                 // If we detect a NUL, then split around it...
@@ -454,60 +702,78 @@ namespace TWAINWorkingGroup
             /// <param name="a_sz"></param>
             private void SetValue(string a_sz, bool a_blMayHavePrefix)
             {
-                // If we're running on a Mac, tack on the prefix 'byte'...
-                if (a_sz == null)
+                byte[] ab;
+
+                // Validate...
+                if (a_sz.Length > 65)
                 {
-                    a_sz = "";
-                }
-                else if (a_blMayHavePrefix && (TWAIN.GetPlatform() == Platform.MACOSX))
-                {
-                    a_sz = (char)a_sz.Length + a_sz;
+                    a_sz = a_sz.Remove(65);
                 }
 
-                // Make sure that we're NUL padded...
-                string sz =
-                    a_sz +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-                if (sz.Length > 64)
+                // If we're running on a Mac, tack on the prefix 'byte'...
+                switch (TWAIN.GetPlatform())
                 {
-                    sz = sz.Remove(64);
+                    default:
+                    case Platform.WINDOWS:
+                        // Windows needs the current code page...
+                        ab = Encoding.GetEncoding(GetCodePage()).GetBytes(a_sz);
+                        Array.Resize(ref ab, 66);
+                        break;
+                    case Platform.LINUX:
+                        ab = Encoding.UTF8.GetBytes(a_sz);
+                        Array.Resize(ref ab, 66);
+                        break;
+                    case Platform.MACOSX:
+                        if (a_blMayHavePrefix)
+                        {
+                            ab = Encoding.UTF8.GetBytes(a_sz);
+                            byte bLength = (byte)ab.Length;
+                            Array.Resize(ref ab, 66);
+                            Array.ConstrainedCopy(ab, 0, ab, 1, 65);
+                            ab[0] = bLength;
+                        }
+                        else
+                        {
+                            ab = Encoding.UTF8.GetBytes(a_sz);
+                            Array.Resize(ref ab, 66);
+                        }
+                        break;
                 }
 
                 // Pack the data...
-                sz32Item_000 = (ushort)((sz[1] << 8) + sz[0]);
-                sz32Item_001 = (ushort)((sz[3] << 8) + sz[2]);
-                sz32Item_002 = (ushort)((sz[5] << 8) + sz[4]);
-                sz32Item_003 = (ushort)((sz[7] << 8) + sz[6]);
-                sz32Item_004 = (ushort)((sz[9] << 8) + sz[8]);
-                sz32Item_005 = (ushort)((sz[11] << 8) + sz[10]);
-                sz32Item_006 = (ushort)((sz[13] << 8) + sz[12]);
-                sz32Item_007 = (ushort)((sz[15] << 8) + sz[14]);
-                sz32Item_008 = (ushort)((sz[17] << 8) + sz[16]);
-                sz32Item_009 = (ushort)((sz[19] << 8) + sz[18]);
-                sz32Item_010 = (ushort)((sz[21] << 8) + sz[20]);
-                sz32Item_011 = (ushort)((sz[23] << 8) + sz[22]);
-                sz32Item_012 = (ushort)((sz[25] << 8) + sz[24]);
-                sz32Item_013 = (ushort)((sz[27] << 8) + sz[26]);
-                sz32Item_014 = (ushort)((sz[29] << 8) + sz[28]);
-                sz32Item_015 = (ushort)((sz[31] << 8) + sz[30]);
-                sz32Item_016 = (ushort)((sz[33] << 8) + sz[32]);
-                sz32Item_017 = (ushort)((sz[35] << 8) + sz[34]);
-                sz32Item_018 = (ushort)((sz[37] << 8) + sz[36]);
-                sz32Item_019 = (ushort)((sz[39] << 8) + sz[38]);
-                sz32Item_020 = (ushort)((sz[41] << 8) + sz[40]);
-                sz32Item_021 = (ushort)((sz[43] << 8) + sz[42]);
-                sz32Item_022 = (ushort)((sz[45] << 8) + sz[44]);
-                sz32Item_023 = (ushort)((sz[47] << 8) + sz[46]);
-                sz32Item_024 = (ushort)((sz[49] << 8) + sz[48]);
-                sz32Item_025 = (ushort)((sz[51] << 8) + sz[50]);
-                sz32Item_026 = (ushort)((sz[53] << 8) + sz[52]);
-                sz32Item_027 = (ushort)((sz[55] << 8) + sz[54]);
-                sz32Item_028 = (ushort)((sz[57] << 8) + sz[56]);
-                sz32Item_029 = (ushort)((sz[59] << 8) + sz[58]);
-                sz32Item_030 = (ushort)((sz[61] << 8) + sz[60]);
-                sz32Item_031 = (ushort)((sz[63] << 8) + sz[62]);
-                sz32Item_032 = (ushort)((sz[64] << 8) + sz[63]);
+                sz32Item_000 = (ushort)((ab[1] << 8) + ab[0]);
+                sz32Item_001 = (ushort)((ab[3] << 8) + ab[2]);
+                sz32Item_002 = (ushort)((ab[5] << 8) + ab[4]);
+                sz32Item_003 = (ushort)((ab[7] << 8) + ab[6]);
+                sz32Item_004 = (ushort)((ab[9] << 8) + ab[8]);
+                sz32Item_005 = (ushort)((ab[11] << 8) + ab[10]);
+                sz32Item_006 = (ushort)((ab[13] << 8) + ab[12]);
+                sz32Item_007 = (ushort)((ab[15] << 8) + ab[14]);
+                sz32Item_008 = (ushort)((ab[17] << 8) + ab[16]);
+                sz32Item_009 = (ushort)((ab[19] << 8) + ab[18]);
+                sz32Item_010 = (ushort)((ab[21] << 8) + ab[20]);
+                sz32Item_011 = (ushort)((ab[23] << 8) + ab[22]);
+                sz32Item_012 = (ushort)((ab[25] << 8) + ab[24]);
+                sz32Item_013 = (ushort)((ab[27] << 8) + ab[26]);
+                sz32Item_014 = (ushort)((ab[29] << 8) + ab[28]);
+                sz32Item_015 = (ushort)((ab[31] << 8) + ab[30]);
+                sz32Item_016 = (ushort)((ab[33] << 8) + ab[32]);
+                sz32Item_017 = (ushort)((ab[35] << 8) + ab[34]);
+                sz32Item_018 = (ushort)((ab[37] << 8) + ab[36]);
+                sz32Item_019 = (ushort)((ab[39] << 8) + ab[38]);
+                sz32Item_020 = (ushort)((ab[41] << 8) + ab[40]);
+                sz32Item_021 = (ushort)((ab[43] << 8) + ab[42]);
+                sz32Item_022 = (ushort)((ab[45] << 8) + ab[44]);
+                sz32Item_023 = (ushort)((ab[47] << 8) + ab[46]);
+                sz32Item_024 = (ushort)((ab[49] << 8) + ab[48]);
+                sz32Item_025 = (ushort)((ab[51] << 8) + ab[50]);
+                sz32Item_026 = (ushort)((ab[53] << 8) + ab[52]);
+                sz32Item_027 = (ushort)((ab[55] << 8) + ab[54]);
+                sz32Item_028 = (ushort)((ab[57] << 8) + ab[56]);
+                sz32Item_029 = (ushort)((ab[59] << 8) + ab[58]);
+                sz32Item_030 = (ushort)((ab[61] << 8) + ab[60]);
+                sz32Item_031 = (ushort)((ab[63] << 8) + ab[62]);
+                sz32Item_032 = (ushort)((ab[65] << 8) + ab[64]);
             }
         }
 
@@ -612,148 +878,232 @@ namespace TWAINWorkingGroup
             /// <returns></returns>
             private string GetValue(bool a_blMayHavePrefix)
             {
-                string sz =
-                    Convert.ToChar(sz32Item_000 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_000 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_001 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_001 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_002 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_002 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_003 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_003 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_004 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_004 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_005 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_005 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_006 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_006 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_007 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_007 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_008 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_008 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_009 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_009 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_010 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_010 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_011 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_011 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_012 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_012 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_013 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_013 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_014 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_014 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_015 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_015 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_016 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_016 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_017 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_017 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_018 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_018 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_019 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_019 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_020 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_020 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_021 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_021 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_022 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_022 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_023 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_023 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_024 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_024 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_025 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_025 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_026 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_026 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_027 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_027 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_028 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_028 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_029 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_029 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_030 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_030 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_031 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_031 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_032 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_032 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_033 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_033 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_034 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_034 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_035 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_035 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_036 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_036 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_037 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_037 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_038 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_038 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_039 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_039 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_040 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_040 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_041 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_041 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_042 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_042 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_043 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_043 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_044 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_044 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_045 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_045 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_046 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_046 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_047 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_047 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_048 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_048 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_049 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_049 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_050 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_050 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_051 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_051 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_052 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_052 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_053 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_053 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_054 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_054 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_055 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_055 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_056 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_056 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_057 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_057 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_058 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_058 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_059 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_059 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_060 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_060 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_061 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_061 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_062 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_062 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_063 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_063 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_064 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_064 >> 8) & 0xFF).ToString();
+                byte[] ab = new byte[130];
+
+                ab[0] = (byte)(sz32Item_000 & 0xFF);
+                ab[1] = (byte)((sz32Item_000 >> 8) & 0xFF);
+
+                ab[2] = (byte)(sz32Item_001 & 0xFF);
+                ab[3] = (byte)((sz32Item_001 >> 8) & 0xFF);
+
+                ab[4] = (byte)(sz32Item_002 & 0xFF);
+                ab[5] = (byte)((sz32Item_002 >> 8) & 0xFF);
+
+                ab[6] = (byte)(sz32Item_003 & 0xFF);
+                ab[7] = (byte)((sz32Item_003 >> 8) & 0xFF);
+
+                ab[8] = (byte)(sz32Item_004 & 0xFF);
+                ab[9] = (byte)((sz32Item_004 >> 8) & 0xFF);
+
+                ab[10] = (byte)(sz32Item_005 & 0xFF);
+                ab[11] = (byte)((sz32Item_005 >> 8) & 0xFF);
+
+                ab[12] = (byte)(sz32Item_006 & 0xFF);
+                ab[13] = (byte)((sz32Item_006 >> 8) & 0xFF);
+
+                ab[14] = (byte)(sz32Item_007 & 0xFF);
+                ab[15] = (byte)((sz32Item_007 >> 8) & 0xFF);
+
+                ab[16] = (byte)(sz32Item_008 & 0xFF);
+                ab[17] = (byte)((sz32Item_008 >> 8) & 0xFF);
+
+                ab[18] = (byte)(sz32Item_009 & 0xFF);
+                ab[19] = (byte)((sz32Item_009 >> 8) & 0xFF);
+
+                ab[20] = (byte)(sz32Item_010 & 0xFF);
+                ab[21] = (byte)((sz32Item_010 >> 8) & 0xFF);
+
+                ab[22] = (byte)(sz32Item_011 & 0xFF);
+                ab[23] = (byte)((sz32Item_011 >> 8) & 0xFF);
+
+                ab[24] = (byte)(sz32Item_012 & 0xFF);
+                ab[25] = (byte)((sz32Item_012 >> 8) & 0xFF);
+
+                ab[26] = (byte)(sz32Item_013 & 0xFF);
+                ab[27] = (byte)((sz32Item_013 >> 8) & 0xFF);
+
+                ab[28] = (byte)(sz32Item_014 & 0xFF);
+                ab[29] = (byte)((sz32Item_014 >> 8) & 0xFF);
+
+                ab[30] = (byte)(sz32Item_015 & 0xFF);
+                ab[31] = (byte)((sz32Item_015 >> 8) & 0xFF);
+
+                ab[32] = (byte)(sz32Item_016 & 0xFF);
+                ab[33] = (byte)((sz32Item_016 >> 8) & 0xFF);
+
+                ab[34] = (byte)(sz32Item_017 & 0xFF);
+                ab[35] = (byte)((sz32Item_017 >> 8) & 0xFF);
+
+                ab[36] = (byte)(sz32Item_018 & 0xFF);
+                ab[37] = (byte)((sz32Item_018 >> 8) & 0xFF);
+
+                ab[38] = (byte)(sz32Item_019 & 0xFF);
+                ab[39] = (byte)((sz32Item_019 >> 8) & 0xFF);
+
+                ab[40] = (byte)(sz32Item_020 & 0xFF);
+                ab[41] = (byte)((sz32Item_020 >> 8) & 0xFF);
+
+                ab[42] = (byte)(sz32Item_021 & 0xFF);
+                ab[43] = (byte)((sz32Item_021 >> 8) & 0xFF);
+
+                ab[44] = (byte)(sz32Item_022 & 0xFF);
+                ab[45] = (byte)((sz32Item_022 >> 8) & 0xFF);
+
+                ab[46] = (byte)(sz32Item_023 & 0xFF);
+                ab[47] = (byte)((sz32Item_023 >> 8) & 0xFF);
+
+                ab[48] = (byte)(sz32Item_024 & 0xFF);
+                ab[49] = (byte)((sz32Item_024 >> 8) & 0xFF);
+
+                ab[50] = (byte)(sz32Item_025 & 0xFF);
+                ab[51] = (byte)((sz32Item_025 >> 8) & 0xFF);
+
+                ab[52] = (byte)(sz32Item_026 & 0xFF);
+                ab[53] = (byte)((sz32Item_026 >> 8) & 0xFF);
+
+                ab[54] = (byte)(sz32Item_027 & 0xFF);
+                ab[55] = (byte)((sz32Item_027 >> 8) & 0xFF);
+
+                ab[56] = (byte)(sz32Item_028 & 0xFF);
+                ab[57] = (byte)((sz32Item_028 >> 8) & 0xFF);
+
+                ab[58] = (byte)(sz32Item_029 & 0xFF);
+                ab[59] = (byte)((sz32Item_029 >> 8) & 0xFF);
+
+                ab[60] = (byte)(sz32Item_030 & 0xFF);
+                ab[61] = (byte)((sz32Item_030 >> 8) & 0xFF);
+
+                ab[62] = (byte)(sz32Item_031 & 0xFF);
+                ab[63] = (byte)((sz32Item_031 >> 8) & 0xFF);
+
+                ab[64] = (byte)(sz32Item_032 & 0xFF);
+                ab[65] = (byte)((sz32Item_032 >> 8) & 0xFF);
+
+                ab[66] = (byte)(sz32Item_033 & 0xFF);
+                ab[67] = (byte)((sz32Item_033 >> 8) & 0xFF);
+
+                ab[68] = (byte)(sz32Item_034 & 0xFF);
+                ab[69] = (byte)((sz32Item_034 >> 8) & 0xFF);
+
+                ab[70] = (byte)(sz32Item_035 & 0xFF);
+                ab[71] = (byte)((sz32Item_035 >> 8) & 0xFF);
+
+                ab[72] = (byte)(sz32Item_036 & 0xFF);
+                ab[73] = (byte)((sz32Item_036 >> 8) & 0xFF);
+
+                ab[74] = (byte)(sz32Item_037 & 0xFF);
+                ab[75] = (byte)((sz32Item_037 >> 8) & 0xFF);
+
+                ab[76] = (byte)(sz32Item_038 & 0xFF);
+                ab[77] = (byte)((sz32Item_038 >> 8) & 0xFF);
+
+                ab[78] = (byte)(sz32Item_039 & 0xFF);
+                ab[79] = (byte)((sz32Item_039 >> 8) & 0xFF);
+
+                ab[80] = (byte)(sz32Item_040 & 0xFF);
+                ab[81] = (byte)((sz32Item_040 >> 8) & 0xFF);
+
+                ab[82] = (byte)(sz32Item_041 & 0xFF);
+                ab[83] = (byte)((sz32Item_041 >> 8) & 0xFF);
+
+                ab[84] = (byte)(sz32Item_042 & 0xFF);
+                ab[85] = (byte)((sz32Item_042 >> 8) & 0xFF);
+
+                ab[86] = (byte)(sz32Item_043 & 0xFF);
+                ab[87] = (byte)((sz32Item_043 >> 8) & 0xFF);
+
+                ab[88] = (byte)(sz32Item_044 & 0xFF);
+                ab[89] = (byte)((sz32Item_044 >> 8) & 0xFF);
+
+                ab[90] = (byte)(sz32Item_045 & 0xFF);
+                ab[91] = (byte)((sz32Item_045 >> 8) & 0xFF);
+
+                ab[92] = (byte)(sz32Item_046 & 0xFF);
+                ab[93] = (byte)((sz32Item_046 >> 8) & 0xFF);
+
+                ab[94] = (byte)(sz32Item_047 & 0xFF);
+                ab[95] = (byte)((sz32Item_047 >> 8) & 0xFF);
+
+                ab[96] = (byte)(sz32Item_048 & 0xFF);
+                ab[97] = (byte)((sz32Item_048 >> 8) & 0xFF);
+
+                ab[98] = (byte)(sz32Item_049 & 0xFF);
+                ab[99] = (byte)((sz32Item_049 >> 8) & 0xFF);
+
+                ab[100] = (byte)(sz32Item_050 & 0xFF);
+                ab[101] = (byte)((sz32Item_050 >> 8) & 0xFF);
+
+                ab[102] = (byte)(sz32Item_051 & 0xFF);
+                ab[103] = (byte)((sz32Item_051 >> 8) & 0xFF);
+
+                ab[104] = (byte)(sz32Item_052 & 0xFF);
+                ab[105] = (byte)((sz32Item_052 >> 8) & 0xFF);
+
+                ab[106] = (byte)(sz32Item_053 & 0xFF);
+                ab[107] = (byte)((sz32Item_053 >> 8) & 0xFF);
+
+                ab[108] = (byte)(sz32Item_054 & 0xFF);
+                ab[109] = (byte)((sz32Item_054 >> 8) & 0xFF);
+
+                ab[110] = (byte)(sz32Item_055 & 0xFF);
+                ab[111] = (byte)((sz32Item_055 >> 8) & 0xFF);
+
+                ab[112] = (byte)(sz32Item_056 & 0xFF);
+                ab[113] = (byte)((sz32Item_056 >> 8) & 0xFF);
+
+                ab[114] = (byte)(sz32Item_057 & 0xFF);
+                ab[115] = (byte)((sz32Item_057 >> 8) & 0xFF);
+
+                ab[116] = (byte)(sz32Item_058 & 0xFF);
+                ab[117] = (byte)((sz32Item_058 >> 8) & 0xFF);
+
+                ab[118] = (byte)(sz32Item_059 & 0xFF);
+                ab[119] = (byte)((sz32Item_059 >> 8) & 0xFF);
+
+                ab[120] = (byte)(sz32Item_060 & 0xFF);
+                ab[121] = (byte)((sz32Item_060 >> 8) & 0xFF);
+
+                ab[122] = (byte)(sz32Item_061 & 0xFF);
+                ab[123] = (byte)((sz32Item_061 >> 8) & 0xFF);
+
+                ab[124] = (byte)(sz32Item_062 & 0xFF);
+                ab[125] = (byte)((sz32Item_062 >> 8) & 0xFF);
+
+                ab[126] = (byte)(sz32Item_063 & 0xFF);
+                ab[127] = (byte)((sz32Item_063 >> 8) & 0xFF);
+
+                ab[128] = (byte)(sz32Item_064 & 0xFF);
+                ab[129] = (byte)((sz32Item_064 >> 8) & 0xFF);
 
                 // If the first character is a NUL, then return the empty string...
-                if (sz[0] == '\0')
+                if (ab[0] == '\0')
                 {
                     return ("");
                 }
 
+                string sz;
+
                 // If we're running on a Mac, take off the prefix 'byte'...
-                if (a_blMayHavePrefix && (TWAIN.GetPlatform() == Platform.MACOSX))
+                switch (TWAIN.GetPlatform())
                 {
-                    sz = sz.Remove(0, 1);
+                    default:
+                    case Platform.WINDOWS:
+                        // Windows needs the current code page...
+                        sz = Encoding.GetEncoding(GetCodePage()).GetString(ab);
+                        break;
+                    case Platform.LINUX:
+                        sz = Encoding.UTF8.GetString(ab);
+                        break;
+                    case Platform.MACOSX:
+                        if (a_blMayHavePrefix)
+                        {
+                            sz = Encoding.UTF8.GetString(ab, 1, ab.Length - 1);
+                        }
+                        else
+                        {
+                            sz = Encoding.UTF8.GetString(ab);
+                        }
+                        break;
                 }
 
                 // If we detect a NUL, then split around it...
@@ -791,95 +1141,110 @@ namespace TWAINWorkingGroup
             /// <param name="a_sz"></param>
             private void SetValue(string a_sz, bool a_blMayHavePrefix)
             {
-                // If we're running on a Mac, tack on the prefix 'byte'...
-                if (a_sz == null)
+                byte[] ab;
+
+                // Validate...
+                if (a_sz.Length > 129)
                 {
-                    a_sz = "";
-                }
-                else if (a_blMayHavePrefix && (TWAIN.GetPlatform() == Platform.MACOSX))
-                {
-                    a_sz = (char)a_sz.Length + a_sz;
+                    a_sz = a_sz.Remove(129);
                 }
 
-                // Make sure that we're NUL padded...
-                string sz =
-                    a_sz +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0";
-                if (sz.Length > 130)
+                // If we're running on a Mac, tack on the prefix 'byte'...
+                switch (TWAIN.GetPlatform())
                 {
-                    sz = sz.Remove(130);
+                    default:
+                    case Platform.WINDOWS:
+                        // Windows needs the current code page...
+                        ab = Encoding.GetEncoding(GetCodePage()).GetBytes(a_sz);
+                        Array.Resize(ref ab, 130);
+                        break;
+                    case Platform.LINUX:
+                        ab = Encoding.UTF8.GetBytes(a_sz);
+                        Array.Resize(ref ab, 130);
+                        break;
+                    case Platform.MACOSX:
+                        if (a_blMayHavePrefix)
+                        {
+                            ab = Encoding.UTF8.GetBytes(a_sz);
+                            byte bLength = (byte)ab.Length;
+                            Array.Resize(ref ab, 130);
+                            Array.ConstrainedCopy(ab, 0, ab, 1, 129);
+                            ab[0] = bLength;
+                        }
+                        else
+                        {
+                            ab = Encoding.UTF8.GetBytes(a_sz);
+                            Array.Resize(ref ab, 130);
+                        }
+                        break;
                 }
 
                 // Pack the data...
-                sz32Item_000 = (ushort)((sz[1] << 8) + sz[0]);
-                sz32Item_001 = (ushort)((sz[3] << 8) + sz[2]);
-                sz32Item_002 = (ushort)((sz[5] << 8) + sz[4]);
-                sz32Item_003 = (ushort)((sz[7] << 8) + sz[6]);
-                sz32Item_004 = (ushort)((sz[9] << 8) + sz[8]);
-                sz32Item_005 = (ushort)((sz[11] << 8) + sz[10]);
-                sz32Item_006 = (ushort)((sz[13] << 8) + sz[12]);
-                sz32Item_007 = (ushort)((sz[15] << 8) + sz[14]);
-                sz32Item_008 = (ushort)((sz[17] << 8) + sz[16]);
-                sz32Item_009 = (ushort)((sz[19] << 8) + sz[18]);
-                sz32Item_010 = (ushort)((sz[21] << 8) + sz[20]);
-                sz32Item_011 = (ushort)((sz[23] << 8) + sz[22]);
-                sz32Item_012 = (ushort)((sz[25] << 8) + sz[24]);
-                sz32Item_013 = (ushort)((sz[27] << 8) + sz[26]);
-                sz32Item_014 = (ushort)((sz[29] << 8) + sz[28]);
-                sz32Item_015 = (ushort)((sz[31] << 8) + sz[30]);
-                sz32Item_016 = (ushort)((sz[33] << 8) + sz[32]);
-                sz32Item_017 = (ushort)((sz[35] << 8) + sz[34]);
-                sz32Item_018 = (ushort)((sz[37] << 8) + sz[36]);
-                sz32Item_019 = (ushort)((sz[39] << 8) + sz[38]);
-                sz32Item_020 = (ushort)((sz[41] << 8) + sz[40]);
-                sz32Item_021 = (ushort)((sz[43] << 8) + sz[42]);
-                sz32Item_022 = (ushort)((sz[45] << 8) + sz[44]);
-                sz32Item_023 = (ushort)((sz[47] << 8) + sz[46]);
-                sz32Item_024 = (ushort)((sz[49] << 8) + sz[48]);
-                sz32Item_025 = (ushort)((sz[51] << 8) + sz[50]);
-                sz32Item_026 = (ushort)((sz[53] << 8) + sz[52]);
-                sz32Item_027 = (ushort)((sz[55] << 8) + sz[54]);
-                sz32Item_028 = (ushort)((sz[57] << 8) + sz[56]);
-                sz32Item_029 = (ushort)((sz[59] << 8) + sz[58]);
-                sz32Item_030 = (ushort)((sz[61] << 8) + sz[60]);
-                sz32Item_031 = (ushort)((sz[63] << 8) + sz[62]);
-                sz32Item_032 = (ushort)((sz[65] << 8) + sz[64]);
-                sz32Item_033 = (ushort)((sz[67] << 8) + sz[66]);
-                sz32Item_034 = (ushort)((sz[69] << 8) + sz[68]);
-                sz32Item_035 = (ushort)((sz[71] << 8) + sz[70]);
-                sz32Item_036 = (ushort)((sz[73] << 8) + sz[72]);
-                sz32Item_037 = (ushort)((sz[75] << 8) + sz[74]);
-                sz32Item_038 = (ushort)((sz[77] << 8) + sz[76]);
-                sz32Item_039 = (ushort)((sz[79] << 8) + sz[78]);
-                sz32Item_040 = (ushort)((sz[81] << 8) + sz[80]);
-                sz32Item_041 = (ushort)((sz[83] << 8) + sz[82]);
-                sz32Item_042 = (ushort)((sz[85] << 8) + sz[84]);
-                sz32Item_043 = (ushort)((sz[87] << 8) + sz[86]);
-                sz32Item_044 = (ushort)((sz[89] << 8) + sz[88]);
-                sz32Item_045 = (ushort)((sz[91] << 8) + sz[90]);
-                sz32Item_046 = (ushort)((sz[93] << 8) + sz[92]);
-                sz32Item_047 = (ushort)((sz[95] << 8) + sz[94]);
-                sz32Item_048 = (ushort)((sz[97] << 8) + sz[96]);
-                sz32Item_049 = (ushort)((sz[99] << 8) + sz[98]);
-                sz32Item_050 = (ushort)((sz[101] << 8) + sz[100]);
-                sz32Item_051 = (ushort)((sz[103] << 8) + sz[102]);
-                sz32Item_052 = (ushort)((sz[105] << 8) + sz[104]);
-                sz32Item_053 = (ushort)((sz[107] << 8) + sz[106]);
-                sz32Item_054 = (ushort)((sz[109] << 8) + sz[108]);
-                sz32Item_055 = (ushort)((sz[111] << 8) + sz[110]);
-                sz32Item_056 = (ushort)((sz[113] << 8) + sz[112]);
-                sz32Item_057 = (ushort)((sz[115] << 8) + sz[114]);
-                sz32Item_058 = (ushort)((sz[117] << 8) + sz[116]);
-                sz32Item_059 = (ushort)((sz[119] << 8) + sz[118]);
-                sz32Item_060 = (ushort)((sz[121] << 8) + sz[120]);
-                sz32Item_061 = (ushort)((sz[123] << 8) + sz[122]);
-                sz32Item_062 = (ushort)((sz[125] << 8) + sz[124]);
-                sz32Item_063 = (ushort)((sz[127] << 8) + sz[126]);
-                sz32Item_064 = (ushort)((sz[129] << 8) + sz[128]);
+                sz32Item_000 = (ushort)((ab[1] << 8) + ab[0]);
+                sz32Item_001 = (ushort)((ab[3] << 8) + ab[2]);
+                sz32Item_002 = (ushort)((ab[5] << 8) + ab[4]);
+                sz32Item_003 = (ushort)((ab[7] << 8) + ab[6]);
+                sz32Item_004 = (ushort)((ab[9] << 8) + ab[8]);
+                sz32Item_005 = (ushort)((ab[11] << 8) + ab[10]);
+                sz32Item_006 = (ushort)((ab[13] << 8) + ab[12]);
+                sz32Item_007 = (ushort)((ab[15] << 8) + ab[14]);
+                sz32Item_008 = (ushort)((ab[17] << 8) + ab[16]);
+                sz32Item_009 = (ushort)((ab[19] << 8) + ab[18]);
+                sz32Item_010 = (ushort)((ab[21] << 8) + ab[20]);
+                sz32Item_011 = (ushort)((ab[23] << 8) + ab[22]);
+                sz32Item_012 = (ushort)((ab[25] << 8) + ab[24]);
+                sz32Item_013 = (ushort)((ab[27] << 8) + ab[26]);
+                sz32Item_014 = (ushort)((ab[29] << 8) + ab[28]);
+                sz32Item_015 = (ushort)((ab[31] << 8) + ab[30]);
+                sz32Item_016 = (ushort)((ab[33] << 8) + ab[32]);
+                sz32Item_017 = (ushort)((ab[35] << 8) + ab[34]);
+                sz32Item_018 = (ushort)((ab[37] << 8) + ab[36]);
+                sz32Item_019 = (ushort)((ab[39] << 8) + ab[38]);
+                sz32Item_020 = (ushort)((ab[41] << 8) + ab[40]);
+                sz32Item_021 = (ushort)((ab[43] << 8) + ab[42]);
+                sz32Item_022 = (ushort)((ab[45] << 8) + ab[44]);
+                sz32Item_023 = (ushort)((ab[47] << 8) + ab[46]);
+                sz32Item_024 = (ushort)((ab[49] << 8) + ab[48]);
+                sz32Item_025 = (ushort)((ab[51] << 8) + ab[50]);
+                sz32Item_026 = (ushort)((ab[53] << 8) + ab[52]);
+                sz32Item_027 = (ushort)((ab[55] << 8) + ab[54]);
+                sz32Item_028 = (ushort)((ab[57] << 8) + ab[56]);
+                sz32Item_029 = (ushort)((ab[59] << 8) + ab[58]);
+                sz32Item_030 = (ushort)((ab[61] << 8) + ab[60]);
+                sz32Item_031 = (ushort)((ab[63] << 8) + ab[62]);
+                sz32Item_032 = (ushort)((ab[65] << 8) + ab[64]);
+                sz32Item_033 = (ushort)((ab[67] << 8) + ab[66]);
+                sz32Item_034 = (ushort)((ab[69] << 8) + ab[68]);
+                sz32Item_035 = (ushort)((ab[71] << 8) + ab[70]);
+                sz32Item_036 = (ushort)((ab[73] << 8) + ab[72]);
+                sz32Item_037 = (ushort)((ab[75] << 8) + ab[74]);
+                sz32Item_038 = (ushort)((ab[77] << 8) + ab[76]);
+                sz32Item_039 = (ushort)((ab[79] << 8) + ab[78]);
+                sz32Item_040 = (ushort)((ab[81] << 8) + ab[80]);
+                sz32Item_041 = (ushort)((ab[83] << 8) + ab[82]);
+                sz32Item_042 = (ushort)((ab[85] << 8) + ab[84]);
+                sz32Item_043 = (ushort)((ab[87] << 8) + ab[86]);
+                sz32Item_044 = (ushort)((ab[89] << 8) + ab[88]);
+                sz32Item_045 = (ushort)((ab[91] << 8) + ab[90]);
+                sz32Item_046 = (ushort)((ab[93] << 8) + ab[92]);
+                sz32Item_047 = (ushort)((ab[95] << 8) + ab[94]);
+                sz32Item_048 = (ushort)((ab[97] << 8) + ab[96]);
+                sz32Item_049 = (ushort)((ab[99] << 8) + ab[98]);
+                sz32Item_050 = (ushort)((ab[101] << 8) + ab[100]);
+                sz32Item_051 = (ushort)((ab[103] << 8) + ab[102]);
+                sz32Item_052 = (ushort)((ab[105] << 8) + ab[104]);
+                sz32Item_053 = (ushort)((ab[107] << 8) + ab[106]);
+                sz32Item_054 = (ushort)((ab[109] << 8) + ab[108]);
+                sz32Item_055 = (ushort)((ab[111] << 8) + ab[110]);
+                sz32Item_056 = (ushort)((ab[113] << 8) + ab[112]);
+                sz32Item_057 = (ushort)((ab[115] << 8) + ab[114]);
+                sz32Item_058 = (ushort)((ab[117] << 8) + ab[116]);
+                sz32Item_059 = (ushort)((ab[119] << 8) + ab[118]);
+                sz32Item_060 = (ushort)((ab[121] << 8) + ab[120]);
+                sz32Item_061 = (ushort)((ab[123] << 8) + ab[122]);
+                sz32Item_062 = (ushort)((ab[125] << 8) + ab[124]);
+                sz32Item_063 = (ushort)((ab[127] << 8) + ab[126]);
+                sz32Item_064 = (ushort)((ab[129] << 8) + ab[128]);
             }
         }
 
@@ -1047,274 +1412,421 @@ namespace TWAINWorkingGroup
             /// <returns></returns>
             private string GetValue(bool a_blMayHavePrefix)
             {
-                string sz =
-                    Convert.ToChar(sz32Item_000 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_000 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_001 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_001 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_002 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_002 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_003 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_003 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_004 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_004 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_005 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_005 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_006 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_006 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_007 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_007 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_008 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_008 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_009 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_009 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_010 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_010 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_011 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_011 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_012 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_012 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_013 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_013 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_014 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_014 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_015 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_015 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_016 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_016 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_017 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_017 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_018 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_018 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_019 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_019 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_020 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_020 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_021 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_021 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_022 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_022 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_023 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_023 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_024 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_024 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_025 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_025 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_026 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_026 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_027 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_027 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_028 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_028 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_029 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_029 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_030 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_030 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_031 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_031 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_032 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_032 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_033 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_033 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_034 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_034 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_035 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_035 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_036 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_036 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_037 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_037 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_038 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_038 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_039 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_039 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_040 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_040 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_041 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_041 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_042 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_042 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_043 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_043 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_044 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_044 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_045 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_045 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_046 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_046 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_047 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_047 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_048 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_048 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_049 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_049 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_050 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_050 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_051 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_051 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_052 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_052 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_053 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_053 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_054 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_054 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_055 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_055 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_056 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_056 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_057 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_057 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_058 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_058 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_059 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_059 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_060 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_060 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_061 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_061 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_062 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_062 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_063 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_063 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_064 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_064 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_065 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_065 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_066 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_066 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_067 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_067 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_068 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_068 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_069 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_069 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_070 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_070 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_071 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_071 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_072 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_072 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_073 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_073 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_074 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_074 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_075 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_075 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_076 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_076 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_077 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_077 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_078 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_078 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_079 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_079 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_080 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_080 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_081 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_081 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_082 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_082 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_083 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_083 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_084 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_084 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_085 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_085 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_086 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_086 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_087 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_087 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_088 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_088 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_089 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_089 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_090 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_090 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_091 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_091 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_092 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_092 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_093 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_093 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_094 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_094 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_095 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_095 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_096 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_096 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_097 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_097 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_098 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_098 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_099 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_099 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_100 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_100 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_101 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_101 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_102 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_102 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_103 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_103 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_104 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_104 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_105 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_105 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_106 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_106 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_107 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_107 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_108 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_108 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_109 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_109 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_110 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_110 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_111 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_111 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_112 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_112 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_113 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_113 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_114 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_114 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_115 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_115 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_116 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_116 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_117 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_117 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_118 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_118 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_119 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_119 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_120 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_120 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_121 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_121 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_122 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_122 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_123 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_123 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_124 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_124 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_125 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_125 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_126 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_126 >> 8) & 0xFF).ToString() +
-                    Convert.ToChar(sz32Item_127 & 0xFF).ToString() +
-                    Convert.ToChar((sz32Item_127 >> 8) & 0xFF).ToString();
+                byte[] ab = new byte[256];
+
+                ab[0] = (byte)(sz32Item_000 & 0xFF);
+                ab[1] = (byte)((sz32Item_000 >> 8) & 0xFF);
+
+                ab[2] = (byte)(sz32Item_001 & 0xFF);
+                ab[3] = (byte)((sz32Item_001 >> 8) & 0xFF);
+
+                ab[4] = (byte)(sz32Item_002 & 0xFF);
+                ab[5] = (byte)((sz32Item_002 >> 8) & 0xFF);
+
+                ab[6] = (byte)(sz32Item_003 & 0xFF);
+                ab[7] = (byte)((sz32Item_003 >> 8) & 0xFF);
+
+                ab[8] = (byte)(sz32Item_004 & 0xFF);
+                ab[9] = (byte)((sz32Item_004 >> 8) & 0xFF);
+
+                ab[10] = (byte)(sz32Item_005 & 0xFF);
+                ab[11] = (byte)((sz32Item_005 >> 8) & 0xFF);
+
+                ab[12] = (byte)(sz32Item_006 & 0xFF);
+                ab[13] = (byte)((sz32Item_006 >> 8) & 0xFF);
+
+                ab[14] = (byte)(sz32Item_007 & 0xFF);
+                ab[15] = (byte)((sz32Item_007 >> 8) & 0xFF);
+
+                ab[16] = (byte)(sz32Item_008 & 0xFF);
+                ab[17] = (byte)((sz32Item_008 >> 8) & 0xFF);
+
+                ab[18] = (byte)(sz32Item_009 & 0xFF);
+                ab[19] = (byte)((sz32Item_009 >> 8) & 0xFF);
+
+                ab[20] = (byte)(sz32Item_010 & 0xFF);
+                ab[21] = (byte)((sz32Item_010 >> 8) & 0xFF);
+
+                ab[22] = (byte)(sz32Item_011 & 0xFF);
+                ab[23] = (byte)((sz32Item_011 >> 8) & 0xFF);
+
+                ab[24] = (byte)(sz32Item_012 & 0xFF);
+                ab[25] = (byte)((sz32Item_012 >> 8) & 0xFF);
+
+                ab[26] = (byte)(sz32Item_013 & 0xFF);
+                ab[27] = (byte)((sz32Item_013 >> 8) & 0xFF);
+
+                ab[28] = (byte)(sz32Item_014 & 0xFF);
+                ab[29] = (byte)((sz32Item_014 >> 8) & 0xFF);
+
+                ab[30] = (byte)(sz32Item_015 & 0xFF);
+                ab[31] = (byte)((sz32Item_015 >> 8) & 0xFF);
+
+                ab[32] = (byte)(sz32Item_016 & 0xFF);
+                ab[33] = (byte)((sz32Item_016 >> 8) & 0xFF);
+
+                ab[34] = (byte)(sz32Item_017 & 0xFF);
+                ab[35] = (byte)((sz32Item_017 >> 8) & 0xFF);
+
+                ab[36] = (byte)(sz32Item_018 & 0xFF);
+                ab[37] = (byte)((sz32Item_018 >> 8) & 0xFF);
+
+                ab[38] = (byte)(sz32Item_019 & 0xFF);
+                ab[39] = (byte)((sz32Item_019 >> 8) & 0xFF);
+
+                ab[40] = (byte)(sz32Item_020 & 0xFF);
+                ab[41] = (byte)((sz32Item_020 >> 8) & 0xFF);
+
+                ab[42] = (byte)(sz32Item_021 & 0xFF);
+                ab[43] = (byte)((sz32Item_021 >> 8) & 0xFF);
+
+                ab[44] = (byte)(sz32Item_022 & 0xFF);
+                ab[45] = (byte)((sz32Item_022 >> 8) & 0xFF);
+
+                ab[46] = (byte)(sz32Item_023 & 0xFF);
+                ab[47] = (byte)((sz32Item_023 >> 8) & 0xFF);
+
+                ab[48] = (byte)(sz32Item_024 & 0xFF);
+                ab[49] = (byte)((sz32Item_024 >> 8) & 0xFF);
+
+                ab[50] = (byte)(sz32Item_025 & 0xFF);
+                ab[51] = (byte)((sz32Item_025 >> 8) & 0xFF);
+
+                ab[52] = (byte)(sz32Item_026 & 0xFF);
+                ab[53] = (byte)((sz32Item_026 >> 8) & 0xFF);
+
+                ab[54] = (byte)(sz32Item_027 & 0xFF);
+                ab[55] = (byte)((sz32Item_027 >> 8) & 0xFF);
+
+                ab[56] = (byte)(sz32Item_028 & 0xFF);
+                ab[57] = (byte)((sz32Item_028 >> 8) & 0xFF);
+
+                ab[58] = (byte)(sz32Item_029 & 0xFF);
+                ab[59] = (byte)((sz32Item_029 >> 8) & 0xFF);
+
+                ab[60] = (byte)(sz32Item_030 & 0xFF);
+                ab[61] = (byte)((sz32Item_030 >> 8) & 0xFF);
+
+                ab[62] = (byte)(sz32Item_031 & 0xFF);
+                ab[63] = (byte)((sz32Item_031 >> 8) & 0xFF);
+
+                ab[64] = (byte)(sz32Item_032 & 0xFF);
+                ab[65] = (byte)((sz32Item_032 >> 8) & 0xFF);
+
+                ab[66] = (byte)(sz32Item_033 & 0xFF);
+                ab[67] = (byte)((sz32Item_033 >> 8) & 0xFF);
+
+                ab[68] = (byte)(sz32Item_034 & 0xFF);
+                ab[69] = (byte)((sz32Item_034 >> 8) & 0xFF);
+
+                ab[70] = (byte)(sz32Item_035 & 0xFF);
+                ab[71] = (byte)((sz32Item_035 >> 8) & 0xFF);
+
+                ab[72] = (byte)(sz32Item_036 & 0xFF);
+                ab[73] = (byte)((sz32Item_036 >> 8) & 0xFF);
+
+                ab[74] = (byte)(sz32Item_037 & 0xFF);
+                ab[75] = (byte)((sz32Item_037 >> 8) & 0xFF);
+
+                ab[76] = (byte)(sz32Item_038 & 0xFF);
+                ab[77] = (byte)((sz32Item_038 >> 8) & 0xFF);
+
+                ab[78] = (byte)(sz32Item_039 & 0xFF);
+                ab[79] = (byte)((sz32Item_039 >> 8) & 0xFF);
+
+                ab[80] = (byte)(sz32Item_040 & 0xFF);
+                ab[81] = (byte)((sz32Item_040 >> 8) & 0xFF);
+
+                ab[82] = (byte)(sz32Item_041 & 0xFF);
+                ab[83] = (byte)((sz32Item_041 >> 8) & 0xFF);
+
+                ab[84] = (byte)(sz32Item_042 & 0xFF);
+                ab[85] = (byte)((sz32Item_042 >> 8) & 0xFF);
+
+                ab[86] = (byte)(sz32Item_043 & 0xFF);
+                ab[87] = (byte)((sz32Item_043 >> 8) & 0xFF);
+
+                ab[88] = (byte)(sz32Item_044 & 0xFF);
+                ab[89] = (byte)((sz32Item_044 >> 8) & 0xFF);
+
+                ab[90] = (byte)(sz32Item_045 & 0xFF);
+                ab[91] = (byte)((sz32Item_045 >> 8) & 0xFF);
+
+                ab[92] = (byte)(sz32Item_046 & 0xFF);
+                ab[93] = (byte)((sz32Item_046 >> 8) & 0xFF);
+
+                ab[94] = (byte)(sz32Item_047 & 0xFF);
+                ab[95] = (byte)((sz32Item_047 >> 8) & 0xFF);
+
+                ab[96] = (byte)(sz32Item_048 & 0xFF);
+                ab[97] = (byte)((sz32Item_048 >> 8) & 0xFF);
+
+                ab[98] = (byte)(sz32Item_049 & 0xFF);
+                ab[99] = (byte)((sz32Item_049 >> 8) & 0xFF);
+
+                ab[100] = (byte)(sz32Item_050 & 0xFF);
+                ab[101] = (byte)((sz32Item_050 >> 8) & 0xFF);
+
+                ab[102] = (byte)(sz32Item_051 & 0xFF);
+                ab[103] = (byte)((sz32Item_051 >> 8) & 0xFF);
+
+                ab[104] = (byte)(sz32Item_052 & 0xFF);
+                ab[105] = (byte)((sz32Item_052 >> 8) & 0xFF);
+
+                ab[106] = (byte)(sz32Item_053 & 0xFF);
+                ab[107] = (byte)((sz32Item_053 >> 8) & 0xFF);
+
+                ab[108] = (byte)(sz32Item_054 & 0xFF);
+                ab[109] = (byte)((sz32Item_054 >> 8) & 0xFF);
+
+                ab[110] = (byte)(sz32Item_055 & 0xFF);
+                ab[111] = (byte)((sz32Item_055 >> 8) & 0xFF);
+
+                ab[112] = (byte)(sz32Item_056 & 0xFF);
+                ab[113] = (byte)((sz32Item_056 >> 8) & 0xFF);
+
+                ab[114] = (byte)(sz32Item_057 & 0xFF);
+                ab[115] = (byte)((sz32Item_057 >> 8) & 0xFF);
+
+                ab[116] = (byte)(sz32Item_058 & 0xFF);
+                ab[117] = (byte)((sz32Item_058 >> 8) & 0xFF);
+
+                ab[118] = (byte)(sz32Item_059 & 0xFF);
+                ab[119] = (byte)((sz32Item_059 >> 8) & 0xFF);
+
+                ab[120] = (byte)(sz32Item_060 & 0xFF);
+                ab[121] = (byte)((sz32Item_060 >> 8) & 0xFF);
+
+                ab[122] = (byte)(sz32Item_061 & 0xFF);
+                ab[123] = (byte)((sz32Item_061 >> 8) & 0xFF);
+
+                ab[124] = (byte)(sz32Item_062 & 0xFF);
+                ab[125] = (byte)((sz32Item_062 >> 8) & 0xFF);
+
+                ab[126] = (byte)(sz32Item_063 & 0xFF);
+                ab[127] = (byte)((sz32Item_063 >> 8) & 0xFF);
+
+                ab[128] = (byte)(sz32Item_064 & 0xFF);
+                ab[129] = (byte)((sz32Item_064 >> 8) & 0xFF);
+
+                ab[130] = (byte)(sz32Item_065 & 0xFF);
+                ab[131] = (byte)((sz32Item_065 >> 8) & 0xFF);
+
+                ab[132] = (byte)(sz32Item_066 & 0xFF);
+                ab[133] = (byte)((sz32Item_066 >> 8) & 0xFF);
+
+                ab[134] = (byte)(sz32Item_067 & 0xFF);
+                ab[135] = (byte)((sz32Item_067 >> 8) & 0xFF);
+
+                ab[136] = (byte)(sz32Item_068 & 0xFF);
+                ab[137] = (byte)((sz32Item_068 >> 8) & 0xFF);
+
+                ab[138] = (byte)(sz32Item_069 & 0xFF);
+                ab[139] = (byte)((sz32Item_069 >> 8) & 0xFF);
+
+                ab[140] = (byte)(sz32Item_070 & 0xFF);
+                ab[141] = (byte)((sz32Item_070 >> 8) & 0xFF);
+
+                ab[142] = (byte)(sz32Item_071 & 0xFF);
+                ab[143] = (byte)((sz32Item_071 >> 8) & 0xFF);
+
+                ab[144] = (byte)(sz32Item_072 & 0xFF);
+                ab[145] = (byte)((sz32Item_072 >> 8) & 0xFF);
+
+                ab[146] = (byte)(sz32Item_073 & 0xFF);
+                ab[147] = (byte)((sz32Item_073 >> 8) & 0xFF);
+
+                ab[148] = (byte)(sz32Item_074 & 0xFF);
+                ab[149] = (byte)((sz32Item_074 >> 8) & 0xFF);
+
+                ab[150] = (byte)(sz32Item_075 & 0xFF);
+                ab[151] = (byte)((sz32Item_075 >> 8) & 0xFF);
+
+                ab[152] = (byte)(sz32Item_076 & 0xFF);
+                ab[153] = (byte)((sz32Item_076 >> 8) & 0xFF);
+
+                ab[154] = (byte)(sz32Item_077 & 0xFF);
+                ab[155] = (byte)((sz32Item_077 >> 8) & 0xFF);
+
+                ab[156] = (byte)(sz32Item_078 & 0xFF);
+                ab[157] = (byte)((sz32Item_078 >> 8) & 0xFF);
+
+                ab[158] = (byte)(sz32Item_079 & 0xFF);
+                ab[159] = (byte)((sz32Item_079 >> 8) & 0xFF);
+
+                ab[160] = (byte)(sz32Item_080 & 0xFF);
+                ab[161] = (byte)((sz32Item_080 >> 8) & 0xFF);
+
+                ab[162] = (byte)(sz32Item_081 & 0xFF);
+                ab[163] = (byte)((sz32Item_081 >> 8) & 0xFF);
+
+                ab[164] = (byte)(sz32Item_082 & 0xFF);
+                ab[165] = (byte)((sz32Item_082 >> 8) & 0xFF);
+
+                ab[166] = (byte)(sz32Item_083 & 0xFF);
+                ab[167] = (byte)((sz32Item_083 >> 8) & 0xFF);
+
+                ab[168] = (byte)(sz32Item_084 & 0xFF);
+                ab[169] = (byte)((sz32Item_084 >> 8) & 0xFF);
+
+                ab[170] = (byte)(sz32Item_085 & 0xFF);
+                ab[171] = (byte)((sz32Item_085 >> 8) & 0xFF);
+
+                ab[172] = (byte)(sz32Item_086 & 0xFF);
+                ab[173] = (byte)((sz32Item_086 >> 8) & 0xFF);
+
+                ab[174] = (byte)(sz32Item_087 & 0xFF);
+                ab[175] = (byte)((sz32Item_087 >> 8) & 0xFF);
+
+                ab[176] = (byte)(sz32Item_088 & 0xFF);
+                ab[177] = (byte)((sz32Item_088 >> 8) & 0xFF);
+
+                ab[178] = (byte)(sz32Item_089 & 0xFF);
+                ab[179] = (byte)((sz32Item_089 >> 8) & 0xFF);
+
+                ab[180] = (byte)(sz32Item_090 & 0xFF);
+                ab[181] = (byte)((sz32Item_090 >> 8) & 0xFF);
+
+                ab[182] = (byte)(sz32Item_091 & 0xFF);
+                ab[183] = (byte)((sz32Item_091 >> 8) & 0xFF);
+
+                ab[184] = (byte)(sz32Item_092 & 0xFF);
+                ab[185] = (byte)((sz32Item_092 >> 8) & 0xFF);
+
+                ab[186] = (byte)(sz32Item_093 & 0xFF);
+                ab[187] = (byte)((sz32Item_093 >> 8) & 0xFF);
+
+                ab[188] = (byte)(sz32Item_094 & 0xFF);
+                ab[189] = (byte)((sz32Item_094 >> 8) & 0xFF);
+
+                ab[190] = (byte)(sz32Item_095 & 0xFF);
+                ab[191] = (byte)((sz32Item_095 >> 8) & 0xFF);
+
+                ab[192] = (byte)(sz32Item_096 & 0xFF);
+                ab[193] = (byte)((sz32Item_096 >> 8) & 0xFF);
+
+                ab[194] = (byte)(sz32Item_097 & 0xFF);
+                ab[195] = (byte)((sz32Item_097 >> 8) & 0xFF);
+
+                ab[196] = (byte)(sz32Item_098 & 0xFF);
+                ab[197] = (byte)((sz32Item_098 >> 8) & 0xFF);
+
+                ab[198] = (byte)(sz32Item_099 & 0xFF);
+                ab[199] = (byte)((sz32Item_099 >> 8) & 0xFF);
+
+                ab[200] = (byte)(sz32Item_100 & 0xFF);
+                ab[201] = (byte)((sz32Item_100 >> 8) & 0xFF);
+
+                ab[202] = (byte)(sz32Item_101 & 0xFF);
+                ab[203] = (byte)((sz32Item_101 >> 8) & 0xFF);
+
+                ab[204] = (byte)(sz32Item_102 & 0xFF);
+                ab[205] = (byte)((sz32Item_102 >> 8) & 0xFF);
+
+                ab[206] = (byte)(sz32Item_103 & 0xFF);
+                ab[207] = (byte)((sz32Item_103 >> 8) & 0xFF);
+
+                ab[208] = (byte)(sz32Item_104 & 0xFF);
+                ab[209] = (byte)((sz32Item_104 >> 8) & 0xFF);
+
+                ab[210] = (byte)(sz32Item_105 & 0xFF);
+                ab[211] = (byte)((sz32Item_105 >> 8) & 0xFF);
+
+                ab[212] = (byte)(sz32Item_106 & 0xFF);
+                ab[213] = (byte)((sz32Item_106 >> 8) & 0xFF);
+
+                ab[214] = (byte)(sz32Item_107 & 0xFF);
+                ab[215] = (byte)((sz32Item_107 >> 8) & 0xFF);
+
+                ab[216] = (byte)(sz32Item_108 & 0xFF);
+                ab[217] = (byte)((sz32Item_108 >> 8) & 0xFF);
+
+                ab[218] = (byte)(sz32Item_109 & 0xFF);
+                ab[219] = (byte)((sz32Item_109 >> 8) & 0xFF);
+
+                ab[220] = (byte)(sz32Item_110 & 0xFF);
+                ab[221] = (byte)((sz32Item_110 >> 8) & 0xFF);
+
+                ab[222] = (byte)(sz32Item_111 & 0xFF);
+                ab[223] = (byte)((sz32Item_111 >> 8) & 0xFF);
+
+                ab[224] = (byte)(sz32Item_112 & 0xFF);
+                ab[225] = (byte)((sz32Item_112 >> 8) & 0xFF);
+
+                ab[226] = (byte)(sz32Item_113 & 0xFF);
+                ab[227] = (byte)((sz32Item_113 >> 8) & 0xFF);
+
+                ab[228] = (byte)(sz32Item_114 & 0xFF);
+                ab[229] = (byte)((sz32Item_114 >> 8) & 0xFF);
+
+                ab[230] = (byte)(sz32Item_115 & 0xFF);
+                ab[231] = (byte)((sz32Item_115 >> 8) & 0xFF);
+
+                ab[232] = (byte)(sz32Item_116 & 0xFF);
+                ab[233] = (byte)((sz32Item_116 >> 8) & 0xFF);
+
+                ab[234] = (byte)(sz32Item_117 & 0xFF);
+                ab[235] = (byte)((sz32Item_117 >> 8) & 0xFF);
+
+                ab[236] = (byte)(sz32Item_118 & 0xFF);
+                ab[237] = (byte)((sz32Item_118 >> 8) & 0xFF);
+
+                ab[238] = (byte)(sz32Item_119 & 0xFF);
+                ab[239] = (byte)((sz32Item_119 >> 8) & 0xFF);
+
+                ab[240] = (byte)(sz32Item_120 & 0xFF);
+                ab[241] = (byte)((sz32Item_120 >> 8) & 0xFF);
+
+                ab[242] = (byte)(sz32Item_121 & 0xFF);
+                ab[243] = (byte)((sz32Item_121 >> 8) & 0xFF);
+
+                ab[244] = (byte)(sz32Item_122 & 0xFF);
+                ab[245] = (byte)((sz32Item_122 >> 8) & 0xFF);
+
+                ab[246] = (byte)(sz32Item_123 & 0xFF);
+                ab[247] = (byte)((sz32Item_123 >> 8) & 0xFF);
+
+                ab[248] = (byte)(sz32Item_124 & 0xFF);
+                ab[249] = (byte)((sz32Item_124 >> 8) & 0xFF);
+
+                ab[250] = (byte)(sz32Item_125 & 0xFF);
+                ab[251] = (byte)((sz32Item_125 >> 8) & 0xFF);
+
+                ab[252] = (byte)(sz32Item_126 & 0xFF);
+                ab[253] = (byte)((sz32Item_126 >> 8) & 0xFF);
+
+                ab[254] = (byte)(sz32Item_127 & 0xFF);
+                ab[255] = (byte)((sz32Item_127 >> 8) & 0xFF);
 
                 // If the first character is a NUL, then return the empty string...
-                if (sz[0] == '\0')
+                if (ab[0] == '\0')
                 {
                     return ("");
                 }
 
+                string sz;
+
                 // If we're running on a Mac, take off the prefix 'byte'...
-                if (a_blMayHavePrefix && (TWAIN.GetPlatform() == Platform.MACOSX))
+                switch (TWAIN.GetPlatform())
                 {
-                    sz = sz.Remove(0, 1);
+                    default:
+                    case Platform.WINDOWS:
+                        // Windows needs the current code page...
+                        sz = Encoding.GetEncoding(GetCodePage()).GetString(ab);
+                        break;
+                    case Platform.LINUX:
+                        sz = Encoding.UTF8.GetString(ab);
+                        break;
+                    case Platform.MACOSX:
+                        if (a_blMayHavePrefix)
+                        {
+                            sz = Encoding.UTF8.GetString(ab, 1, ab.Length - 1);
+                        }
+                        else
+                        {
+                            sz = Encoding.UTF8.GetString(ab);
+                        }
+                        break;
                 }
 
                 // If we detect a NUL, then split around it...
@@ -1352,161 +1864,174 @@ namespace TWAINWorkingGroup
             /// <param name="a_sz"></param>
             private void SetValue(string a_sz, bool a_blMayHavePrefix)
             {
-                // If we're running on a Mac, tack on the prefix 'byte'...
-                if (a_sz == null)
+                byte[] ab;
+
+                // Validate...
+                if (a_sz.Length > 255)
                 {
-                    a_sz = "";
-                }
-                else if (a_blMayHavePrefix && (TWAIN.GetPlatform() == Platform.MACOSX))
-                {
-                    a_sz = (char)a_sz.Length + a_sz;
+                    a_sz = a_sz.Remove(255);
                 }
 
-                // Make sure that we're NUL padded...
-                string sz =
-                    a_sz +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" +
-                    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-                if (sz.Length > 256)
+                // If we're running on a Mac, tack on the prefix 'byte'...
+                switch (TWAIN.GetPlatform())
                 {
-                    sz = sz.Remove(256);
+                    default:
+                    case Platform.WINDOWS:
+                        // Windows needs the current code page...
+                        byte[] utf8 = Encoding.UTF8.GetBytes(a_sz);
+                        ab = Encoding.Convert(Encoding.UTF8, Encoding.GetEncoding(GetCodePage()), utf8);
+                        Array.Resize(ref ab, 256);
+                        break;
+                    case Platform.LINUX:
+                        ab = Encoding.UTF8.GetBytes(a_sz);
+                        Array.Resize(ref ab, 256);
+                        break;
+                    case Platform.MACOSX:
+                        if (a_blMayHavePrefix)
+                        {
+                            ab = Encoding.UTF8.GetBytes(a_sz);
+                            byte bLength = (byte)ab.Length;
+                            Array.Resize(ref ab, 256);
+                            Array.ConstrainedCopy(ab, 0, ab, 1, 255);
+                            ab[0] = bLength;
+                        }
+                        else
+                        {
+                            ab = Encoding.UTF8.GetBytes(a_sz);
+                            Array.Resize(ref ab, 256);
+                        }
+                        break;
                 }
 
                 // Pack the data...
-                sz32Item_000 = (ushort)((sz[1] << 8) + sz[0]);
-                sz32Item_001 = (ushort)((sz[3] << 8) + sz[2]);
-                sz32Item_002 = (ushort)((sz[5] << 8) + sz[4]);
-                sz32Item_003 = (ushort)((sz[7] << 8) + sz[6]);
-                sz32Item_004 = (ushort)((sz[9] << 8) + sz[8]);
-                sz32Item_005 = (ushort)((sz[11] << 8) + sz[10]);
-                sz32Item_006 = (ushort)((sz[13] << 8) + sz[12]);
-                sz32Item_007 = (ushort)((sz[15] << 8) + sz[14]);
-                sz32Item_008 = (ushort)((sz[17] << 8) + sz[16]);
-                sz32Item_009 = (ushort)((sz[19] << 8) + sz[18]);
-                sz32Item_010 = (ushort)((sz[21] << 8) + sz[20]);
-                sz32Item_011 = (ushort)((sz[23] << 8) + sz[22]);
-                sz32Item_012 = (ushort)((sz[25] << 8) + sz[24]);
-                sz32Item_013 = (ushort)((sz[27] << 8) + sz[26]);
-                sz32Item_014 = (ushort)((sz[29] << 8) + sz[28]);
-                sz32Item_015 = (ushort)((sz[31] << 8) + sz[30]);
-                sz32Item_016 = (ushort)((sz[33] << 8) + sz[32]);
-                sz32Item_017 = (ushort)((sz[35] << 8) + sz[34]);
-                sz32Item_018 = (ushort)((sz[37] << 8) + sz[36]);
-                sz32Item_019 = (ushort)((sz[39] << 8) + sz[38]);
-                sz32Item_020 = (ushort)((sz[41] << 8) + sz[40]);
-                sz32Item_021 = (ushort)((sz[43] << 8) + sz[42]);
-                sz32Item_022 = (ushort)((sz[45] << 8) + sz[44]);
-                sz32Item_023 = (ushort)((sz[47] << 8) + sz[46]);
-                sz32Item_024 = (ushort)((sz[49] << 8) + sz[48]);
-                sz32Item_025 = (ushort)((sz[51] << 8) + sz[50]);
-                sz32Item_026 = (ushort)((sz[53] << 8) + sz[52]);
-                sz32Item_027 = (ushort)((sz[55] << 8) + sz[54]);
-                sz32Item_028 = (ushort)((sz[57] << 8) + sz[56]);
-                sz32Item_029 = (ushort)((sz[59] << 8) + sz[58]);
-                sz32Item_030 = (ushort)((sz[61] << 8) + sz[60]);
-                sz32Item_031 = (ushort)((sz[63] << 8) + sz[62]);
-                sz32Item_032 = (ushort)((sz[65] << 8) + sz[64]);
-                sz32Item_033 = (ushort)((sz[67] << 8) + sz[66]);
-                sz32Item_034 = (ushort)((sz[69] << 8) + sz[68]);
-                sz32Item_035 = (ushort)((sz[71] << 8) + sz[70]);
-                sz32Item_036 = (ushort)((sz[73] << 8) + sz[72]);
-                sz32Item_037 = (ushort)((sz[75] << 8) + sz[74]);
-                sz32Item_038 = (ushort)((sz[77] << 8) + sz[76]);
-                sz32Item_039 = (ushort)((sz[79] << 8) + sz[78]);
-                sz32Item_040 = (ushort)((sz[81] << 8) + sz[80]);
-                sz32Item_041 = (ushort)((sz[83] << 8) + sz[82]);
-                sz32Item_042 = (ushort)((sz[85] << 8) + sz[84]);
-                sz32Item_043 = (ushort)((sz[87] << 8) + sz[86]);
-                sz32Item_044 = (ushort)((sz[89] << 8) + sz[88]);
-                sz32Item_045 = (ushort)((sz[91] << 8) + sz[90]);
-                sz32Item_046 = (ushort)((sz[93] << 8) + sz[92]);
-                sz32Item_047 = (ushort)((sz[95] << 8) + sz[94]);
-                sz32Item_048 = (ushort)((sz[97] << 8) + sz[96]);
-                sz32Item_049 = (ushort)((sz[99] << 8) + sz[98]);
-                sz32Item_050 = (ushort)((sz[101] << 8) + sz[100]);
-                sz32Item_051 = (ushort)((sz[103] << 8) + sz[102]);
-                sz32Item_052 = (ushort)((sz[105] << 8) + sz[104]);
-                sz32Item_053 = (ushort)((sz[107] << 8) + sz[106]);
-                sz32Item_054 = (ushort)((sz[109] << 8) + sz[108]);
-                sz32Item_055 = (ushort)((sz[111] << 8) + sz[110]);
-                sz32Item_056 = (ushort)((sz[113] << 8) + sz[112]);
-                sz32Item_057 = (ushort)((sz[115] << 8) + sz[114]);
-                sz32Item_058 = (ushort)((sz[117] << 8) + sz[116]);
-                sz32Item_059 = (ushort)((sz[119] << 8) + sz[118]);
-                sz32Item_060 = (ushort)((sz[121] << 8) + sz[120]);
-                sz32Item_061 = (ushort)((sz[123] << 8) + sz[122]);
-                sz32Item_062 = (ushort)((sz[125] << 8) + sz[124]);
-                sz32Item_063 = (ushort)((sz[127] << 8) + sz[126]);
-                sz32Item_064 = (ushort)((sz[129] << 8) + sz[128]);
-                sz32Item_065 = (ushort)((sz[131] << 8) + sz[130]);
-                sz32Item_066 = (ushort)((sz[133] << 8) + sz[132]);
-                sz32Item_067 = (ushort)((sz[135] << 8) + sz[134]);
-                sz32Item_068 = (ushort)((sz[137] << 8) + sz[136]);
-                sz32Item_069 = (ushort)((sz[139] << 8) + sz[138]);
-                sz32Item_070 = (ushort)((sz[141] << 8) + sz[140]);
-                sz32Item_071 = (ushort)((sz[143] << 8) + sz[142]);
-                sz32Item_072 = (ushort)((sz[145] << 8) + sz[144]);
-                sz32Item_073 = (ushort)((sz[147] << 8) + sz[146]);
-                sz32Item_074 = (ushort)((sz[149] << 8) + sz[148]);
-                sz32Item_075 = (ushort)((sz[151] << 8) + sz[150]);
-                sz32Item_076 = (ushort)((sz[153] << 8) + sz[152]);
-                sz32Item_077 = (ushort)((sz[155] << 8) + sz[154]);
-                sz32Item_078 = (ushort)((sz[157] << 8) + sz[156]);
-                sz32Item_079 = (ushort)((sz[159] << 8) + sz[158]);
-                sz32Item_080 = (ushort)((sz[161] << 8) + sz[160]);
-                sz32Item_081 = (ushort)((sz[163] << 8) + sz[162]);
-                sz32Item_082 = (ushort)((sz[165] << 8) + sz[164]);
-                sz32Item_083 = (ushort)((sz[167] << 8) + sz[166]);
-                sz32Item_084 = (ushort)((sz[169] << 8) + sz[168]);
-                sz32Item_085 = (ushort)((sz[171] << 8) + sz[170]);
-                sz32Item_086 = (ushort)((sz[173] << 8) + sz[172]);
-                sz32Item_087 = (ushort)((sz[175] << 8) + sz[174]);
-                sz32Item_088 = (ushort)((sz[177] << 8) + sz[176]);
-                sz32Item_089 = (ushort)((sz[179] << 8) + sz[178]);
-                sz32Item_090 = (ushort)((sz[181] << 8) + sz[180]);
-                sz32Item_091 = (ushort)((sz[183] << 8) + sz[182]);
-                sz32Item_092 = (ushort)((sz[185] << 8) + sz[184]);
-                sz32Item_093 = (ushort)((sz[187] << 8) + sz[186]);
-                sz32Item_094 = (ushort)((sz[189] << 8) + sz[188]);
-                sz32Item_095 = (ushort)((sz[191] << 8) + sz[190]);
-                sz32Item_096 = (ushort)((sz[193] << 8) + sz[192]);
-                sz32Item_097 = (ushort)((sz[195] << 8) + sz[194]);
-                sz32Item_098 = (ushort)((sz[197] << 8) + sz[196]);
-                sz32Item_099 = (ushort)((sz[199] << 8) + sz[198]);
-                sz32Item_100 = (ushort)((sz[201] << 8) + sz[200]);
-                sz32Item_101 = (ushort)((sz[203] << 8) + sz[202]);
-                sz32Item_102 = (ushort)((sz[205] << 8) + sz[204]);
-                sz32Item_103 = (ushort)((sz[207] << 8) + sz[206]);
-                sz32Item_104 = (ushort)((sz[209] << 8) + sz[208]);
-                sz32Item_105 = (ushort)((sz[211] << 8) + sz[210]);
-                sz32Item_106 = (ushort)((sz[213] << 8) + sz[212]);
-                sz32Item_107 = (ushort)((sz[215] << 8) + sz[214]);
-                sz32Item_108 = (ushort)((sz[217] << 8) + sz[216]);
-                sz32Item_109 = (ushort)((sz[219] << 8) + sz[218]);
-                sz32Item_110 = (ushort)((sz[221] << 8) + sz[220]);
-                sz32Item_111 = (ushort)((sz[223] << 8) + sz[222]);
-                sz32Item_112 = (ushort)((sz[225] << 8) + sz[224]);
-                sz32Item_113 = (ushort)((sz[227] << 8) + sz[226]);
-                sz32Item_114 = (ushort)((sz[229] << 8) + sz[228]);
-                sz32Item_115 = (ushort)((sz[231] << 8) + sz[230]);
-                sz32Item_116 = (ushort)((sz[233] << 8) + sz[232]);
-                sz32Item_117 = (ushort)((sz[235] << 8) + sz[234]);
-                sz32Item_118 = (ushort)((sz[237] << 8) + sz[236]);
-                sz32Item_119 = (ushort)((sz[239] << 8) + sz[238]);
-                sz32Item_120 = (ushort)((sz[241] << 8) + sz[240]);
-                sz32Item_121 = (ushort)((sz[243] << 8) + sz[242]);
-                sz32Item_122 = (ushort)((sz[245] << 8) + sz[244]);
-                sz32Item_123 = (ushort)((sz[247] << 8) + sz[246]);
-                sz32Item_124 = (ushort)((sz[249] << 8) + sz[248]);
-                sz32Item_125 = (ushort)((sz[251] << 8) + sz[250]);
-                sz32Item_126 = (ushort)((sz[253] << 8) + sz[252]);
-                sz32Item_127 = (ushort)((sz[255] << 8) + sz[254]);
+                sz32Item_000 = (ushort)((ab[1] << 8) + ab[0]);
+                sz32Item_001 = (ushort)((ab[3] << 8) + ab[2]);
+                sz32Item_002 = (ushort)((ab[5] << 8) + ab[4]);
+                sz32Item_003 = (ushort)((ab[7] << 8) + ab[6]);
+                sz32Item_004 = (ushort)((ab[9] << 8) + ab[8]);
+                sz32Item_005 = (ushort)((ab[11] << 8) + ab[10]);
+                sz32Item_006 = (ushort)((ab[13] << 8) + ab[12]);
+                sz32Item_007 = (ushort)((ab[15] << 8) + ab[14]);
+                sz32Item_008 = (ushort)((ab[17] << 8) + ab[16]);
+                sz32Item_009 = (ushort)((ab[19] << 8) + ab[18]);
+                sz32Item_010 = (ushort)((ab[21] << 8) + ab[20]);
+                sz32Item_011 = (ushort)((ab[23] << 8) + ab[22]);
+                sz32Item_012 = (ushort)((ab[25] << 8) + ab[24]);
+                sz32Item_013 = (ushort)((ab[27] << 8) + ab[26]);
+                sz32Item_014 = (ushort)((ab[29] << 8) + ab[28]);
+                sz32Item_015 = (ushort)((ab[31] << 8) + ab[30]);
+                sz32Item_016 = (ushort)((ab[33] << 8) + ab[32]);
+                sz32Item_017 = (ushort)((ab[35] << 8) + ab[34]);
+                sz32Item_018 = (ushort)((ab[37] << 8) + ab[36]);
+                sz32Item_019 = (ushort)((ab[39] << 8) + ab[38]);
+                sz32Item_020 = (ushort)((ab[41] << 8) + ab[40]);
+                sz32Item_021 = (ushort)((ab[43] << 8) + ab[42]);
+                sz32Item_022 = (ushort)((ab[45] << 8) + ab[44]);
+                sz32Item_023 = (ushort)((ab[47] << 8) + ab[46]);
+                sz32Item_024 = (ushort)((ab[49] << 8) + ab[48]);
+                sz32Item_025 = (ushort)((ab[51] << 8) + ab[50]);
+                sz32Item_026 = (ushort)((ab[53] << 8) + ab[52]);
+                sz32Item_027 = (ushort)((ab[55] << 8) + ab[54]);
+                sz32Item_028 = (ushort)((ab[57] << 8) + ab[56]);
+                sz32Item_029 = (ushort)((ab[59] << 8) + ab[58]);
+                sz32Item_030 = (ushort)((ab[61] << 8) + ab[60]);
+                sz32Item_031 = (ushort)((ab[63] << 8) + ab[62]);
+                sz32Item_032 = (ushort)((ab[65] << 8) + ab[64]);
+                sz32Item_033 = (ushort)((ab[67] << 8) + ab[66]);
+                sz32Item_034 = (ushort)((ab[69] << 8) + ab[68]);
+                sz32Item_035 = (ushort)((ab[71] << 8) + ab[70]);
+                sz32Item_036 = (ushort)((ab[73] << 8) + ab[72]);
+                sz32Item_037 = (ushort)((ab[75] << 8) + ab[74]);
+                sz32Item_038 = (ushort)((ab[77] << 8) + ab[76]);
+                sz32Item_039 = (ushort)((ab[79] << 8) + ab[78]);
+                sz32Item_040 = (ushort)((ab[81] << 8) + ab[80]);
+                sz32Item_041 = (ushort)((ab[83] << 8) + ab[82]);
+                sz32Item_042 = (ushort)((ab[85] << 8) + ab[84]);
+                sz32Item_043 = (ushort)((ab[87] << 8) + ab[86]);
+                sz32Item_044 = (ushort)((ab[89] << 8) + ab[88]);
+                sz32Item_045 = (ushort)((ab[91] << 8) + ab[90]);
+                sz32Item_046 = (ushort)((ab[93] << 8) + ab[92]);
+                sz32Item_047 = (ushort)((ab[95] << 8) + ab[94]);
+                sz32Item_048 = (ushort)((ab[97] << 8) + ab[96]);
+                sz32Item_049 = (ushort)((ab[99] << 8) + ab[98]);
+                sz32Item_050 = (ushort)((ab[101] << 8) + ab[100]);
+                sz32Item_051 = (ushort)((ab[103] << 8) + ab[102]);
+                sz32Item_052 = (ushort)((ab[105] << 8) + ab[104]);
+                sz32Item_053 = (ushort)((ab[107] << 8) + ab[106]);
+                sz32Item_054 = (ushort)((ab[109] << 8) + ab[108]);
+                sz32Item_055 = (ushort)((ab[111] << 8) + ab[110]);
+                sz32Item_056 = (ushort)((ab[113] << 8) + ab[112]);
+                sz32Item_057 = (ushort)((ab[115] << 8) + ab[114]);
+                sz32Item_058 = (ushort)((ab[117] << 8) + ab[116]);
+                sz32Item_059 = (ushort)((ab[119] << 8) + ab[118]);
+                sz32Item_060 = (ushort)((ab[121] << 8) + ab[120]);
+                sz32Item_061 = (ushort)((ab[123] << 8) + ab[122]);
+                sz32Item_062 = (ushort)((ab[125] << 8) + ab[124]);
+                sz32Item_063 = (ushort)((ab[127] << 8) + ab[126]);
+                sz32Item_064 = (ushort)((ab[129] << 8) + ab[128]);
+                sz32Item_065 = (ushort)((ab[131] << 8) + ab[130]);
+                sz32Item_066 = (ushort)((ab[133] << 8) + ab[132]);
+                sz32Item_067 = (ushort)((ab[135] << 8) + ab[134]);
+                sz32Item_068 = (ushort)((ab[137] << 8) + ab[136]);
+                sz32Item_069 = (ushort)((ab[139] << 8) + ab[138]);
+                sz32Item_070 = (ushort)((ab[141] << 8) + ab[140]);
+                sz32Item_071 = (ushort)((ab[143] << 8) + ab[142]);
+                sz32Item_072 = (ushort)((ab[145] << 8) + ab[144]);
+                sz32Item_073 = (ushort)((ab[147] << 8) + ab[146]);
+                sz32Item_074 = (ushort)((ab[149] << 8) + ab[148]);
+                sz32Item_075 = (ushort)((ab[151] << 8) + ab[150]);
+                sz32Item_076 = (ushort)((ab[153] << 8) + ab[152]);
+                sz32Item_077 = (ushort)((ab[155] << 8) + ab[154]);
+                sz32Item_078 = (ushort)((ab[157] << 8) + ab[156]);
+                sz32Item_079 = (ushort)((ab[159] << 8) + ab[158]);
+                sz32Item_080 = (ushort)((ab[161] << 8) + ab[160]);
+                sz32Item_081 = (ushort)((ab[163] << 8) + ab[162]);
+                sz32Item_082 = (ushort)((ab[165] << 8) + ab[164]);
+                sz32Item_083 = (ushort)((ab[167] << 8) + ab[166]);
+                sz32Item_084 = (ushort)((ab[169] << 8) + ab[168]);
+                sz32Item_085 = (ushort)((ab[171] << 8) + ab[170]);
+                sz32Item_086 = (ushort)((ab[173] << 8) + ab[172]);
+                sz32Item_087 = (ushort)((ab[175] << 8) + ab[174]);
+                sz32Item_088 = (ushort)((ab[177] << 8) + ab[176]);
+                sz32Item_089 = (ushort)((ab[179] << 8) + ab[178]);
+                sz32Item_090 = (ushort)((ab[181] << 8) + ab[180]);
+                sz32Item_091 = (ushort)((ab[183] << 8) + ab[182]);
+                sz32Item_092 = (ushort)((ab[185] << 8) + ab[184]);
+                sz32Item_093 = (ushort)((ab[187] << 8) + ab[186]);
+                sz32Item_094 = (ushort)((ab[189] << 8) + ab[188]);
+                sz32Item_095 = (ushort)((ab[191] << 8) + ab[190]);
+                sz32Item_096 = (ushort)((ab[193] << 8) + ab[192]);
+                sz32Item_097 = (ushort)((ab[195] << 8) + ab[194]);
+                sz32Item_098 = (ushort)((ab[197] << 8) + ab[196]);
+                sz32Item_099 = (ushort)((ab[199] << 8) + ab[198]);
+                sz32Item_100 = (ushort)((ab[201] << 8) + ab[200]);
+                sz32Item_101 = (ushort)((ab[203] << 8) + ab[202]);
+                sz32Item_102 = (ushort)((ab[205] << 8) + ab[204]);
+                sz32Item_103 = (ushort)((ab[207] << 8) + ab[206]);
+                sz32Item_104 = (ushort)((ab[209] << 8) + ab[208]);
+                sz32Item_105 = (ushort)((ab[211] << 8) + ab[210]);
+                sz32Item_106 = (ushort)((ab[213] << 8) + ab[212]);
+                sz32Item_107 = (ushort)((ab[215] << 8) + ab[214]);
+                sz32Item_108 = (ushort)((ab[217] << 8) + ab[216]);
+                sz32Item_109 = (ushort)((ab[219] << 8) + ab[218]);
+                sz32Item_110 = (ushort)((ab[221] << 8) + ab[220]);
+                sz32Item_111 = (ushort)((ab[223] << 8) + ab[222]);
+                sz32Item_112 = (ushort)((ab[225] << 8) + ab[224]);
+                sz32Item_113 = (ushort)((ab[227] << 8) + ab[226]);
+                sz32Item_114 = (ushort)((ab[229] << 8) + ab[228]);
+                sz32Item_115 = (ushort)((ab[231] << 8) + ab[230]);
+                sz32Item_116 = (ushort)((ab[233] << 8) + ab[232]);
+                sz32Item_117 = (ushort)((ab[235] << 8) + ab[234]);
+                sz32Item_118 = (ushort)((ab[237] << 8) + ab[236]);
+                sz32Item_119 = (ushort)((ab[239] << 8) + ab[238]);
+                sz32Item_120 = (ushort)((ab[241] << 8) + ab[240]);
+                sz32Item_121 = (ushort)((ab[243] << 8) + ab[242]);
+                sz32Item_122 = (ushort)((ab[245] << 8) + ab[244]);
+                sz32Item_123 = (ushort)((ab[247] << 8) + ab[246]);
+                sz32Item_124 = (ushort)((ab[249] << 8) + ab[248]);
+                sz32Item_125 = (ushort)((ab[251] << 8) + ab[250]);
+                sz32Item_126 = (ushort)((ab[253] << 8) + ab[252]);
+                sz32Item_127 = (ushort)((ab[255] << 8) + ab[254]);
             }
         }
 
