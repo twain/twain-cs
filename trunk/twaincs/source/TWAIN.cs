@@ -5380,52 +5380,6 @@ namespace TWAINWorkingGroup
                             }
                         }
                     }
-                    if (this.m_runinuithreaddelegate == null)
-                    {
-                        if (m_blUseLegacyDSM)
-                        {
-                            sts = (STS)WindowsTwain32DsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
-                        }
-                        else
-                        {
-                            sts = (STS)WindowsTwaindsmDsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
-                        }
-                    }
-                    else
-                    {
-                        if (m_blUseLegacyDSM)
-                        {
-                            lock (m_lockTwain)
-                            {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.intptrBitmap = IntPtr.Zero;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGENATIVEXFER;
-                                m_lIndexDatImagenativexfer = m_twaincommand.Submit(threaddata);
-                                RunInUiThread(DatImagenativexferWindowsTwain32);
-                                intptrBitmap = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrBitmap;
-                                sts = m_twaincommand.Get(m_lIndexDatImagenativexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagenativexfer);
-                            }
-                        }
-                        else
-                        {
-                            lock (m_lockTwain)
-                            {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.intptrBitmap = IntPtr.Zero;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGENATIVEXFER;
-                                m_lIndexDatImagenativexfer = m_twaincommand.Submit(threaddata);
-                                RunInUiThread(DatImagenativexferWindowsTwainDsm);
-                                intptrBitmap = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrBitmap;
-                                sts = m_twaincommand.Get(m_lIndexDatImagenativexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagenativexfer);
-                            }
-                        }
-                    }
                 }
                 catch
                 {
@@ -8312,7 +8266,6 @@ namespace TWAINWorkingGroup
                 DsmMemFree(ref intptrNative);
 
                 // Return our bitmap...
-                DsmMemUnlock(a_intptrNative);
                 return (bitmap);
             }
 
