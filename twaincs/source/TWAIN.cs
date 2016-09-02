@@ -139,6 +139,10 @@ namespace TWAINWorkingGroup
             // never go lower than state 2...
             m_state = STATE.S2;
 
+            // Make a note of the applications codepage, we'll
+            // override this with the driver's codepage...
+            SetCodePage(a_twlg);
+
             // Register the caller's info...
             twidentity = default(TW_IDENTITY);
             twidentity.Manufacturer.Set(a_szManufacturer);
@@ -4145,6 +4149,9 @@ namespace TWAINWorkingGroup
             {
                 if (sts == STS.SUCCESS)
                 {
+                    // Update the codepage...
+                    SetCodePage(a_twidentity.Version.Language);
+
                     // Change our state, and record the identity we picked...
                     m_state = STATE.S4;
                     m_twidentityDs = a_twidentity;
@@ -5327,11 +5334,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (this.m_runinuithreaddelegate == null)
                     {
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)WindowsTwain32DsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
+                        }
+                        else
+                        {
+                            sts = (STS)WindowsTwaindsmDsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
+                        }
                     }
                     else
                     {
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.intptrBitmap = IntPtr.Zero;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGENATIVEXFER;
+                                m_lIndexDatImagenativexfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagenativexferWindowsTwain32);
+                                intptrBitmap = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrBitmap;
+                                sts = m_twaincommand.Get(m_lIndexDatImagenativexfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagenativexfer);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                ThreadData threaddata = default(ThreadData);
+                                threaddata.intptrBitmap = IntPtr.Zero;
+                                threaddata.dg = a_dg;
+                                threaddata.msg = a_msg;
+                                threaddata.dat = DAT.IMAGENATIVEXFER;
+                                m_lIndexDatImagenativexfer = m_twaincommand.Submit(threaddata);
+                                RunInUiThread(DatImagenativexferWindowsTwainDsm);
+                                intptrBitmap = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrBitmap;
+                                sts = m_twaincommand.Get(m_lIndexDatImagenativexfer).sts;
+                                m_twaincommand.Delete(m_lIndexDatImagenativexfer);
+                            }
+                        }
                     }
                     if (this.m_runinuithreaddelegate == null)
                     {
@@ -5448,10 +5495,11 @@ namespace TWAINWorkingGroup
                 m_state = STATE.S7;
 
                 // Turn the DIB into a Bitmap object...
+                // D.T. 25/01/2015 : This method also takes between 40 and 50 MB 
+                // that needs to be cleaned.  This function frees the contents
+                // of intptrBitmap, so we don't need to do it out here, but we
+                // do zero it, just to be clear that it's not valid anymore...
                 a_bitmap = NativeToBitmap(ms_platform, intptrBitmap);
-
-                // We're done with the data we got from the driver...
-                Marshal.FreeHGlobal(intptrBitmap);
                 intptrBitmap = IntPtr.Zero;
             }
 
@@ -8258,6 +8306,10 @@ namespace TWAINWorkingGroup
                 bitmapStream = null;
                 memorystream = null;
                 bBitmap = null;
+
+                // D.T. 25/01/2015
+                DsmMemUnlock(a_intptrNative);
+                DsmMemFree(ref intptrNative);
 
                 // Return our bitmap...
                 DsmMemUnlock(a_intptrNative);
