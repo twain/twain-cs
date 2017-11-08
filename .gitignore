@@ -3,3 +3,12 @@
 ################################################################################
 
 *.suo
+/twaincs/source/bin/x86/Debug/TWAIN.dll
+*.pdb
+/twaincs/source/obj
+/twaincs/source/twaincsscan/source/bin/x86/Debug
+/twaincs/source/twaincsscan/source/obj
+/twaincs/source/twaincstool/source/bin/x86/Debug
+/twaincs/source/twaincstool/source/obj
+/twaincs/source/twaincstst/source/bin/x86/Debug
+/twaincs/source/twaincstst/source/obj

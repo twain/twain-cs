@@ -10,7 +10,7 @@
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2015 Kodak Alaris Inc.
+//  Copyright (C) 2013-2017 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -32,11 +32,9 @@
 ///////////////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Drawing;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows.Forms;
+using TWAINWorkingGroup;
 using TWAINWorkingGroupToolkit;
 
 namespace TWAINCSScan
@@ -60,7 +58,7 @@ namespace TWAINCSScan
         /// <param name="a_twaincstool"></param>
         public FormSetup(ref TWAINCSToolkit a_twaincstoolkit, string a_szProductDirectory)
         {
-            TWAINCSToolkit.STS sts;
+            TWAIN.STS sts;
             string szStatus;
             string szCapability;
             string szUsrUiSettings;
@@ -85,8 +83,9 @@ namespace TWAINCSScan
                 {
                     Directory.CreateDirectory(m_szTwainscanFolder);
                 }
-                catch
+                catch (Exception exception)
                 {
+                    TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                     m_szTwainscanFolder = Directory.GetCurrentDirectory();
                 }
             }
@@ -102,7 +101,7 @@ namespace TWAINCSScan
             szStatus = "";
             szCapability = "CAP_CUSTOMDSDATA";
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_CAPABILITY", "MSG_GETCURRENT", ref szCapability, ref szStatus);
-            if ((sts != TWAINCSToolkit.STS.SUCCESS) || !szCapability.EndsWith(",1"))
+            if ((sts != TWAIN.STS.SUCCESS) || !szCapability.EndsWith(",1"))
             {
                 m_labelUseUiSettings.Enabled = false;
                 m_textboxUseUiSettings.Enabled = false;
@@ -185,8 +184,9 @@ namespace TWAINCSScan
                 }
                 return ("");
             }
-            catch
+            catch (Exception exception)
             {
+                TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                 return ("");
             }
         }
@@ -210,8 +210,9 @@ namespace TWAINCSScan
                 }
                 return ("");
             }
-            catch
+            catch (Exception exception)
             {
+                TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                 return ("");
             }
         }
@@ -231,8 +232,9 @@ namespace TWAINCSScan
                 }
                 File.WriteAllText(Path.Combine(szSaveSpot, "folder"), a_szFolder);
             }
-            catch
+            catch (Exception exception)
             {
+                TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                 // Just let it slide...
             }
         }
@@ -251,8 +253,9 @@ namespace TWAINCSScan
                 }
                 File.WriteAllText(Path.Combine(m_szSettingsFolder, "current"), a_szFolder);
             }
-            catch
+            catch (Exception exception)
             {
+                TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                 // Just let it slide...
             }
         }
@@ -318,8 +321,9 @@ namespace TWAINCSScan
                 blDeleted = true;
                 File.Delete(Path.Combine(m_szSettingsFolder, m_textboxUseUiSettings.Text));
             }
-            catch
+            catch (Exception exception)
             {
+                TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                 blDeleted = false;
                 MessageBox.Show("Failed to delete setting...");
             }
@@ -349,8 +353,9 @@ namespace TWAINCSScan
                 {
                     Directory.CreateDirectory(savefiledialog.InitialDirectory);
                 }
-                catch
+                catch (Exception exception)
                 {
+                    TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                     return;
                 }
             }
@@ -371,7 +376,7 @@ namespace TWAINCSScan
         {
             string szTwmemref = "1,0," + Handle;
             string szStatus = "";
-            TWAINCSToolkit.STS sts;
+            TWAIN.STS sts;
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDSUIONLY", ref szTwmemref, ref szStatus);
         }
 
@@ -395,8 +400,9 @@ namespace TWAINCSScan
                 {
                     Directory.CreateDirectory(openfiledialog.InitialDirectory);
                 }
-                catch
+                catch (Exception exception)
                 {
+                    TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                     MessageBox.Show("Unable to create settings folder...'" + m_szSettingsFolder + "'");
                     return;
                 }

@@ -19,7 +19,7 @@
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2015 Kodak Alaris Inc.
+//  Copyright (C) 2013-2017 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -45,6 +45,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
+using TWAINWorkingGroup;
 using TWAINWorkingGroupToolkit;
 
 namespace TWAINCSTst
@@ -78,8 +79,8 @@ namespace TWAINCSTst
             InitializeComponent();
 
             // Open the log in our working folder, and say hi...
-            Log.Open("TWAINCSTst", ".", 1);
-            Log.Info("TWAINCSTst v" + System.Reflection.Assembly.GetEntryAssembly().GetName().Version.ToString());
+            TWAINWorkingGroup.Log.Open("TWAINCSTst", ".", 1);
+            TWAINWorkingGroup.Log.Info("TWAINCSTst v" + System.Reflection.Assembly.GetEntryAssembly().GetName().Version.ToString());
 
             // Make sure we cleanup if unexpectedly closed...
             this.FormClosing += new FormClosingEventHandler(FormMain_FormClosing);
@@ -90,6 +91,8 @@ namespace TWAINCSTst
             // Windows controls...
             if (TWAINCSToolkit.GetPlatform() == "WINDOWS")
             {
+                // Choose between TWAIN_32 and TWAINDSM, note that we always default
+                // to the open source TWAIN DSM...
                 m_checkboxUseTwain32.Enabled = (TWAINCSToolkit.GetMachineWordBitSize() == 32);
                 m_checkboxUseCallbacks.Enabled = true;
                 m_checkboxUseTwain32.Checked = false;
@@ -99,19 +102,24 @@ namespace TWAINCSTst
             // Linux controls...
             else if (TWAINCSToolkit.GetPlatform() == "LINUX")
             {
-                m_checkboxUseTwain32.Checked = false;
-                m_checkboxUseCallbacks.Checked = true;
+                // We don't give the user control between the DSM versions, because
+                // the 64-bit problem is handled as seamlessly as possible...
                 m_checkboxUseTwain32.Enabled = false;
                 m_checkboxUseCallbacks.Enabled = false;
+                m_checkboxUseTwain32.Checked = false;
+                m_checkboxUseCallbacks.Checked = true;
             }
 
             // Mac OS X controls...
             else if (TWAINCSToolkit.GetPlatform() == "MACOSX")
             {
+                // Choose between /System/Library/Frameworks/TWAIN.framework and
+                // /Library/Frameworks/TWAINDSM.framework, note that we always default
+                // to the open source TWAIN DSM...
+                m_checkboxUseTwain32.Enabled = true;
+                m_checkboxUseCallbacks.Enabled = false;
                 m_checkboxUseTwain32.Checked = false;
                 m_checkboxUseCallbacks.Checked = true;
-                m_checkboxUseTwain32.Enabled = false;
-                m_checkboxUseCallbacks.Enabled = false;
             }
 
             // Autoscroll the text in our output box...
@@ -160,7 +168,7 @@ namespace TWAINCSTst
                 "TWAIN Sharp," +
                 "TWAIN Sharp Test App," +
                 "2," +
-                "3," +
+                "4," +
                 "0x20000003," +
                 "USA," +
                 "testing...," +
@@ -212,6 +220,7 @@ namespace TWAINCSTst
                 m_twaincstoolkit = null;
             }
             CleanImage();
+            TWAINWorkingGroup.Log.Close();
         }
 
         /// <summary>
@@ -524,7 +533,7 @@ namespace TWAINCSTst
             string a_szDg,
             string a_szDat,
             string a_szMsg,
-            TWAINCSToolkit.STS a_sts,
+            TWAIN.STS a_sts,
             Bitmap a_bitmap,
             string a_szFile,
             string a_szTwimageinfo,
@@ -838,7 +847,7 @@ namespace TWAINCSTst
                 {
                     m_twaincstoolkit.CloseDriver();
                 }
-                WriteTriplet(szDg, szDat, szMsg, TWAINCSToolkit.STS.SUCCESS.ToString());
+                WriteTriplet(szDg, szDat, szMsg, TWAIN.STS.SUCCESS.ToString());
             }
 
             // Everything else can go to the image capture object...
@@ -846,7 +855,7 @@ namespace TWAINCSTst
             {
                 string szResult;
                 string szTwmemref;
-                TWAINCSToolkit.STS sts;
+                TWAIN.STS sts;
 
                 // Grab the data from the cap box...
                 szTwmemref = m_richtextboxCapability.Text;
@@ -882,7 +891,7 @@ namespace TWAINCSTst
                 // to work with the dropdown interface.  I've got them all
                 // here, even though some are currently being handled inside
                 // of other functions, like SendDatParent...
-                if (sts == TWAINCSToolkit.STS.SUCCESS)
+                if (sts == TWAIN.STS.SUCCESS)
                 {
                     AutoDropdown(szDg, szDat, szMsg);
                 }
@@ -926,7 +935,7 @@ namespace TWAINCSTst
                             "TWAIN Sharp",
                             "TWAIN Sharp Test App",
                             2,
-                            3,
+                            4,
                             new string[] { "DF_APP2", "DG_CONTROL", "DG_IMAGE" },
                             "USA",
                             "testing...",
@@ -965,13 +974,14 @@ namespace TWAINCSTst
                         );
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
+                    TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                     WriteTriplet(a_szDg, a_szDat, a_szMsg, "(unable to start)");
                     m_twaincstoolkit = null;
                     return;
                 }
-                WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAINCSToolkit.STS.SUCCESS.ToString());
+                WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAIN.STS.SUCCESS.ToString());
 
                 // Fix our controls...
                 if (TWAINCSToolkit.GetPlatform() == "WINDOWS")
@@ -988,7 +998,7 @@ namespace TWAINCSTst
             else if (a_szMsg == "MSG_CLOSEDSM")
             {
                 // Issue the command...
-                WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAINCSToolkit.STS.SUCCESS.ToString());
+                WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAIN.STS.SUCCESS.ToString());
                 m_blClosing = true;
                 m_twaincstoolkit.Cleanup();
                 m_twaincstoolkit = null;
@@ -1007,7 +1017,7 @@ namespace TWAINCSTst
             // Handle anything else...
             else
             {
-                WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAINCSToolkit.STS.BADPROTOCOL.ToString());
+                WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAIN.STS.BADPROTOCOL.ToString());
             }
         }
 
@@ -1047,7 +1057,7 @@ namespace TWAINCSTst
             {
                 m_twaincstoolkit.CloseDriver();
             }
-            WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAINCSToolkit.STS.SUCCESS.ToString());
+            WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAIN.STS.SUCCESS.ToString());
         }
 
         /// <summary>
@@ -1059,7 +1069,7 @@ namespace TWAINCSTst
         {
             string szTwmemref;
             string szStatus;
-            TWAINCSToolkit.STS sts;
+            TWAIN.STS sts;
             Bitmap bitmap = new Bitmap(m_pictureboxImage1.Width, m_pictureboxImage1.Height);
 
             // Reset the picture boxes...
@@ -1102,10 +1112,15 @@ namespace TWAINCSTst
         /// <param name="e">Arguments</param>
         private void m_checkboxUseTwain32_CheckedChanged(object sender, EventArgs e)
         {
-            // TWAIN_32.DLL doesn't support callbacks...
+            // TWAIN_32.DLL om Windows doesn't support callbacks, but the
+            // legacy stuff on Linux and MacOsX does; in fact that's all
+            // they support...
             if (m_checkboxUseTwain32.Checked)
             {
-                m_checkboxUseCallbacks.Checked = false;
+                if (TWAINCSToolkit.GetPlatform() == "WINDOWS")
+                {
+                    m_checkboxUseCallbacks.Checked = false;
+                }
             }
         }
 

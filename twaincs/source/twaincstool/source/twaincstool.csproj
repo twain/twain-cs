@@ -81,7 +81,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
-    <Reference Include="TWAIN, Version=0.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+    <Reference Include="TWAIN">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\bin\$(Platform)\$(Configuration)\TWAIN.dll</HintPath>
     </Reference>
@@ -89,6 +89,9 @@
   <ItemGroup>
     <Compile Include="TWAINCSTool.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

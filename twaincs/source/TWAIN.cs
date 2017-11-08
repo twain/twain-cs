@@ -18,7 +18,7 @@
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2015 Kodak Alaris Inc.
+//  Copyright (C) 2013-2017 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -139,10 +139,6 @@ namespace TWAINWorkingGroup
             // never go lower than state 2...
             m_state = STATE.S2;
 
-            // Make a note of the applications codepage, we'll
-            // override this with the driver's codepage...
-            SetCodePage(a_twlg);
-
             // Register the caller's info...
             twidentity = default(TW_IDENTITY);
             twidentity.Manufacturer.Set(a_szManufacturer);
@@ -194,15 +190,92 @@ namespace TWAINWorkingGroup
             // Linux only...
             else if (ms_platform == Platform.LINUX)
             {
-                m_blUseLegacyDSM = false;
+                if (GetMachineWordBitSize() == 32)
+                {
+                    m_blUseLegacyDSM = false;
+                }
+                else
+                {
+                    m_blUseLegacyDSM = a_blUseLegacyDSM;
+                }
                 m_blUseCallbacks = true;
                 m_linuxdsmentrycontrolcallbackdelegate = LinuxDsmEntryCallbackProxy;
+
+                // Check for the old DSM...
+                if (File.Exists("/usr/local/lib/libtwaindsm.so.2.3.2"))
+                {
+                    m_blFoundOldDsm = true;
+                }
+
+                // Check for any newer DSM...
+                if (File.Exists("/usr/local/lib/libtwaindsm.so"))
+                {
+                    bool blCheckForNewDsm = true;
+
+                    // Get the DSMs by their fully decorated names...
+                    string[] aszDsm = Directory.GetFiles("/usr/local/lib", "libtwaindsm.so.*.*.*");
+                    if ((aszDsm != null) && (aszDsm.Length > 0))
+                    {
+                        // Check each name, we only want to launch the process if
+                        // we find an old DSM...
+                        foreach (string szDsm in aszDsm)
+                        {
+                            if (    szDsm.Contains("so.2.0")
+                                ||  szDsm.Contains("so.2.1")
+                                ||  szDsm.Contains("so.2.2")
+                                ||  szDsm.Contains("so.2.3"))
+                            {
+                                // If we get a match, see if the symbolic link is
+                                // pointing to old junk...
+                                Process p = new Process();
+                                p.StartInfo.UseShellExecute = false;
+                                p.StartInfo.RedirectStandardOutput = true;
+                                p.StartInfo.FileName = "readlink";
+                                p.StartInfo.Arguments = "-e /usr/local/lib/libtwaindsm.so";
+                                p.Start();
+                                string szOutput = p.StandardOutput.ReadToEnd();
+                                p.WaitForExit();
+                                p.Dispose();
+                                if ((szOutput != null)
+                                    && (szOutput.Contains(".so.2.0")
+                                    ||  szOutput.Contains(".so.2.1")
+                                    ||  szOutput.Contains(".so.2.2")
+                                    ||  szOutput.Contains(".so.2.3")))
+                                {
+                                    // libtwaindsm.so is pointing to an old DSM...
+                                    blCheckForNewDsm = false;
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    // Is the symbolic link pointing to a new DSM?
+                    if (blCheckForNewDsm && (aszDsm != null) && (aszDsm.Length > 0))
+                    {
+                        foreach (string szDsm in aszDsm)
+                        {
+                            if (    szDsm.Contains("so.2.4")
+                                ||  szDsm.Contains("so.2.5")
+                                ||  szDsm.Contains("so.2.6")
+                                ||  szDsm.Contains("so.2.7")
+                                ||  szDsm.Contains("so.2.8")
+                                ||  szDsm.Contains("so.2.9")
+                                ||  szDsm.Contains("so.3"))
+                            {
+                                // libtwaindsm.so is pointing to a new DSM...
+                                m_blFoundNewDsm = true;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             // Mac OS X only...
             else if (ms_platform == Platform.MACOSX)
             {
-                m_blUseLegacyDSM = false;
+                m_blUseLegacyDSM = a_blUseLegacyDSM;
                 m_blUseCallbacks = true;
                 m_macosxdsmentrycontrolcallbackdelegate = MacosxDsmEntryCallbackProxy;
             }
@@ -226,10 +299,10 @@ namespace TWAINWorkingGroup
                         m_threadTwain.Abort();
                         m_threadTwain = null;
                     }
-                    catch
+                    catch (Exception exception)
                     {
                         // Log will throw an exception for us...
-                        TWAINWorkingGroup.Log.Assert("Failed to start the TWAIN background thread...");
+                        TWAINWorkingGroup.Log.Assert("Failed to start the TWAIN background thread - " + exception.Message);
                     }
                 }
             }
@@ -585,7 +658,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_stateTarget">The TWAIN state that we want to end up at</param>
         static int s_iCloseDsmDelay = 0;
-        public void Rollback(STATE a_stateTarget)
+        public TWAIN.STATE Rollback(STATE a_stateTarget)
         {
             int iRetry;
             STS sts;
@@ -613,7 +686,7 @@ namespace TWAINWorkingGroup
                     // Clear the command variables...
                     m_twaincommand.Delete(lIndex);
                 }
-                return;
+                return (m_state);
             }
 
             // If we get a sequence error, then we'll repeat the loop from
@@ -703,6 +776,9 @@ namespace TWAINWorkingGroup
                 // All done...
                 break;
             }
+
+            // How did we do?
+            return (m_state);
         }
 
         #endregion
@@ -731,8 +807,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twcallback.Message.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -758,8 +835,9 @@ namespace TWAINWorkingGroup
                 a_twcallback.RefCon = uint.Parse(asz[1]);
                 a_twcallback.Message = ushort.Parse(asz[2]);
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -783,8 +861,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twcallback2.Message.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -810,8 +889,9 @@ namespace TWAINWorkingGroup
                 a_twcallback2.RefCon = (UIntPtr)UInt64.Parse(asz[1]);
                 a_twcallback2.Message = ushort.Parse(asz[2]);
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -902,7 +982,7 @@ namespace TWAINWorkingGroup
                             csvEnum.Add(twenumerationmacosx.CurrentIndex.ToString());
                             csvEnum.Add(twenumerationmacosx.DefaultIndex.ToString());
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             // Crack the container...
                             TW_ENUMERATION twenumeration = default(TW_ENUMERATION);
@@ -917,6 +997,22 @@ namespace TWAINWorkingGroup
                             csvEnum.Add(NumItems.ToString());
                             csvEnum.Add(twenumeration.CurrentIndex.ToString());
                             csvEnum.Add(twenumeration.DefaultIndex.ToString());
+                        }
+                        else
+                        {
+                            // Crack the container...
+                            TW_ENUMERATION_LINUX64 twenumerationlinux64 = default(TW_ENUMERATION_LINUX64);
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twenumerationlinux64 = (TW_ENUMERATION_LINUX64)Marshal.PtrToStructure(intptrLocked, typeof(TW_ENUMERATION_LINUX64));
+                            ItemType = twenumerationlinux64.ItemType;
+                            NumItems = (uint)twenumerationlinux64.NumItems;
+                            intptr = (IntPtr)((UInt64)intptrLocked + (UInt64)Marshal.SizeOf(twenumerationlinux64));
+
+                            // Start building the string...
+                            csvEnum = Common(a_twcapability.Cap, a_twcapability.ConType, ItemType);
+                            csvEnum.Add(NumItems.ToString());
+                            csvEnum.Add(twenumerationlinux64.CurrentIndex.ToString());
+                            csvEnum.Add(twenumerationlinux64.DefaultIndex.ToString());
                         }
 
                         // Tack on the stuff from the ItemList...
@@ -969,6 +1065,7 @@ namespace TWAINWorkingGroup
                     {
                         CSV csvRange;
                         TW_RANGE twrange;
+                        TW_RANGE_LINUX64 twrangelinux64;
                         TW_RANGE_MACOSX twrangemacosx;
                         TW_RANGE_FIX32 twrangefix32;
                         TW_RANGE_FIX32_MACOSX twrangefix32macosx;
@@ -993,11 +1090,29 @@ namespace TWAINWorkingGroup
                             twrangefix32.DefaultValue = twrangefix32macosx.DefaultValue;
                             twrangefix32.CurrentValue = twrangefix32macosx.CurrentValue;
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             intptrLocked = DsmMemLock(a_twcapability.hContainer);
                             twrange = (TW_RANGE)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE));
                             twrangefix32 = (TW_RANGE_FIX32)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE_FIX32));
+                        }
+                        else
+                        {
+                            intptrLocked = DsmMemLock(a_twcapability.hContainer);
+                            twrangelinux64 = (TW_RANGE_LINUX64)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE_LINUX64));
+                            twrangefix32macosx = (TW_RANGE_FIX32_MACOSX)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE_FIX32_MACOSX));
+                            twrange.ItemType = (TWTY)twrangelinux64.ItemType;
+                            twrange.MinValue = (uint)twrangelinux64.MinValue;
+                            twrange.MaxValue = (uint)twrangelinux64.MaxValue;
+                            twrange.StepSize = (uint)twrangelinux64.StepSize;
+                            twrange.DefaultValue = (uint)twrangelinux64.DefaultValue;
+                            twrange.CurrentValue = (uint)twrangelinux64.CurrentValue;
+                            twrangefix32.ItemType = (TWTY)twrangefix32macosx.ItemType;
+                            twrangefix32.MinValue = twrangefix32macosx.MinValue;
+                            twrangefix32.MaxValue = twrangefix32macosx.MaxValue;
+                            twrangefix32.StepSize = twrangefix32macosx.StepSize;
+                            twrangefix32.DefaultValue = twrangefix32macosx.DefaultValue;
+                            twrangefix32.CurrentValue = twrangefix32macosx.CurrentValue;
                         }
 
                         // Start the string...
@@ -1113,6 +1228,7 @@ namespace TWAINWorkingGroup
                 }
                 catch
                 {
+                    // don't log this exception...
                     a_twcapability.Cap = (CAP)0xFFFF;
                 }
                 if ((a_twcapability.Cap == (CAP)0xFFFF) || !asz[0].Contains("_"))
@@ -1127,6 +1243,7 @@ namespace TWAINWorkingGroup
                 }
                 catch
                 {
+                    // don't log this exception...
                     a_twcapability.ConType = (TWON)ushort.Parse(asz[1]);
                 }
 
@@ -1137,6 +1254,7 @@ namespace TWAINWorkingGroup
                 }
                 catch
                 {
+                    // don't log this exception...
                     twty = (TWTY)ushort.Parse(asz[2]);
                 }
 
@@ -1233,7 +1351,7 @@ namespace TWAINWorkingGroup
                             // Get the pointer to the ItemList...
                             intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twenumerationmacosx));
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             // Allocate...
                             a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_ENUMERATION)) + (((int)u32NumItems + 1) * Marshal.SizeOf(default(TW_STR255)))));
@@ -1249,6 +1367,23 @@ namespace TWAINWorkingGroup
 
                             // Get the pointer to the ItemList...
                             intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twenumeration));
+                        }
+                        else
+                        {
+                            // Allocate...
+                            a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_ENUMERATION_LINUX64)) + (((int)u32NumItems + 1) * Marshal.SizeOf(default(TW_STR255)))));
+                            intptr = DsmMemLock(a_twcapability.hContainer);
+
+                            // Set the meta data...
+                            TW_ENUMERATION_LINUX64 twenumerationlinux64 = default(TW_ENUMERATION_LINUX64);
+                            twenumerationlinux64.ItemType = twty;
+                            twenumerationlinux64.NumItems = u32NumItems;
+                            twenumerationlinux64.CurrentIndex = uint.Parse(asz[4]);
+                            twenumerationlinux64.DefaultIndex = uint.Parse(asz[5]);
+                            Marshal.StructureToPtr(twenumerationlinux64, intptr, true);
+
+                            // Get the pointer to the ItemList...
+                            intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twenumerationlinux64));
                         }
 
                         // Set the ItemList...
@@ -1329,10 +1464,16 @@ namespace TWAINWorkingGroup
                             a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_RANGE_MACOSX))));
                             intptr = DsmMemLock(a_twcapability.hContainer);
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             // Allocate...
                             a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_RANGE))));
+                            intptr = DsmMemLock(a_twcapability.hContainer);
+                        }
+                        else
+                        {
+                            // Allocate...
+                            a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_RANGE_LINUX64))));
                             intptr = DsmMemLock(a_twcapability.hContainer);
                         }
 
@@ -1348,8 +1489,9 @@ namespace TWAINWorkingGroup
                         return (true);
                 }
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("CsvToCapability exception - " + exception.Message);
                 a_szValue = "(data error)";
                 return (false);
             }
@@ -1372,8 +1514,9 @@ namespace TWAINWorkingGroup
                 DsmMemUnlock(a_twcustomdsdata.hData);
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1403,8 +1546,9 @@ namespace TWAINWorkingGroup
                 Marshal.Copy(bProfile, 0, intptr, (int)a_twcustomdsdata.InfoLength);
                 DsmMemUnlock(a_twcustomdsdata.hData);
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -1436,8 +1580,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twdeviceevent.TimeBetweenCaptures.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1461,8 +1606,9 @@ namespace TWAINWorkingGroup
                 csv.Add("0x" + ((a_twentrypoint.DSM_MemUnlock == null) ? "0" : a_twentrypoint.DSM_MemUnlock.ToString("X")));
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1493,8 +1639,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twfilesystem.DeviceGroupMask.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1530,8 +1677,9 @@ namespace TWAINWorkingGroup
                 a_twfilesystem.NumberOfSnippets = (uint)UInt64.Parse(asz[11]);
                 a_twfilesystem.DeviceGroupMask = (uint)UInt64.Parse(asz[12]);
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -1564,8 +1712,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twidentity.ProductName.Get());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1600,8 +1749,9 @@ namespace TWAINWorkingGroup
                 a_twidentity.ProductFamily.Set(asz[10]);
                 a_twidentity.ProductName.Set(asz[11]);
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -1638,8 +1788,9 @@ namespace TWAINWorkingGroup
                 csv.Add("TWCP_" + (TWCP)a_twimageinfo.Compression);
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1680,8 +1831,9 @@ namespace TWAINWorkingGroup
                 a_twimageinfo.PixelType = (short)(TWPT)Enum.Parse(typeof(TWPT), asz[14].Remove(0, 5));
                 a_twimageinfo.Compression = (ushort)(TWCP)Enum.Parse(typeof(TWCP), asz[15].Remove(0, 5));
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -1709,8 +1861,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twimagelayout.FrameNumber.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1746,8 +1899,9 @@ namespace TWAINWorkingGroup
                 a_twimagelayout.PageNumber = (uint)int.Parse(asz[5]);
                 a_twimagelayout.FrameNumber = (uint)int.Parse(asz[6]);
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -1778,8 +1932,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twimagememxfer.Memory.TheMem.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1799,8 +1954,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twpendingxfers.EOJ.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1821,8 +1977,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twsetupfilexfer.VRefNum.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1848,8 +2005,9 @@ namespace TWAINWorkingGroup
                 a_twsetupfilexfer.Format = (TWFF)Enum.Parse(typeof(TWFF), asz[1].Remove(0, 5));
                 a_twsetupfilexfer.VRefNum = short.Parse(asz[2]);
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -1873,8 +2031,90 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twsetupmemxfer.Preferred.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
+                return ("***error***");
+            }
+        }
+
+        /// <summary>
+        /// Convert a string to a twaindirect...
+        /// </summary>
+        /// <param name="a_twtwaindirect">A TWAIN structure</param>
+        /// <param name="a_szTwaindirect">A CSV string of the TWAIN structure</param>
+        /// <returns>True if the conversion is successful</returns>
+        public bool CsvToTwaindirect(ref TW_TWAINDIRECT a_twtwaindirect, string a_szTwaindirect)
+        {
+            // Init stuff...
+            a_twtwaindirect = default(TW_TWAINDIRECT);
+
+            // Build the string...
+            try
+            {
+                long lTmp;
+                string[] asz = CSV.Parse(a_szTwaindirect);
+
+                // Sort out the values...
+                if (!uint.TryParse(asz[0], out a_twtwaindirect.SizeOf))
+                {
+                    return (false);
+                }
+                if (!ushort.TryParse(asz[1], out a_twtwaindirect.CommunicationManager))
+                {
+                    return (false);
+                }
+                if (!long.TryParse(asz[2], out lTmp))
+                {
+                    return (false);
+                }
+                a_twtwaindirect.Send = new IntPtr(lTmp);
+                if (!uint.TryParse(asz[3], out a_twtwaindirect.SendSize))
+                {
+                    return (false);
+                }
+                if (!long.TryParse(asz[4], out lTmp))
+                {
+                    return (false);
+                }
+                a_twtwaindirect.Receive = new IntPtr(lTmp);
+                if (!uint.TryParse(asz[5], out a_twtwaindirect.ReceiveSize))
+                {
+                    return (false);
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.Error("***error*** - " + exception.Message);
+                return (false);
+            }
+
+            // All done...
+            return (true);
+        }
+
+        /// <summary>
+        /// Convert the contents of a twaindirect structure to a string that
+        /// we can show in our simple GUI...
+        /// </summary>
+        /// <param name="a_twtwaindirect">A TWAIN structure</param>
+        /// <returns>A CSV string of the TWAIN structure</returns>
+        public string TwaindirectToCsv(TW_TWAINDIRECT a_twtwaindirect)
+        {
+            try
+            {
+                CSV csv = new CSV();
+                csv.Add(a_twtwaindirect.SizeOf.ToString());
+                csv.Add(a_twtwaindirect.CommunicationManager.ToString());
+                csv.Add(a_twtwaindirect.Send.ToString());
+                csv.Add(a_twtwaindirect.SendSize.ToString());
+                csv.Add(a_twtwaindirect.Receive.ToString());
+                csv.Add(a_twtwaindirect.ReceiveSize.ToString());
+                return (csv.Get());
+            }
+            catch (Exception exception)
+            {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1894,8 +2134,9 @@ namespace TWAINWorkingGroup
                 csv.Add(a_twuserinterface.ModalUI.ToString());
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1939,8 +2180,9 @@ namespace TWAINWorkingGroup
                     }
                 }
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -1962,8 +2204,9 @@ namespace TWAINWorkingGroup
                 csv.Add("0x" + a_u32Xfergroup.ToString("X"));
                 return (csv.Get());
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
         }
@@ -1987,8 +2230,9 @@ namespace TWAINWorkingGroup
                 // Grab the values...
                 a_u32Xfergroup = asz[0].ToLower().StartsWith("0x") ? Convert.ToUInt32(asz[0].Remove(0, 2), 16) : Convert.ToUInt32(asz[0], 16);
             }
-            catch
+            catch (Exception exception)
             {
+                Log.Error("***error*** - " + exception.Message);
                 return (false);
             }
 
@@ -2066,10 +2310,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryNullDest(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, a_dat, a_msg, a_twmemref);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2080,7 +2325,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryNullDest(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, a_dat, a_msg, a_twmemref);
                     }
@@ -2089,10 +2334,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryNullDest(ref m_twidentityApp, IntPtr.Zero, a_dg, a_dat, a_msg, a_twmemref);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2103,12 +2349,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryNullDest(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, a_dat, a_msg, a_twmemref);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryNullDest(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, a_dat, a_msg, a_twmemref);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryNullDest(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, a_dat, a_msg, a_twmemref);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2120,14 +2374,17 @@ namespace TWAINWorkingGroup
                 return (STS.BUMMER);
             }
 
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
+
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (sts);
         }
 
         /// <summary>
@@ -2190,10 +2447,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntry(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, a_dat, a_msg, a_twmemref);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2204,7 +2462,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntry(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, a_dat, a_msg, a_twmemref);
                     }
@@ -2213,10 +2471,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntry(ref m_twidentityApp, ref m_twidentityDs, a_dg, a_dat, a_msg, a_twmemref);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2227,12 +2486,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntry(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.AUDIOINFO, a_msg, a_twmemref);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntry(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.AUDIOINFO, a_msg, a_twmemref);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntry(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.AUDIOINFO, a_msg, a_twmemref);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2240,18 +2507,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -2313,10 +2583,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryAudioAudioinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.AUDIOINFO, a_msg, ref a_twaudioinfo);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2327,7 +2598,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryAudioAudioinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.AUDIOINFO, a_msg, ref a_twaudioinfo);
                     }
@@ -2336,10 +2607,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryAudioAudioinfo(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.AUDIOINFO, a_msg, ref a_twaudioinfo);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2350,12 +2622,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryAudioAudioinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.AUDIOINFO, a_msg, ref a_twaudioinfo);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryAudioAudioinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.AUDIOINFO, a_msg, ref a_twaudioinfo);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryAudioAudioinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.AUDIOINFO, a_msg, ref a_twaudioinfo);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2363,18 +2643,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -2436,10 +2719,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryCallback(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CALLBACK, a_msg, ref a_twcallback);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2450,7 +2734,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryCallback(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CALLBACK, a_msg, ref a_twcallback);
                     }
@@ -2459,10 +2743,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryCallback(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CALLBACK, a_msg, ref a_twcallback);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2473,12 +2758,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryCallback(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.CALLBACK, a_msg, ref a_twcallback);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryCallback(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.CALLBACK, a_msg, ref a_twcallback);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryCallback(ref m_twidentitymacosxApp, ref m_twidentityDs, a_dg, DAT.CALLBACK, a_msg, ref a_twcallback);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2486,18 +2779,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), CallbackToCsv(a_twcallback));
+                Log.LogSendAfter(stsRcOrCc, CallbackToCsv(a_twcallback));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -2559,10 +2855,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryCallback2(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CALLBACK2, a_msg, ref a_twcallback2);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2573,7 +2870,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryCallback2(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CALLBACK2, a_msg, ref a_twcallback2);
                     }
@@ -2582,10 +2879,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryCallback2(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CALLBACK2, a_msg, ref a_twcallback2);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2596,12 +2894,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryCallback2(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.CALLBACK2, a_msg, ref a_twcallback2);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryCallback2(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.CALLBACK2, a_msg, ref a_twcallback2);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryCallback2(ref m_twidentitymacosxApp, ref m_twidentityDs, a_dg, DAT.CALLBACK2, a_msg, ref a_twcallback2);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2609,18 +2915,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), Callback2ToCsv(a_twcallback2));
+                Log.LogSendAfter(stsRcOrCc, Callback2ToCsv(a_twcallback2));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -2715,10 +3024,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryCapability(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2729,7 +3039,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryCapability(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
                     }
@@ -2738,10 +3048,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryCapability(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2752,12 +3063,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryCapability(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryCapability(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryCapability(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2765,25 +3084,28 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
                 if ((a_msg == MSG.RESETALL) || ((sts != STS.SUCCESS) && (sts != STS.CHECKSTATUS)))
                 {
-                    Log.LogSendAfter(sts.ToString(), "");
+                    Log.LogSendAfter(stsRcOrCc, "");
                 }
                 else
                 {
-                    Log.LogSendAfter(sts.ToString(), CapabilityToCsv(a_twcapability));
+                    Log.LogSendAfter(stsRcOrCc, CapabilityToCsv(a_twcapability));
                 }
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -2845,10 +3167,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryCiecolor(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CIECOLOR, a_msg, ref a_twciecolor);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2859,7 +3182,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryCiecolor(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CIECOLOR, a_msg, ref a_twciecolor);
                     }
@@ -2868,10 +3191,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryCiecolor(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CIECOLOR, a_msg, ref a_twciecolor);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2882,12 +3206,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryCiecolor(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CIECOLOR, a_msg, ref a_twciecolor);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryCiecolor(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CIECOLOR, a_msg, ref a_twciecolor);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryCiecolor(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CIECOLOR, a_msg, ref a_twciecolor);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2895,18 +3227,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -2968,10 +3303,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryCustomdsdata(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CUSTOMDSDATA, a_msg, ref a_twcustomdsdata);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -2982,7 +3318,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryCustomdsdata(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CUSTOMDSDATA, a_msg, ref a_twcustomdsdata);
                     }
@@ -2991,10 +3327,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryCustomdsdata(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CUSTOMDSDATA, a_msg, ref a_twcustomdsdata);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3005,12 +3342,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryCustomdsdata(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CUSTOMDSDATA, a_msg, ref a_twcustomdsdata);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryCustomdsdata(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CUSTOMDSDATA, a_msg, ref a_twcustomdsdata);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryCustomdsdata(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.CUSTOMDSDATA, a_msg, ref a_twcustomdsdata);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3018,18 +3363,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), CustomdsdataToCsv(a_twcustomdsdata));
+                Log.LogSendAfter(stsRcOrCc, CustomdsdataToCsv(a_twcustomdsdata));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -3091,10 +3439,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryDeviceevent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.DEVICEEVENT, a_msg, ref a_twdeviceevent);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3105,7 +3454,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryDeviceevent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.DEVICEEVENT, a_msg, ref a_twdeviceevent);
                     }
@@ -3114,10 +3463,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryDeviceevent(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.DEVICEEVENT, a_msg, ref a_twdeviceevent);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3128,12 +3478,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryDeviceevent(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.DEVICEEVENT, a_msg, ref a_twdeviceevent);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryDeviceevent(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.DEVICEEVENT, a_msg, ref a_twdeviceevent);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryDeviceevent(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.DEVICEEVENT, a_msg, ref a_twdeviceevent);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3141,18 +3499,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), DeviceeventToCsv(a_twdeviceevent));
+                Log.LogSendAfter(stsRcOrCc, DeviceeventToCsv(a_twdeviceevent));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -3214,10 +3575,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryEntrypoint(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3234,13 +3596,25 @@ namespace TWAINWorkingGroup
                     }
                     else
                     {
-                        sts = (STS)Linux64DsmEntryEntrypoint(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
+                        // We'll spit this out if we have no DSM...
+                        sts = STS.BUMMER;
+                        // Load the new DSM, whatever it is, if we found one...
+                        if (m_blFoundNewDsm)
+                        {
+                            sts = (STS)LinuxDsmEntryEntrypoint(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
+                        }
+                        // Load libtwaindsm.so.2.3.2, if we found it...
+                        if (m_blFoundOldDsm)
+                        {
+                            sts = (STS)LinuxDsmEntryEntrypoint(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
+                        }
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3251,12 +3625,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryEntrypoint(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryEntrypoint(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryEntrypoint(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3264,7 +3646,7 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
 
@@ -3292,14 +3674,17 @@ namespace TWAINWorkingGroup
                 }
             }
 
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
+
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), EntrypointToCsv(a_twentrypoint));
+                Log.LogSendAfter(stsRcOrCc, EntrypointToCsv(a_twentrypoint));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -3334,10 +3719,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryEvent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3348,7 +3734,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryEvent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
                     }
@@ -3357,10 +3743,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryEvent(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3371,12 +3758,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryEvent(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryEvent(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryEvent(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3384,14 +3779,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 1)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // Check the event for anything interesting...
@@ -3401,7 +3799,7 @@ namespace TWAINWorkingGroup
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -3463,10 +3861,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryExtimageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3477,7 +3876,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryExtimageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
                     }
@@ -3486,10 +3885,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryExtimageinfo(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3500,12 +3900,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryExtimageinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryExtimageinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryExtimageinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3513,18 +3921,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -3586,10 +3997,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryFilesystem(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.FILESYSTEM, a_msg, ref a_twfilesystem);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3600,7 +4012,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryFilesystem(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.FILESYSTEM, a_msg, ref a_twfilesystem);
                     }
@@ -3609,10 +4021,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryFilesystem(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.FILESYSTEM, a_msg, ref a_twfilesystem);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3623,12 +4036,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryFilesystem(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.FILESYSTEM, a_msg, ref a_twfilesystem);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryFilesystem(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.FILESYSTEM, a_msg, ref a_twfilesystem);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryFilesystem(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.FILESYSTEM, a_msg, ref a_twfilesystem);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3636,18 +4057,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), FilesystemToCsv(a_twfilesystem));
+                Log.LogSendAfter(stsRcOrCc, FilesystemToCsv(a_twfilesystem));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -3709,10 +4133,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryFilter(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.FILTER, a_msg, ref a_twfilter);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3723,7 +4148,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryFilter(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.FILTER, a_msg, ref a_twfilter);
                     }
@@ -3732,10 +4157,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryFilter(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.FILTER, a_msg, ref a_twfilter);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3746,12 +4172,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryFilter(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.FILTER, a_msg, ref a_twfilter);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryFilter(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.FILTER, a_msg, ref a_twfilter);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryFilter(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.FILTER, a_msg, ref a_twfilter);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3759,18 +4193,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -3832,10 +4269,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryGrayresponse(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.GRAYRESPONSE, a_msg, ref a_twgrayresponse);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3846,7 +4284,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryGrayresponse(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.GRAYRESPONSE, a_msg, ref a_twgrayresponse);
                     }
@@ -3855,10 +4293,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryGrayresponse(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.GRAYRESPONSE, a_msg, ref a_twgrayresponse);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3869,12 +4308,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryGrayresponse(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.GRAYRESPONSE, a_msg, ref a_twgrayresponse);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryGrayresponse(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.GRAYRESPONSE, a_msg, ref a_twgrayresponse);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryGrayresponse(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.GRAYRESPONSE, a_msg, ref a_twgrayresponse);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3882,18 +4329,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -3955,10 +4405,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryIccprofile(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ICCPROFILE, a_msg, ref a_twmemory);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3969,7 +4420,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryIccprofile(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ICCPROFILE, a_msg, ref a_twmemory);
                     }
@@ -3978,10 +4429,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryIccprofile(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.ICCPROFILE, a_msg, ref a_twmemory);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -3992,12 +4444,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryIccprofile(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.ICCPROFILE, a_msg, ref a_twmemory);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryIccprofile(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.ICCPROFILE, a_msg, ref a_twmemory);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryIccprofile(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.ICCPROFILE, a_msg, ref a_twmemory);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4005,18 +4465,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -4079,10 +4542,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
                 a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
@@ -4091,24 +4555,207 @@ namespace TWAINWorkingGroup
             // Linux...
             else if (ms_platform == Platform.LINUX)
             {
-                // Issue the command...
+                // Issue the command, we have a serious problem with 64-bit stuff
+                // because TW_INT32 and TW_UINT32 were defined using long, which
+                // made them 64-bit values (not a good idea for 32-bit types).  This
+                // was fixed with TWAIN DSM 2.4, but it leaves us with a bit of a
+                // mess.  So, unlike all of the other calls, we're going to allow
+                // ourselves to access both DSMs from here.  This is only an issue
+                // for 64-bit systems, and we're going to assume that the data source
+                // is 2.4 or later, since that'll be the long term situation.  Note
+                // that we assume the DSMs are protecting us from talking to the
+                // wrong data source...
                 try
                 {
+                    // Since life is complex, start by assuming failure...
+                    sts = STS.FAILURE;
+                    // We never have a problem with 32-bit, so just do it...
                     if (GetMachineWordBitSize() == 32)
                     {
+                        m_linux64bitdsm = Linux64BitDsm.IsLatestDsm; // set it so debugging makes sense
                         TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
                         sts = (STS)LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
                         a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
                     }
-                    else
+                    // Handle closeds...
+                    else if (a_msg == MSG.CLOSEDS)
                     {
-                        sts = (STS)Linux64DsmEntryIdentity(ref m_twidentityApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref a_twidentity);
+                        // We've opened this source, and we know it's the new style...
+                        if (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm)
+                        {
+                            TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
+                            sts = (STS)LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                            a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
+                        }
+                        // We've opened this source, and we know it's the old style...
+                        else if (m_linux64bitdsm == Linux64BitDsm.IsOldDsm)
+                        {
+                            TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
+                            TW_IDENTITY_LINUX64 twidentitylinux64 = TwidentityToTwidentitylinux64(a_twidentity);
+                            sts = (STS)Linux64DsmEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylinux64);
+                            a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
+                        }
+                        // We can't possibly have opened this source, so this had
+                        // better be a sequence error...
+                        else
+                        {
+                            sts = STS.SEQERROR;
+                        }
+                    }
+                    // Getfirst always starts with the current DSM, if it can't find it,
+                    // or if it reports end of list, then go on to the old DSM, if we
+                    // have one...
+                    else if (a_msg == MSG.GETFIRST)
+                    {
+                        m_linux64bitdsmEnum = Linux64BitDsm.Unknown;
+
+                        // Try with the latest DSM first, hopefully this just works...
+                        sts = STS.FAILURE;
+                        if (File.Exists("/usr/local/lib/libtwaindsm.so"))
+                        {
+                            TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
+                            sts = (STS)LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                            a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
+                        }
+
+                        // We got it...
+                        if (sts == STS.SUCCESS)
+                        {
+                            m_linux64bitdsmEnum = Linux64BitDsm.IsLatestDsm;
+                        }
+
+                        // No joy, so try the other one...
+                        else
+                        {
+                            if (File.Exists("/usr/local/lib/libtwaindsm.so.2.3.2"))
+                            {
+                                TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
+                                TW_IDENTITY_LINUX64 twidentitylinux64 = TwidentityToTwidentitylinux64(a_twidentity);
+                                sts = (STS)Linux64DsmEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylinux64);
+                                a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
+                                if (sts == STS.SUCCESS)
+                                {
+                                    m_linux64bitdsmEnum = Linux64BitDsm.IsOldDsm;
+                                }
+                            }
+                        }
+                    }
+                    // Getnext gets its lead from getfirst, if we have a DSM
+                    // value, we try it out, if we don't have one, we must be
+                    // at the end of list.  We'll do the new DSM and then the
+                    // old DSM (if we have one)...
+                    else if (a_msg == MSG.GETNEXT)
+                    {
+                        bool blChangeToGetFirst = false;
+
+                        // We're done...
+                        if (m_linux64bitdsmEnum == Linux64BitDsm.Unknown)
+                        {
+                            sts = STS.ENDOFLIST;
+                        }
+
+                        // We're working the latest DSM...
+                        if (m_linux64bitdsmEnum == Linux64BitDsm.IsLatestDsm)
+                        {
+                            TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
+                            sts = (STS)LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                            a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
+                            if (sts != STS.SUCCESS)
+                            {
+                                m_linux64bitdsmEnum = Linux64BitDsm.IsOldDsm;
+                                sts = STS.ENDOFLIST;
+                                blChangeToGetFirst = true;
+                            }
+                        }
+
+                        // We're working the old DSM...
+                        if (m_linux64bitdsmEnum == Linux64BitDsm.IsOldDsm)
+                        {
+                            TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
+                            TW_IDENTITY_LINUX64 twidentitylinux64 = blChangeToGetFirst ? default(TW_IDENTITY_LINUX64) : TwidentityToTwidentitylinux64(a_twidentity);
+                            sts = (STS)Linux64DsmEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, blChangeToGetFirst ? MSG.GETFIRST : a_msg, ref twidentitylinux64);
+                            a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
+                            if (sts != STS.SUCCESS)
+                            {
+                                m_linux64bitdsmEnum = Linux64BitDsm.Unknown;
+                                sts = STS.ENDOFLIST;
+                            }
+                        }
+                    }
+                    // Open always tries the current DSM, and then the older one, if needed...
+                    else if (a_msg == MSG.OPENDS)
+                    {
+                        TW_IDENTITY_LEGACY twidentitylegacy = default(TW_IDENTITY_LEGACY);
+
+                        // Prime the pump by assuming we didn't find anything...
+                        sts = STS.NODS;
+
+                        // Try with the latest DSM first, hopefully this just works, if we
+                        // got here as part of getfirst/getnext, use that info.  Or do this
+                        // if we just popped in here...
+                        if (    (m_linux64bitdsmEnum == Linux64BitDsm.Unknown)
+                            ||  (m_linux64bitdsmEnum == Linux64BitDsm.IsLatestDsm))
+                        {
+                            // Result of getfirst/getnext...
+                            if (m_linux64bitdsmEnum == Linux64BitDsm.IsLatestDsm)
+                            {
+                                twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
+                            }
+                            // Hitting us from out of the blue...
+                            else
+                            {
+                                twidentitylegacy.ProductFamily = a_twidentity.ProductFamily;
+                            }
+                            sts = (STS)LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                        }
+
+                        // We got it...
+                        if (sts == STS.SUCCESS)
+                        {
+                            a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
+                            m_linux64bitdsm = Linux64BitDsm.IsLatestDsm;
+                        }
+
+                        // No joy, so try the other one...
+                        else
+                        {
+                            // If we got here as part of getfirst/getnext, use that info.
+                            // Or do this if we just popped in here...
+                            if (    (m_linux64bitdsmEnum == Linux64BitDsm.Unknown)
+                                ||  (m_linux64bitdsmEnum == Linux64BitDsm.IsOldDsm))
+                            {
+                                TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
+                                TW_IDENTITY_LINUX64 twidentitylinux64 = default(TW_IDENTITY_LINUX64);
+                                // Result of getfirst/getnext...
+                                if (m_linux64bitdsmEnum == Linux64BitDsm.IsLatestDsm)
+                                {
+                                    twidentitylinux64 = TwidentityToTwidentitylinux64(a_twidentity);
+                                }
+                                // Hitting us from out of the blue...
+                                else
+                                {
+                                    twidentitylinux64.ProductFamily = a_twidentity.ProductFamily;
+                                }
+                                sts = (STS)Linux64DsmEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylinux64);
+                                if (sts == STS.SUCCESS)
+                                {
+                                    a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
+                                    m_linux64bitdsm = Linux64BitDsm.IsOldDsm;
+                                }
+                            }
+                        }
+                    }
+                    // TBD: figure out how to safely do a set on Linux...
+                    else if (a_msg == MSG.SET)
+                    {
+                        // Just pretend we did it...
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4120,12 +4767,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryIdentity(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitymacosx);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryIdentity(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitymacosx);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryIdentity(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitymacosx);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
                 a_twidentity = TwidentitymacosxToTwidentity(twidentitymacosx);
@@ -4134,14 +4789,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), IdentityToCsv(a_twidentity));
+                Log.LogSendAfter(stsRcOrCc, IdentityToCsv(a_twidentity));
             }
 
             // If we opened, go to state 4...
@@ -4149,9 +4807,6 @@ namespace TWAINWorkingGroup
             {
                 if (sts == STS.SUCCESS)
                 {
-                    // Update the codepage...
-                    SetCodePage(a_twidentity.Version.Language);
-
                     // Change our state, and record the identity we picked...
                     m_state = STATE.S4;
                     m_twidentityDs = a_twidentity;
@@ -4184,16 +4839,17 @@ namespace TWAINWorkingGroup
                                     sts = (STS)WindowsTwaindsmDsmEntryCallback(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.CALLBACK, MSG.REGISTER_CALLBACK, ref twcallback);
                                 }
                             }
-                            catch
+                            catch (Exception exception)
                             {
                                 // The driver crashed...
-                                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                                Log.Error("crash - " + exception.Message);
+                                Log.LogSendAfter(STS.BUMMER, "");
                                 return (STS.BUMMER);
                             }
                             // Log it...
                             if (Log.GetLevel() > 0)
                             {
-                                Log.LogSendAfter(sts.ToString(), "");
+                                Log.LogSendAfter(sts, "");
                             }
                         }
                     }
@@ -4211,7 +4867,7 @@ namespace TWAINWorkingGroup
                         // Issue the command...
                         try
                         {
-                            if (TWAIN.GetMachineWordBitSize() == 32)
+                            if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                             {
                                 sts = (STS)LinuxDsmEntryCallback(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.CALLBACK, MSG.REGISTER_CALLBACK, ref twcallback);
                             }
@@ -4220,16 +4876,17 @@ namespace TWAINWorkingGroup
                                 sts = (STS)Linux64DsmEntryCallback(ref m_twidentityApp, ref m_twidentityDs, DG.CONTROL, DAT.CALLBACK, MSG.REGISTER_CALLBACK, ref twcallback);
                             }
                         }
-                        catch
+                        catch (Exception exception)
                         {
                             // The driver crashed...
-                            Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                            Log.Error("crash - " + exception.Message);
+                            Log.LogSendAfter(STS.BUMMER, "");
                             return (STS.BUMMER);
                         }
                         // Log it...
                         if (Log.GetLevel() > 0)
                         {
-                            Log.LogSendAfter(sts.ToString(), "");
+                            Log.LogSendAfter(sts, "");
                         }
                     }
 
@@ -4247,18 +4904,26 @@ namespace TWAINWorkingGroup
                         // Issue the command...
                         try
                         {
-                            sts = (STS)MacosxDsmEntryCallback(ref m_twidentitymacosxApp, intptr, DG.CONTROL, DAT.CALLBACK, MSG.REGISTER_CALLBACK, ref twcallback);
+                            if (m_blUseLegacyDSM)
+                            {
+                                sts = (STS)MacosxTwainDsmEntryCallback(ref m_twidentitymacosxApp, intptr, DG.CONTROL, DAT.CALLBACK, MSG.REGISTER_CALLBACK, ref twcallback);
+                            }
+                            else
+                            {
+                                sts = (STS)MacosxTwaindsmDsmEntryCallback(ref m_twidentitymacosxApp, ref m_twidentityDs, DG.CONTROL, DAT.CALLBACK, MSG.REGISTER_CALLBACK, ref twcallback);
+                            }
                         }
-                        catch
+                        catch (Exception exception)
                         {
                             // The driver crashed...
-                            Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                            Log.Error("crash - " + exception.Message);
+                            Log.LogSendAfter(STS.BUMMER, "");
                             return (STS.BUMMER);
                         }
                         // Log it...
                         if (Log.GetLevel() > 0)
                         {
-                            Log.LogSendAfter(sts.ToString(), "");
+                            Log.LogSendAfter(sts, "");
                         }
                     }
                 }
@@ -4274,7 +4939,7 @@ namespace TWAINWorkingGroup
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -4336,10 +5001,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryImageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4350,7 +5016,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (TWAIN.GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryImageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
                     }
@@ -4377,10 +5043,11 @@ namespace TWAINWorkingGroup
                         a_twimageinfo.Compression = twimageinfolinux64.Compression;
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4391,12 +5058,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryImageinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryImageinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryImageinfo(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4404,18 +5079,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), ImageinfoToCsv(a_twimageinfo));
+                Log.LogSendAfter(stsRcOrCc, ImageinfoToCsv(a_twimageinfo));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -4477,10 +5155,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryImagelayout(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4491,7 +5170,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (TWAIN.GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryImagelayout(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
                     }
@@ -4500,10 +5179,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryImagelayout(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4514,12 +5194,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryImagelayout(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryImagelayout(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryImagelayout(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4527,18 +5215,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), ImagelayoutToCsv(a_twimagelayout));
+                Log.LogSendAfter(stsRcOrCc, ImagelayoutToCsv(a_twimagelayout));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -4672,10 +5363,11 @@ namespace TWAINWorkingGroup
                         }
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4686,7 +5378,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (TWAIN.GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryImagefilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
                     }
@@ -4695,10 +5387,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryImagefilexfer(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4709,12 +5402,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryImagefilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryImagefilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryImagefilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4722,14 +5423,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // If we had a successful transfer, then change state...
@@ -4739,7 +5443,7 @@ namespace TWAINWorkingGroup
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -4880,10 +5584,11 @@ namespace TWAINWorkingGroup
                         }
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4894,7 +5599,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (TWAIN.GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryImagememfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref a_twimagememxfer);
                     }
@@ -4924,10 +5629,11 @@ namespace TWAINWorkingGroup
                         a_twimagememxfer.YOffset = (uint)twimagememxferlinux64.YOffset;
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4949,7 +5655,14 @@ namespace TWAINWorkingGroup
                     twimagememxfermacosx.Rows = a_twimagememxfer.Rows;
                     twimagememxfermacosx.XOffset = a_twimagememxfer.XOffset;
                     twimagememxfermacosx.YOffset = a_twimagememxfer.YOffset;
-                    sts = (STS)MacosxDsmEntryImagememfilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref twimagememxfermacosx);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryImagememfilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref twimagememxfermacosx);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryImagememfilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref twimagememxfermacosx);
+                    }
                     a_twimagememxfer.BytesPerRow = twimagememxfermacosx.BytesPerRow;
                     a_twimagememxfer.BytesWritten = twimagememxfermacosx.BytesWritten;
                     a_twimagememxfer.Columns = twimagememxfermacosx.Columns;
@@ -4961,10 +5674,11 @@ namespace TWAINWorkingGroup
                     a_twimagememxfer.XOffset = twimagememxfermacosx.XOffset;
                     a_twimagememxfer.YOffset = twimagememxfermacosx.YOffset;
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -4972,14 +5686,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), ImagememferToCsv(a_twimagememxfer));
+                Log.LogSendAfter(stsRcOrCc, ImagememferToCsv(a_twimagememxfer));
             }
 
             // If we had a successful transfer, then change state...
@@ -4989,7 +5706,7 @@ namespace TWAINWorkingGroup
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -5130,10 +5847,11 @@ namespace TWAINWorkingGroup
                         }
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5144,7 +5862,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (TWAIN.GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryImagememxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref a_twimagememxfer);
                     }
@@ -5174,10 +5892,11 @@ namespace TWAINWorkingGroup
                         a_twimagememxfer.YOffset = (uint)twimagememxferlinux64.YOffset;
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5199,7 +5918,14 @@ namespace TWAINWorkingGroup
                     twimagememxfermacosx.Rows = a_twimagememxfer.Rows;
                     twimagememxfermacosx.XOffset = a_twimagememxfer.XOffset;
                     twimagememxfermacosx.YOffset = a_twimagememxfer.YOffset;
-                    sts = (STS)MacosxDsmEntryImagememxfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref twimagememxfermacosx);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryImagememxfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref twimagememxfermacosx);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryImagememxfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref twimagememxfermacosx);
+                    }
                     a_twimagememxfer.BytesPerRow = twimagememxfermacosx.BytesPerRow;
                     a_twimagememxfer.BytesWritten = twimagememxfermacosx.BytesWritten;
                     a_twimagememxfer.Columns = twimagememxfermacosx.Columns;
@@ -5211,10 +5937,11 @@ namespace TWAINWorkingGroup
                     a_twimagememxfer.XOffset = twimagememxfermacosx.XOffset;
                     a_twimagememxfer.YOffset = twimagememxfermacosx.YOffset;
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5222,14 +5949,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), ImagememferToCsv(a_twimagememxfer));
+                Log.LogSendAfter(stsRcOrCc, ImagememferToCsv(a_twimagememxfer));
             }
 
             // If we had a successful transfer, then change state...
@@ -5239,7 +5969,7 @@ namespace TWAINWorkingGroup
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -5334,6 +6064,12 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
+                    if (m_blUseLegacyDSM)
+                    {
+                    }
+                    else
+                    {
+                    }
                     if (this.m_runinuithreaddelegate == null)
                     {
                         if (m_blUseLegacyDSM)
@@ -5381,10 +6117,11 @@ namespace TWAINWorkingGroup
                         }
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5395,7 +6132,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (TWAIN.GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
                     }
@@ -5404,10 +6141,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryImagenativexfer(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5419,12 +6157,20 @@ namespace TWAINWorkingGroup
                 try
                 {
                     intptrBitmap = IntPtr.Zero;
-                    sts = (STS)MacosxDsmEntryImagenativexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryImagenativexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryImagenativexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5432,14 +6178,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // If we had a successful transfer, then convert the data...
@@ -5449,16 +6198,15 @@ namespace TWAINWorkingGroup
                 m_state = STATE.S7;
 
                 // Turn the DIB into a Bitmap object...
-                // D.T. 25/01/2015 : This method also takes between 40 and 50 MB 
-                // that needs to be cleaned.  This function frees the contents
-                // of intptrBitmap, so we don't need to do it out here, but we
-                // do zero it, just to be clear that it's not valid anymore...
                 a_bitmap = NativeToBitmap(ms_platform, intptrBitmap);
+
+                // We're done with the data we got from the driver...
+                Marshal.FreeHGlobal(intptrBitmap);
                 intptrBitmap = IntPtr.Zero;
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -5520,10 +6268,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryJpegcompression(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.JPEGCOMPRESSION, a_msg, ref a_twjpegcompression);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5534,7 +6283,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (TWAIN.GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryJpegcompression(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.JPEGCOMPRESSION, a_msg, ref a_twjpegcompression);
                     }
@@ -5543,10 +6292,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryJpegcompression(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.JPEGCOMPRESSION, a_msg, ref a_twjpegcompression);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5557,12 +6307,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryJpegcompression(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.JPEGCOMPRESSION, a_msg, ref a_twjpegcompression);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryJpegcompression(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.JPEGCOMPRESSION, a_msg, ref a_twjpegcompression);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryJpegcompression(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.JPEGCOMPRESSION, a_msg, ref a_twjpegcompression);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5570,18 +6328,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -5643,10 +6404,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryPalette8(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PALETTE8, a_msg, ref a_twpalette8);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5657,7 +6419,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (TWAIN.GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryPalette8(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PALETTE8, a_msg, ref a_twpalette8);
                     }
@@ -5666,10 +6428,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryPalette8(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.PALETTE8, a_msg, ref a_twpalette8);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5680,12 +6443,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryPalette8(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PALETTE8, a_msg, ref a_twpalette8);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryPalette8(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PALETTE8, a_msg, ref a_twpalette8);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryPalette8(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PALETTE8, a_msg, ref a_twpalette8);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5693,18 +6464,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -5766,15 +6540,16 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
 
-           // Linux...
+            // Linux...
             else if (ms_platform == Platform.LINUX)
             {
                 // Issue the command...
@@ -5786,13 +6561,25 @@ namespace TWAINWorkingGroup
                     }
                     else
                     {
-                        sts = (STS)Linux64DsmEntryParent(ref m_twidentityApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        // We'll spit this out if we have no DSM...
+                        sts = STS.BUMMER;
+                        // Load the new DSM, whatever it is, if we found one...
+                        if (m_blFoundNewDsm)
+                        {
+                            sts = (STS)LinuxDsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        }
+                        // Load libtwaindsm.so.2.3.2, if we found it...
+                        if (m_blFoundOldDsm)
+                        {
+                            sts = (STS)Linux64DsmEntryParent(ref m_twidentityApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        }
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5803,12 +6590,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryParent(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryParent(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryParent(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5816,14 +6611,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // If we opened, go to state 3, and start tracking
@@ -5849,7 +6647,7 @@ namespace TWAINWorkingGroup
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -5911,10 +6709,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryPassthru(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PASSTHRU, a_msg, ref a_twpassthru);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5925,7 +6724,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryPassthru(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PASSTHRU, a_msg, ref a_twpassthru);
                     }
@@ -5934,10 +6733,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryPassthru(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.PASSTHRU, a_msg, ref a_twpassthru);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5948,12 +6748,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryPassthru(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PASSTHRU, a_msg, ref a_twpassthru);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryPassthru(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PASSTHRU, a_msg, ref a_twpassthru);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryPassthru(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PASSTHRU, a_msg, ref a_twpassthru);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -5961,18 +6769,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -6034,10 +6845,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryPendingxfers(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6048,7 +6860,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryPendingxfers(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
                     }
@@ -6057,10 +6869,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryPendingxfers(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6071,12 +6884,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryPendingxfers(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryPendingxfers(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryPendingxfers(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6084,14 +6905,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), PendingxfersToCsv(a_twpendingxfers));
+                Log.LogSendAfter(stsRcOrCc, PendingxfersToCsv(a_twpendingxfers));
             }
 
             // If we endxfer, go to state 5 or 6...
@@ -6122,7 +6946,7 @@ namespace TWAINWorkingGroup
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -6184,10 +7008,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryRgbresponse(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.RGBRESPONSE, a_msg, ref a_twrgbresponse);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6198,7 +7023,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryRgbresponse(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.RGBRESPONSE, a_msg, ref a_twrgbresponse);
                     }
@@ -6207,10 +7032,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryRgbresponse(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.RGBRESPONSE, a_msg, ref a_twrgbresponse);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6221,12 +7047,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryRgbresponse(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.RGBRESPONSE, a_msg, ref a_twrgbresponse);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryRgbresponse(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.RGBRESPONSE, a_msg, ref a_twrgbresponse);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryRgbresponse(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.RGBRESPONSE, a_msg, ref a_twrgbresponse);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6234,18 +7068,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -6307,10 +7144,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntrySetupfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6321,7 +7159,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntrySetupfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
                     }
@@ -6330,10 +7168,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntrySetupfilexfer(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6344,12 +7183,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntrySetupfilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntrySetupfilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntrySetupfilexfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6357,18 +7204,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), SetupfilexferToCsv(a_twsetupfilexfer));
+                Log.LogSendAfter(stsRcOrCc, SetupfilexferToCsv(a_twsetupfilexfer));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -6430,10 +7280,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntrySetupmemxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6444,7 +7295,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntrySetupmemxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
                     }
@@ -6453,10 +7304,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntrySetupmemxfer(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6467,12 +7319,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntrySetupmemxfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntrySetupmemxfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntrySetupmemxfer(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6480,18 +7340,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), SetupmemxferToCsv(a_twsetupmemxfer));
+                Log.LogSendAfter(stsRcOrCc, SetupmemxferToCsv(a_twsetupmemxfer));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -6553,10 +7416,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryStatusutf8(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.STATUSUTF8, a_msg, ref a_twstatusutf8);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6567,7 +7431,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryStatusutf8(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.STATUSUTF8, a_msg, ref a_twstatusutf8);
                     }
@@ -6576,10 +7440,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryStatusutf8(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.STATUSUTF8, a_msg, ref a_twstatusutf8);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6590,12 +7455,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryStatusutf8(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.STATUSUTF8, a_msg, ref a_twstatusutf8);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryStatusutf8(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.STATUSUTF8, a_msg, ref a_twstatusutf8);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryStatusutf8(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.STATUSUTF8, a_msg, ref a_twstatusutf8);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6603,18 +7476,157 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
+            }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
+
+            // Log it...
+            if (Log.GetLevel() > 0)
+            {
+                Log.LogSendAfter(stsRcOrCc, "");
+            }
+
+            // All done...
+            return (stsRcOrCc);
+        }
+
+        /// <summary>
+        /// Get some text for an error...
+        /// </summary>
+        /// <param name="a_dg">Data group</param>
+        /// <param name="a_msg">Operation</param>
+        /// <param name="a_twtwaindirect">TWAINDIRECT structure</param>
+        /// <returns>TWAIN status</returns>
+        public STS DatTwaindirect(DG a_dg, MSG a_msg, ref TW_TWAINDIRECT a_twtwaindirect)
+        {
+            STS sts;
+
+            // Submit the work to the TWAIN thread...
+            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            {
+                lock (m_lockTwain)
+                {
+                    // Set our command variables...
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.twtwaindirect = a_twtwaindirect;
+                    threaddata.dg = a_dg;
+                    threaddata.msg = a_msg;
+                    threaddata.dat = DAT.TWAINDIRECT;
+                    long lIndex = m_twaincommand.Submit(threaddata);
+
+                    // Submit the command and wait for the reply...
+                    CallerToThreadSet();
+                    ThreadToCallerWaitOne();
+
+                    // Return the result...
+                    a_twtwaindirect = m_twaincommand.Get(lIndex).twtwaindirect;
+                    sts = m_twaincommand.Get(lIndex).sts;
+
+                    // Clear the command variables...
+                    m_twaincommand.Delete(lIndex);
+                }
+                return (sts);
             }
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendBefore(a_dg.ToString(), DAT.TWAINDIRECT.ToString(), a_msg.ToString(), "");
+            }
+
+            // Windows...
+            if (ms_platform == Platform.WINDOWS)
+            {
+                // Issue the command...
+                try
+                {
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)WindowsTwain32DsmEntryTwaindirect(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.TWAINDIRECT, a_msg, ref a_twtwaindirect);
+                    }
+                    else
+                    {
+                        sts = (STS)WindowsTwaindsmDsmEntryTwaindirect(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.TWAINDIRECT, a_msg, ref a_twtwaindirect);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    // The driver crashed...
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
+                    return (STS.BUMMER);
+                }
+            }
+
+            // Linux...
+            else if (ms_platform == Platform.LINUX)
+            {
+                // Issue the command...
+                try
+                {
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
+                    {
+                        sts = (STS)LinuxDsmEntryTwaindirect(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.TWAINDIRECT, a_msg, ref a_twtwaindirect);
+                    }
+                    else
+                    {
+                        sts = (STS)Linux64DsmEntryTwaindirect(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.TWAINDIRECT, a_msg, ref a_twtwaindirect);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    // The driver crashed...
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
+                    return (STS.BUMMER);
+                }
+            }
+
+            // Mac OS X, which has to be different...
+            else if (ms_platform == Platform.MACOSX)
+            {
+                // Issue the command...
+                try
+                {
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryTwaindirect(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.TWAINDIRECT, a_msg, ref a_twtwaindirect);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryTwaindirect(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.TWAINDIRECT, a_msg, ref a_twtwaindirect);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    // The driver crashed...
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
+                    return (STS.BUMMER);
+                }
+            }
+
+            // Uh-oh...
+            else
+            {
+                Log.LogSendAfter(STS.BUMMER, "");
+                return (STS.BUMMER);
+            }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
+
+            // Log it...
+            if (Log.GetLevel() > 0)
+            {
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -6782,10 +7794,11 @@ namespace TWAINWorkingGroup
                         }
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6796,7 +7809,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
                     }
@@ -6805,10 +7818,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryUserinterface(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6819,12 +7833,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6832,14 +7854,17 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), "");
+                Log.LogSendAfter(stsRcOrCc, "");
             }
 
             // If we opened, go to state 5...
@@ -6879,7 +7904,7 @@ namespace TWAINWorkingGroup
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         /// <summary>
@@ -6941,10 +7966,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryXfergroup(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.XFERGROUP, a_msg, ref a_twuint32);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6955,7 +7981,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    if ((m_linux64bitdsm == Linux64BitDsm.IsLatestDsm) || (GetMachineWordBitSize() == 32))
                     {
                         sts = (STS)LinuxDsmEntryXfergroup(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.XFERGROUP, a_msg, ref a_twuint32);
                     }
@@ -6964,10 +7990,11 @@ namespace TWAINWorkingGroup
                         sts = (STS)Linux64DsmEntryXfergroup(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.XFERGROUP, a_msg, ref a_twuint32);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6978,12 +8005,20 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryXfergroup(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.XFERGROUP, a_msg, ref a_twuint32);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryXfergroup(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.XFERGROUP, a_msg, ref a_twuint32);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryXfergroup(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.XFERGROUP, a_msg, ref a_twuint32);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
-                    Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                    Log.Error("crash - " + exception.Message);
+                    Log.LogSendAfter(STS.BUMMER, "");
                     return (STS.BUMMER);
                 }
             }
@@ -6991,18 +8026,21 @@ namespace TWAINWorkingGroup
             // Uh-oh...
             else
             {
-                Log.LogSendAfter(STS.BUMMER.ToString(), "");
+                Log.LogSendAfter(STS.BUMMER, "");
                 return (STS.BUMMER);
             }
+
+            // Get DAT_STATUS, if needed...
+            TWAIN.STS stsRcOrCc = AutoDatStatus(sts);
 
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendAfter(sts.ToString(), XfergroupToCsv(a_twuint32));
+                Log.LogSendAfter(stsRcOrCc, XfergroupToCsv(a_twuint32));
             }
 
             // All done...
-            return (AutoDatStatus(sts));
+            return (stsRcOrCc);
         }
 
         #endregion
@@ -7034,6 +8072,17 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_action">code to run</param>
         public delegate void RunInUiThreadDelegate(Action a_action);
+
+        /// <summary>
+        /// We have three possible states when we're running on 64-bit Linux, this
+        /// covers them all...
+        /// </summary>
+        public enum Linux64BitDsm
+        {
+            Unknown,
+            IsLatestDsm,
+            IsOldDsm
+        }
 
         #endregion
 
@@ -7285,6 +8334,11 @@ namespace TWAINWorkingGroup
                         threaddata.sts = DatStatusutf8(threaddata.dg, threaddata.msg, ref threaddata.twstatusutf8);
                         break;
 
+                    // TWAIN Direct...
+                    case DAT.TWAINDIRECT:
+                        threaddata.sts = DatTwaindirect(threaddata.dg, threaddata.msg, ref threaddata.twtwaindirect);
+                        break;
+
                     // Scan and GUI commands...
                     case DAT.USERINTERFACE:
                         threaddata.sts = DatUserinterface(threaddata.dg, threaddata.msg, ref threaddata.twuserinterface);
@@ -7489,6 +8543,7 @@ namespace TWAINWorkingGroup
         /// Automatically collect the condition code for TWRC_FAILURE's...
         /// </summary>
         /// <param name="a_sts">The return code from the last operation</param>
+        /// <param name="a_sts">The return code from the last operation</param>
         /// <returns>The final statue return</returns>
         private STS AutoDatStatus(STS a_sts)
         {
@@ -7516,9 +8571,10 @@ namespace TWAINWorkingGroup
                         sts = (STS)WindowsTwaindsmDsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
                     }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
+                    Log.Error("crash - " + exception.Message);
                     TWAINWorkingGroup.Log.Error("Driver crash...");
                     return (STS.BUMMER);
                 }
@@ -7532,9 +8588,10 @@ namespace TWAINWorkingGroup
                 {
                     sts = (STS)LinuxDsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
+                    Log.Error("crash - " + exception.Message);
                     TWAINWorkingGroup.Log.Error("Driver crash...");
                     return (STS.BUMMER);
                 }
@@ -7546,11 +8603,19 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    sts = (STS)MacosxDsmEntryStatus(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                    if (m_blUseLegacyDSM)
+                    {
+                        sts = (STS)MacosxTwainDsmEntryStatus(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                    }
+                    else
+                    {
+                        sts = (STS)MacosxTwaindsmDsmEntryStatus(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                    }
                 }
-                catch
+                catch (Exception exception)
                 {
                     // The driver crashed...
+                    Log.Error("crash - " + exception.Message);
                     TWAINWorkingGroup.Log.Error("Driver crash...");
                     return (STS.BUMMER);
                 }
@@ -7920,6 +8985,7 @@ namespace TWAINWorkingGroup
         {
             TW_RANGE twrange = default(TW_RANGE);
             TW_RANGE_MACOSX twrangemacosx = default(TW_RANGE_MACOSX);
+            TW_RANGE_LINUX64 twrangelinux64 = default(TW_RANGE_LINUX64);
             TW_RANGE_FIX32 twrangefix32 = default(TW_RANGE_FIX32);
             TW_RANGE_FIX32_MACOSX twrangefix32macosx = default(TW_RANGE_FIX32_MACOSX);
 
@@ -7941,7 +9007,7 @@ namespace TWAINWorkingGroup
                             twrangemacosx.CurrentValue = (uint)sbyte.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrangemacosx, a_intptr, true);
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             twrange.ItemType = a_twty;
                             twrange.MinValue = (uint)sbyte.Parse(a_asz[3]);
@@ -7950,6 +9016,16 @@ namespace TWAINWorkingGroup
                             twrange.DefaultValue = (uint)sbyte.Parse(a_asz[6]);
                             twrange.CurrentValue = (uint)sbyte.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrange, a_intptr, true);
+                        }
+                        else
+                        {
+                            twrangelinux64.ItemType = a_twty;
+                            twrangelinux64.MinValue = (uint)sbyte.Parse(a_asz[3]);
+                            twrangelinux64.MaxValue = (uint)sbyte.Parse(a_asz[4]);
+                            twrangelinux64.StepSize = (uint)sbyte.Parse(a_asz[5]);
+                            twrangelinux64.DefaultValue = (uint)sbyte.Parse(a_asz[6]);
+                            twrangelinux64.CurrentValue = (uint)sbyte.Parse(a_asz[7]);
+                            Marshal.StructureToPtr(twrangelinux64, a_intptr, true);
                         }
                         return ("");
                     }
@@ -7966,7 +9042,7 @@ namespace TWAINWorkingGroup
                             twrangemacosx.CurrentValue = (uint)short.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrangemacosx, a_intptr, true);
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             twrange.ItemType = a_twty;
                             twrange.MinValue = (uint)short.Parse(a_asz[3]);
@@ -7975,6 +9051,16 @@ namespace TWAINWorkingGroup
                             twrange.DefaultValue = (uint)short.Parse(a_asz[6]);
                             twrange.CurrentValue = (uint)short.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrange, a_intptr, true);
+                        }
+                        else
+                        {
+                            twrangelinux64.ItemType = a_twty;
+                            twrangelinux64.MinValue = (uint)short.Parse(a_asz[3]);
+                            twrangelinux64.MaxValue = (uint)short.Parse(a_asz[4]);
+                            twrangelinux64.StepSize = (uint)short.Parse(a_asz[5]);
+                            twrangelinux64.DefaultValue = (uint)short.Parse(a_asz[6]);
+                            twrangelinux64.CurrentValue = (uint)short.Parse(a_asz[7]);
+                            Marshal.StructureToPtr(twrangelinux64, a_intptr, true);
                         }
                         return ("");
                     }
@@ -7991,7 +9077,7 @@ namespace TWAINWorkingGroup
                             twrangemacosx.CurrentValue = (uint)int.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrangemacosx, a_intptr, true);
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             twrange.ItemType = a_twty;
                             twrange.MinValue = (uint)int.Parse(a_asz[3]);
@@ -8000,6 +9086,16 @@ namespace TWAINWorkingGroup
                             twrange.DefaultValue = (uint)int.Parse(a_asz[6]);
                             twrange.CurrentValue = (uint)int.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrange, a_intptr, true);
+                        }
+                        else
+                        {
+                            twrangelinux64.ItemType = a_twty;
+                            twrangelinux64.MinValue = (uint)int.Parse(a_asz[3]);
+                            twrangelinux64.MaxValue = (uint)int.Parse(a_asz[4]);
+                            twrangelinux64.StepSize = (uint)int.Parse(a_asz[5]);
+                            twrangelinux64.DefaultValue = (uint)int.Parse(a_asz[6]);
+                            twrangelinux64.CurrentValue = (uint)int.Parse(a_asz[7]);
+                            Marshal.StructureToPtr(twrangelinux64, a_intptr, true);
                         }
                         return ("");
                     }
@@ -8016,7 +9112,7 @@ namespace TWAINWorkingGroup
                             twrangemacosx.CurrentValue = (uint)byte.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrangemacosx, a_intptr, true);
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             twrange.ItemType = a_twty;
                             twrange.MinValue = (uint)byte.Parse(a_asz[3]);
@@ -8025,6 +9121,16 @@ namespace TWAINWorkingGroup
                             twrange.DefaultValue = (uint)byte.Parse(a_asz[6]);
                             twrange.CurrentValue = (uint)byte.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrange, a_intptr, true);
+                        }
+                        else
+                        {
+                            twrangelinux64.ItemType = a_twty;
+                            twrangelinux64.MinValue = (uint)byte.Parse(a_asz[3]);
+                            twrangelinux64.MaxValue = (uint)byte.Parse(a_asz[4]);
+                            twrangelinux64.StepSize = (uint)byte.Parse(a_asz[5]);
+                            twrangelinux64.DefaultValue = (uint)byte.Parse(a_asz[6]);
+                            twrangelinux64.CurrentValue = (uint)byte.Parse(a_asz[7]);
+                            Marshal.StructureToPtr(twrangelinux64, a_intptr, true);
                         }
                         return ("");
                     }
@@ -8042,7 +9148,7 @@ namespace TWAINWorkingGroup
                             twrangemacosx.CurrentValue = (uint)ushort.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrangemacosx, a_intptr, true);
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             twrange.ItemType = a_twty;
                             twrange.MinValue = (uint)ushort.Parse(a_asz[3]);
@@ -8051,6 +9157,16 @@ namespace TWAINWorkingGroup
                             twrange.DefaultValue = (uint)ushort.Parse(a_asz[6]);
                             twrange.CurrentValue = (uint)ushort.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrange, a_intptr, true);
+                        }
+                        else
+                        {
+                            twrangelinux64.ItemType = a_twty;
+                            twrangelinux64.MinValue = (uint)ushort.Parse(a_asz[3]);
+                            twrangelinux64.MaxValue = (uint)ushort.Parse(a_asz[4]);
+                            twrangelinux64.StepSize = (uint)ushort.Parse(a_asz[5]);
+                            twrangelinux64.DefaultValue = (uint)ushort.Parse(a_asz[6]);
+                            twrangelinux64.CurrentValue = (uint)ushort.Parse(a_asz[7]);
+                            Marshal.StructureToPtr(twrangelinux64, a_intptr, true);
                         }
                         return ("");
                     }
@@ -8067,7 +9183,7 @@ namespace TWAINWorkingGroup
                             twrangemacosx.CurrentValue = uint.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrangemacosx, a_intptr, true);
                         }
-                        else
+                        else if ((m_linux64bitdsm == Linux64BitDsm.Unknown) || (m_linux64bitdsm == Linux64BitDsm.IsLatestDsm))
                         {
                             twrange.ItemType = a_twty;
                             twrange.MinValue = uint.Parse(a_asz[3]);
@@ -8076,6 +9192,16 @@ namespace TWAINWorkingGroup
                             twrange.DefaultValue = uint.Parse(a_asz[6]);
                             twrange.CurrentValue = uint.Parse(a_asz[7]);
                             Marshal.StructureToPtr(twrange, a_intptr, true);
+                        }
+                        else
+                        {
+                            twrangelinux64.ItemType = a_twty;
+                            twrangelinux64.MinValue = uint.Parse(a_asz[3]);
+                            twrangelinux64.MaxValue = uint.Parse(a_asz[4]);
+                            twrangelinux64.StepSize = uint.Parse(a_asz[5]);
+                            twrangelinux64.DefaultValue = uint.Parse(a_asz[6]);
+                            twrangelinux64.CurrentValue = uint.Parse(a_asz[7]);
+                            Marshal.StructureToPtr(twrangelinux64, a_intptr, true);
                         }
                         return ("");
                     }
@@ -8261,11 +9387,8 @@ namespace TWAINWorkingGroup
                 memorystream = null;
                 bBitmap = null;
 
-                // D.T. 25/01/2015
-                DsmMemUnlock(a_intptrNative);
-                DsmMemFree(ref intptrNative);
-
                 // Return our bitmap...
+                DsmMemUnlock(a_intptrNative);
                 return (bitmap);
             }
 
@@ -8367,6 +9490,29 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Convert a public identity to a linux64 identity...
+        /// </summary>
+        /// <param name="a_twidentity">Identity to convert</param>
+        /// <returns>Linux64 form of identity</returns>
+        private TW_IDENTITY_LINUX64 TwidentityToTwidentitylinux64(TW_IDENTITY a_twidentity)
+        {
+            TW_IDENTITY_LINUX64 twidentitylinux64 = new TW_IDENTITY_LINUX64();
+            twidentitylinux64.Id = a_twidentity.Id;
+            twidentitylinux64.Manufacturer = a_twidentity.Manufacturer;
+            twidentitylinux64.ProductFamily = a_twidentity.ProductFamily;
+            twidentitylinux64.ProductName = a_twidentity.ProductName;
+            twidentitylinux64.ProtocolMajor = a_twidentity.ProtocolMajor;
+            twidentitylinux64.ProtocolMinor = a_twidentity.ProtocolMinor;
+            twidentitylinux64.SupportedGroups = a_twidentity.SupportedGroups;
+            twidentitylinux64.Version.Country = a_twidentity.Version.Country;
+            twidentitylinux64.Version.Info = a_twidentity.Version.Info;
+            twidentitylinux64.Version.Language = a_twidentity.Version.Language;
+            twidentitylinux64.Version.MajorNum = a_twidentity.Version.MajorNum;
+            twidentitylinux64.Version.MinorNum = a_twidentity.Version.MinorNum;
+            return (twidentitylinux64);
+        }
+
+        /// <summary>
         /// Convert a public identity to a macosx identity...
         /// </summary>
         /// <param name="a_twidentity">Identity to convert</param>
@@ -8409,6 +9555,29 @@ namespace TWAINWorkingGroup
             twidentity.Version.Language = a_twidentitylegacy.Version.Language;
             twidentity.Version.MajorNum = a_twidentitylegacy.Version.MajorNum;
             twidentity.Version.MinorNum = a_twidentitylegacy.Version.MinorNum;
+            return (twidentity);
+        }
+
+        /// <summary>
+        /// Convert a linux64 identity to a public identity...
+        /// </summary>
+        /// <param name="a_twidentitylegacy">Legacy identity to convert</param>
+        /// <returns>Regular form of identity</returns>
+        private TW_IDENTITY Twidentitylinux64ToTwidentity(TW_IDENTITY_LINUX64 a_twidentitylinux64)
+        {
+            TW_IDENTITY twidentity = new TW_IDENTITY();
+            twidentity.Id = a_twidentitylinux64.Id;
+            twidentity.Manufacturer = a_twidentitylinux64.Manufacturer;
+            twidentity.ProductFamily = a_twidentitylinux64.ProductFamily;
+            twidentity.ProductName = a_twidentitylinux64.ProductName;
+            twidentity.ProtocolMajor = a_twidentitylinux64.ProtocolMajor;
+            twidentity.ProtocolMinor = a_twidentitylinux64.ProtocolMinor;
+            twidentity.SupportedGroups = (uint)a_twidentitylinux64.SupportedGroups;
+            twidentity.Version.Country = a_twidentitylinux64.Version.Country;
+            twidentity.Version.Info = a_twidentitylinux64.Version.Info;
+            twidentity.Version.Language = a_twidentitylinux64.Version.Language;
+            twidentity.Version.MajorNum = a_twidentitylinux64.Version.MajorNum;
+            twidentity.Version.MinorNum = a_twidentitylinux64.Version.MinorNum;
             return (twidentity);
         }
 
@@ -8491,6 +9660,7 @@ namespace TWAINWorkingGroup
             public TW_SETUPFILEXFER twsetupfilexfer;
             public TW_SETUPMEMXFER twsetupmemxfer;
             public TW_STATUSUTF8 twstatusutf8;
+            public TW_TWAINDIRECT twtwaindirect;
             public TW_USERINTERFACE twuserinterface;
 
             // Result...
@@ -8638,9 +9808,20 @@ namespace TWAINWorkingGroup
         private bool m_blAutoDatStatus;
 
         /// <summary>
-        /// Windows only, pick between TWAIN_32.DLL and TWAINDSM.DLL...
+        /// Windows, pick between TWAIN_32.DLL and TWAINDSM.DLL...
+        /// Mac OS X, pick between /System/Library/Frameworks/TWAIN.framework and /Library/Frameworks/TWAINDSM.framework
         /// </summary>
         private bool m_blUseLegacyDSM;
+
+        /// <summary>
+        /// Help us pick the right DSM for the current data source,
+        /// the first one is for the session, the second one id for
+        /// getfirst/getnext...
+        /// </summary>
+        private Linux64BitDsm m_linux64bitdsm;
+        private Linux64BitDsm m_linux64bitdsmEnum;
+        private bool m_blFoundOldDsm;
+        private bool m_blFoundNewDsm;
 
         /// <summary>
         /// Use the callback system (TWAINDSM.DLL only)...
@@ -9240,21 +10421,32 @@ namespace TWAINWorkingGroup
         /// <param name="a_szMessage">message to log</param>
         public static void Info(string a_szMessage)
         {
-            WriteEntry(".", a_szMessage, true);
+            WriteEntry(".", a_szMessage, ms_blFlush);
         }
 
         /// <summary>
         /// Log after sending to the TWAIN driver...
         /// </summary>
-        /// <param name="a_szSts">status</param>
+        /// <param name="a_sts">status</param>
         /// <param name="a_szMemref">data</param>
-        public static void LogSendAfter(string a_szSts, string a_szMemref)
+        public static void LogSendAfter(TWAIN.STS a_sts, string a_szMemref)
         {
+            // The data argument type (DAT) stuff...
             if ((a_szMemref != null) && (a_szMemref != "") && (a_szMemref[0] != '('))
             {
                 Log.Info("twn> " + a_szMemref);
             }
-            Log.Info("twn> " + a_szSts);
+
+            // TWRC...
+            if ((int)a_sts < TWAIN.STSCC)
+            {
+                Log.Info("twn> " + a_sts);
+            }
+            // TWCC...
+            else
+            {
+                Log.Info("twn> FAILURE/" + a_sts);
+            }
         }
 
         /// <summary>
@@ -9275,12 +10467,34 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Write a verbose message, this is extra info that isn't normally
+        /// needed to diagnose problems, but may provide insight into what
+        /// the code is doing...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void Verbose(string a_szMessage)
+        {
+            WriteEntry("V", a_szMessage, ms_blFlush);
+        }
+
+        /// <summary>
+        /// Write a verbose data message, this is extra info, specifically
+        /// data transfers, that isn't normally needed to diagnose problems.
+        /// Turning this one can really bloat the logs...
+        /// </summary>
+        /// <param name="a_szMessage">message to log</param>
+        public static void VerboseData(string a_szMessage)
+        {
+            WriteEntry("D", a_szMessage, ms_blFlush);
+        }
+
+        /// <summary>
         /// Write an warning message...
         /// </summary>
         /// <param name="a_szMessage">message to log</param>
         public static void Warn(string a_szMessage)
         {
-            WriteEntry("W", a_szMessage, true);
+            WriteEntry("W", a_szMessage, ms_blFlush);
         }
 
         #endregion
@@ -9317,15 +10531,6 @@ namespace TWAINWorkingGroup
         public static SetFlushDelegate SetFlush;
         public static SetLevelDelegate SetLevel;
         public static WriteEntryDelegate WriteEntry;
-
-        #endregion
-
-
-        // Public Definitions...
-        #region Private Definitions
-
-        [DllImport("kernel32.dll")]
-        private static extern uint GetCurrentThreadId();
 
         #endregion
 
@@ -9376,6 +10581,8 @@ namespace TWAINWorkingGroup
         /// <param name="a_iLevel">debug level</param>
         private static void OpenLocal(string a_szName, string a_szPath, int a_iLevel)
         {
+            string szLogFile;
+
             // Init stuff...
             ms_blFirstPass = true;
             ms_blOpened = true;
@@ -9390,8 +10597,30 @@ namespace TWAINWorkingGroup
                 Environment.SetEnvironmentVariable("TWAINDSM_MODE", "w");
             }
 
+            // Backup old stuff...
+            szLogFile = Path.Combine(a_szPath, a_szName);
+            try
+            {
+                if (File.Exists(szLogFile + "_backup_2.log"))
+                {
+                    File.Delete(szLogFile + "_backup_2.log");
+                }
+                if (File.Exists(szLogFile + "_backup_1.log"))
+                {
+                    File.Move(szLogFile + "_backup_1.log", szLogFile + "_backup_2.log");
+                }
+                if (File.Exists(szLogFile + ".log"))
+                {
+                    File.Move(szLogFile + ".log", szLogFile + "_backup_1.log");
+                }
+            }
+            catch
+            {
+                // Don't care, keep going...
+            }
+
             // Turn on the listener...
-            ms_filestream = File.Open(Path.Combine(a_szPath, a_szName + ".log"), FileMode.Append, FileAccess.Write, FileShare.Read);
+            ms_filestream = File.Open(szLogFile + ".log", FileMode.Append, FileAccess.Write, FileShare.Read);
             Trace.Listeners.Add(new TextWriterTraceListener(ms_filestream, a_szName + "Listener"));
         }
 
@@ -9422,7 +10651,19 @@ namespace TWAINWorkingGroup
         /// <param name="a_iLevel"></param>
         private static void SetLevelLocal(int a_iLevel)
         {
+            // Squirrel this value away...
             ms_iLevel = a_iLevel;
+
+            // One has to opt out of flushing, since the consequence
+            // of turning it off often involves losing log data...
+            if ((a_iLevel & c_iDebugNoFlush) == c_iDebugNoFlush)
+            {
+                SetFlush(false);
+            }
+            else
+            {
+                SetFlush(true);
+            }
         }
 
         /// <summary>
@@ -9434,6 +10675,41 @@ namespace TWAINWorkingGroup
         private static void WriteEntryLocal(string a_szSeverity, string a_szMessage, bool a_blFlush)
         {
             long lThreadId;
+
+            // Filter...
+            switch (a_szSeverity)
+            {
+                // Always log these...
+                case "A": break;
+                case "E": break;
+                case "W": break;
+
+                // Log informationals when bit-0 is set...
+                case ".":
+                    if ((ms_iLevel & c_iDebugInfo) != 0)
+                    {
+                        break;
+                    }
+                    return;
+
+                // Log verbose when bit-1 is set...
+                case "V":
+                    if ((ms_iLevel & c_iDebugVerbose) != 0)
+                    {
+                        a_szSeverity = ".";
+                        break;
+                    }
+                    return;
+
+                // Log verbose data when bit-1 is set...
+                case "D":
+                    if ((ms_iLevel & c_iDebugVerboseData) != 0)
+                    {
+                        a_szSeverity = ".";
+                        break;
+                    }
+                    return;
+            }
 
             // Get our thread id...
             if (ms_blIsWindows)
@@ -9517,6 +10793,23 @@ namespace TWAINWorkingGroup
                 Trace.Flush();
             }
         }
+
+        #endregion
+
+
+        // Private Definitions...
+        #region Private Definitions
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        /// <summary>
+        /// LogLevel bitmask...
+        /// </summary>
+        private const int c_iDebugInfo = 0x0001;
+        private const int c_iDebugVerbose = 0x0002;
+        private const int c_iDebugVerboseData = 0x0004;
+        private const int c_iDebugNoFlush = 0x0008;
 
         #endregion
 

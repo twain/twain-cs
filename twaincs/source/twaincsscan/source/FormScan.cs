@@ -16,7 +16,7 @@
 //  M.McLaughlin    27-Feb-2014     1.1.0.0     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     1.0.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2015 Kodak Alaris Inc.
+//  Copyright (C) 2013-2017 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -42,6 +42,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
+using TWAINWorkingGroup;
 using TWAINWorkingGroupToolkit;
 
 namespace TWAINCSScan
@@ -65,8 +66,8 @@ namespace TWAINCSScan
             InitializeComponent();
 
             // Open the log in our working folder, and say hi...
-            Log.Open("TWAINCSScan", ".", 1);
-            Log.Info("TWAINCSScan v" + System.Reflection.Assembly.GetEntryAssembly().GetName().Version.ToString());
+            TWAINWorkingGroup.Log.Open("TWAINCSScan", ".", 1);
+            TWAINWorkingGroup.Log.Info("TWAINCSScan v" + System.Reflection.Assembly.GetEntryAssembly().GetName().Version.ToString());
 
             // Init other stuff...
             m_blIndicators = false;
@@ -87,7 +88,7 @@ namespace TWAINCSScan
                     "TWAIN Sharp",
                     "TWAIN Sharp Scan App",
                     2,
-                    3,
+                    4,
                     new string[] { "DF_APP2", "DG_CONTROL", "DG_IMAGE" },
                     "USA",
                     "testing...",
@@ -100,8 +101,9 @@ namespace TWAINCSScan
                     this
                 );
             }
-            catch
+            catch (Exception exception)
             {
+                TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
                 m_twaincstoolkit = null;
                 m_blExit = true;
                 MessageBox.Show
@@ -158,6 +160,9 @@ namespace TWAINCSScan
 
             // This will prevent ReportImage from doing anything as we close...
             m_graphics1 = null;
+
+            // Bye-bye logging...
+            TWAINWorkingGroup.Log.Close();
         }
 
         /// <summary>
@@ -181,7 +186,7 @@ namespace TWAINCSScan
             m_iUseBitmap = 0;
             string szTwmemref;
             string szStatus = "";
-            TWAINCSToolkit.STS sts;
+            TWAIN.STS sts;
 
             // Silently start scanning if we detect that customdsdata is supported,
             // otherwise bring up the driver GUI so the user can change settings...
@@ -228,7 +233,7 @@ namespace TWAINCSScan
             string a_szDg,
             string a_szDat,
             string a_szMsg,
-            TWAINCSToolkit.STS a_sts,
+            TWAIN.STS a_sts,
             Bitmap a_bitmap,
             string a_szFile,
             string a_szTwimageinfo,
@@ -259,7 +264,7 @@ namespace TWAINCSScan
                 // Report errors, but only if the driver's indicators have
                 // been turned off, otherwise we'll hit the user with multiple
                 // dialogs for the same error...
-                if (!m_blIndicators && (a_sts != TWAINCSToolkit.STS.SUCCESS))
+                if (!m_blIndicators && (a_sts != TWAIN.STS.SUCCESS))
                 {
                     MessageBox.Show("End of session status: " + a_sts);
                 }
@@ -405,7 +410,7 @@ namespace TWAINCSScan
             string[] aszIdentity;
             FormSelect formselect;
             DialogResult dialogresult;
-            TWAINCSToolkit.STS sts;
+            TWAIN.STS sts;
 
             // Find out which driver we're using...
             szDefault = "";
@@ -457,7 +462,7 @@ namespace TWAINCSScan
             // Open it...
             szStatus = "";
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_IDENTITY", "MSG_OPENDS", ref szIdentity, ref szStatus);
-            if (sts != TWAINCSToolkit.STS.SUCCESS)
+            if (sts != TWAIN.STS.SUCCESS)
             {
                 MessageBox.Show("Unable to open scanner (it is turned on and plugged in?)");
                 m_blExit = true;
@@ -481,7 +486,7 @@ namespace TWAINCSScan
             szStatus = "";
             szCapability = "ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,2";
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_CAPABILITY", "MSG_SET", ref szCapability, ref szStatus);
-            if (sts != TWAINCSToolkit.STS.SUCCESS)
+            if (sts != TWAIN.STS.SUCCESS)
             {
                 m_blExit = true;
                 return;
@@ -491,7 +496,7 @@ namespace TWAINCSScan
             szStatus = "";
             szCapability = "CAP_INDICATORS,TWON_ONEVALUE,TWTY_BOOL," + (m_blIndicators?"1":"0");
             sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_CAPABILITY", "MSG_SET", ref szCapability, ref szStatus);
-            if (sts != TWAINCSToolkit.STS.SUCCESS)
+            if (sts != TWAIN.STS.SUCCESS)
             {
                 m_blExit = true;
                 return;
