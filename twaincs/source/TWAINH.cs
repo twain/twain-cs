@@ -8,6 +8,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    13-Nov-2015     2.4.0.0     Updated to latest spec
 //  M.McLaughlin    13-Sep-2015     2.3.1.2     DsmMem bug fixes
 //  M.McLaughlin    26-Aug-2015     2.3.1.1     Log fix and sync with TWAIN Direct
 //  M.McLaughlin    13-Mar-2015     2.3.1.0     Numerous fixes
