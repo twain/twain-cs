@@ -30,7 +30,7 @@
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2017 Kodak Alaris Inc.
+//  Copyright (C) 2013-2018 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -52,9 +52,11 @@
 ///////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Permissions;
 using TWAINWorkingGroup;
 
 namespace TWAINWorkingGroupToolkit
@@ -64,7 +66,7 @@ namespace TWAINWorkingGroupToolkit
     /// from the application is presented to us in the constructor, otherwise
     /// we're pretty oblivious to what the application looks like...
     /// </summary>
-    public sealed class TWAINCSToolkit
+    public sealed class TWAINCSToolkit : IDisposable
     {
         ///////////////////////////////////////////////////////////////////////////////
         // Public Functions.  This is the stuff we want to expose to the
@@ -160,6 +162,7 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_blUseCallbacks">Use callbacks (preferred)</param>
         /// <param name="a_runinuithreaddelegate">delegate for running in the UI thread</param>
         /// <param name="a_objectRunInUiThreadDelegate">the form from that thread</param>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public TWAINCSToolkit
         (
             IntPtr a_intptrHwnd,
@@ -286,26 +289,37 @@ namespace TWAINWorkingGroupToolkit
         /// <summary>
         /// Make sure we cleanup...
         /// </summary>
+        [SuppressMessage("Microsoft.Security", "CA2123:OverrideLinkDemandsShouldBeIdenticalToBase")]
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         ~TWAINCSToolkit()
         {
-            Cleanup();
+            Dispose(false);
+        }
+
+        /// <summary>
+        /// Cleanup...
+        /// </summary>
+        [SuppressMessage("Microsoft.Security", "CA2123:OverrideLinkDemandsShouldBeIdenticalToBase")]
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Shutdown the TWAIN driver...
         /// </summary>
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         public void Cleanup()
         {
-            if (m_twain != null)
-            {
-                m_twain.Rollback(TWAIN.STATE.S2);
-                m_twain = null;
-            }
+            Dispose(true);
         }
 
         /// <summary>
         /// Close the driver...
         /// </summary>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public void CloseDriver()
         {
             // Filter for TWAIN messages...
@@ -334,6 +348,7 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_u32Size">bytes to allocate</param>
         /// <returns></returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public IntPtr DsmMemAlloc(uint a_u32Size)
         {
             if (m_twain != null)
@@ -348,6 +363,7 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_intptr">pointer to free</param>
         /// <returns></returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public void DsmMemFree(ref IntPtr a_intptr)
         {
             if (m_twain != null)
@@ -361,6 +377,7 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_intptr">handle to lock</param>
         /// <returns></returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public IntPtr DsmMemLock(IntPtr a_intptr)
         {
             if (m_twain != null)
@@ -375,6 +392,7 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_intptr">handle to unlock</param>
         /// <returns></returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public void DsmMemUnlock(IntPtr a_intptr)
         {
             if (m_twain != null)
@@ -397,6 +415,7 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_szDefault">Returns the CSV identity default driver</param>
         /// <returns>Array of CSV identities for each driver found</returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public string[] GetDrivers(ref string a_szDefault)
         {
             int ii;
@@ -544,6 +563,7 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_intptrWparam">Argument to message</param>
         /// <param name="a_intptrLparam">Another argument to message</param>
         /// <returns></returns>
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         public bool PreFilterMessage
         (
             IntPtr a_intptrHwnd,
@@ -559,6 +579,7 @@ namespace TWAINWorkingGroupToolkit
         /// Close and reopen the DSM...
         /// </summary>
         /// <returns>status of the open</returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public TWAIN.STS ReopenDSM()
         {
             TWAIN.STS sts;
@@ -582,6 +603,7 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_szMemref">Pointer to memory</param>
         /// <param name="a_szStatus">Status of the operation</param>
         /// <returns></returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public TWAIN.STS Send(string a_szDg, string a_szDat, string a_szMsg, ref string a_szMemref, ref string a_szStatus)
         {
             TWAIN.STS sts;
@@ -719,6 +741,7 @@ namespace TWAINWorkingGroupToolkit
         /// <summary>
         /// Stop a UI or a scanning session...
         /// </summary>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public void StopSession()
         {
             m_twain.Rollback(TWAIN.STATE.S4);
@@ -730,6 +753,7 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_szFile">File to use to restore driver settings</param>
         /// <returns>SUCCESS if the restore succeeded</returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public TWAIN.STS RestoreSnapshot(string a_szFile)
         {
             TWAIN.STS sts;
@@ -785,6 +809,7 @@ namespace TWAINWorkingGroupToolkit
         /// Rollback the TWAIN driver...
         /// </summary>
         /// <param name="a_twainstate">target state</param>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public TWAIN.STATE Rollback(TWAIN.STATE a_twainstate)
         {
             if (m_twain == null)
@@ -799,6 +824,7 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_szFile">File to receive driver settings</param>
         /// <returns>SUCCESS if the restore succeeded</returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public TWAIN.STS SaveSnapshot(string a_szFile)
         {
             TWAIN.STS sts;
@@ -1017,6 +1043,7 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_szStatus"></param>
         /// <param name="a_szMemref"></param>
         /// <returns></returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         private TWAIN.STS SendDat(TWAIN.DG a_dg, TWAIN.DAT a_dat, TWAIN.MSG a_msg, ref string a_szStatus, ref string a_szMemref)
         {
             TWAIN.STS sts;
@@ -1130,6 +1157,7 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_szStatus">Result of operation</param>
         /// <param name="a_szMemref">Pointer to data</param>
         /// <returns>TWAIN status</returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         private TWAIN.STS SendDatCapability(TWAIN.DG a_dg, TWAIN.MSG a_msg, ref string a_szStatus, ref string a_szMemref)
         {
             bool blSuccess;
@@ -1218,6 +1246,7 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_szStatus">Result of operation</param>
         /// <param name="a_szMemref">Pointer to data</param>
         /// <returns>TWAIN status</returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         private TWAIN.STS SendDatCustomdsdata(TWAIN.DG a_dg, TWAIN.MSG a_msg, ref string a_szStatus, ref string a_szMemref)
         {
             TWAIN.STS sts;
@@ -1343,6 +1372,7 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_szStatus">Result of operation</param>
         /// <param name="a_szMemref">Pointer to data</param>
         /// <returns>TWAIN status</returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         private TWAIN.STS SendDatIdentity(TWAIN.DG a_dg, TWAIN.MSG a_msg, ref string a_szStatus, ref string a_szMemref)
         {
             TWAIN.STS sts;
@@ -1604,6 +1634,20 @@ namespace TWAINWorkingGroupToolkit
         // here...
         ///////////////////////////////////////////////////////////////////////////////
         #region Private Functions...
+
+        /// <summary>
+        /// Shutdown the TWAIN driver...
+        /// </summary>
+        /// <param name="a_blDisposing">true if we need to clean up managed resources</param>
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
+        internal void Dispose(bool a_blDisposing)
+        {
+            if (m_twain != null)
+            {
+                m_twain.Dispose();
+                m_twain = null;
+            }
+        }
 
         /// <summary>
         /// Our callback for device events.  This is where we catch and
@@ -3032,6 +3076,7 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_szCmd">Command to parse</param>
         /// <returns>True if successful</returns>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public bool AtCommand(string a_szCmd)
         {
             // No @, so scoot...
@@ -3087,6 +3132,7 @@ namespace TWAINWorkingGroupToolkit
         /// <summary>
         /// Perform a MSG_GETCURRENT on every cap number 0000 - FFFF...
         /// </summary>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         private void AtStressCapGetCurrent()
         {
             string szValue;

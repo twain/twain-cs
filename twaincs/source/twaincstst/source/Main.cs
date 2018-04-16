@@ -41,9 +41,11 @@
 ///////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Security.Permissions;
 using System.Windows.Forms;
 using TWAINWorkingGroup;
 using TWAINWorkingGroupToolkit;
@@ -57,7 +59,7 @@ namespace TWAINCSTst
     /// additional code, but protects the main app from the details of the
     /// TWAIN interface.
     /// </summary>
-    public partial class FormMain : Form, IMessageFilter
+    public partial class FormMain : Form, IMessageFilter, IDisposable
     {
         ///////////////////////////////////////////////////////////////////////////////
         // Public Functions...
@@ -176,10 +178,19 @@ namespace TWAINCSTst
         }
 
         /// <summary>
+        /// Cleanup...
+        /// </summary>
+        public new void Dispose()
+        {
+            Dispose(true);
+        }
+
+        /// <summary>
         /// Call the form's filter function to catch stuff like MSG.XFERREADY...
         /// </summary>
         /// <param name="a_message">Message to process</param>
         /// <returns>Result of the processing</returns>
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         public bool PreFilterMessage(ref Message a_message)
         {
             if (m_twaincstoolkit != null)
@@ -205,6 +216,80 @@ namespace TWAINCSTst
         // Private Functions, miscellaneous functions...
         ///////////////////////////////////////////////////////////////////////////////
         #region Private Functions...
+
+        /// <summary>
+        /// Cleanup, pulled from the designer...
+        /// </summary>
+        /// <param name="a_blDisposing">true if we need to clean up managed resources</param>
+        [SuppressMessage("Microsoft.Security", "CA2123:OverrideLinkDemandsShouldBeIdenticalToBase")]
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
+        protected override void Dispose(bool a_blDisposing)
+        {
+            // Free managed resources...
+            if (a_blDisposing)
+            {
+                // Clean our components...
+                if (components != null)
+                {
+                    components.Dispose();
+                }
+
+                // Cleanup...
+                if (m_twaincstoolkit != null)
+                {
+                    m_twaincstoolkit.Dispose();
+                    m_twaincstoolkit = null;
+                }
+                if (m_bitmapGraphic1 != null)
+                {
+                    m_bitmapGraphic1.Dispose();
+                    m_bitmapGraphic1 = null;
+                }
+                if (m_bitmapGraphic2 != null)
+                {
+                    m_bitmapGraphic2.Dispose();
+                    m_bitmapGraphic2 = null;
+                }
+                if (m_bitmapGraphic3 != null)
+                {
+                    m_bitmapGraphic3.Dispose();
+                    m_bitmapGraphic3 = null;
+                }
+                if (m_bitmapGraphic4 != null)
+                {
+                    m_bitmapGraphic4.Dispose();
+                    m_bitmapGraphic4 = null;
+                }
+                if (m_bitmapGraphic5 != null)
+                {
+                    m_bitmapGraphic5.Dispose();
+                    m_bitmapGraphic5 = null;
+                }
+                if (m_bitmapGraphic6 != null)
+                {
+                    m_bitmapGraphic6.Dispose();
+                    m_bitmapGraphic6 = null;
+                }
+                if (m_bitmapGraphic7 != null)
+                {
+                    m_bitmapGraphic7.Dispose();
+                    m_bitmapGraphic7 = null;
+                }
+                if (m_bitmapGraphic8 != null)
+                {
+                    m_bitmapGraphic8.Dispose();
+                    m_bitmapGraphic8 = null;
+                }
+                if (m_brushBackground != null)
+                {
+                    m_brushBackground.Dispose();
+                    m_brushBackground = null;
+                }
+            }
+
+            // Do the base...
+            base.Dispose(a_blDisposing);
+        }
 
         /// <summary>
         /// Make sure we clean up on a surprise close...

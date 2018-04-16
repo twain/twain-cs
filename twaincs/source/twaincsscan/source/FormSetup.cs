@@ -33,6 +33,7 @@
 
 using System;
 using System.IO;
+using System.Security.Permissions;
 using System.Windows.Forms;
 using TWAINWorkingGroup;
 using TWAINWorkingGroupToolkit;
@@ -56,6 +57,7 @@ namespace TWAINCSScan
         /// Our constructor...
         /// </summary>
         /// <param name="a_twaincstool"></param>
+        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public FormSetup(ref TWAINCSToolkit a_twaincstoolkit, string a_szProductDirectory)
         {
             TWAIN.STS sts;

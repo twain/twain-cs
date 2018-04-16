@@ -38,9 +38,11 @@
 ///////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Security.Permissions;
 using System.Windows.Forms;
 using TWAINWorkingGroup;
 using TWAINWorkingGroupToolkit;
@@ -124,6 +126,41 @@ namespace TWAINCSScan
 
             // Init our buttons...
             SetButtons(EBUTTONSTATE.CLOSED);
+        }
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        [SuppressMessage("Microsoft.Security", "CA2123:OverrideLinkDemandsShouldBeIdenticalToBase")]
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                if (m_twaincstoolkit != null)
+                {
+                    m_twaincstoolkit.Dispose();
+                    m_twaincstoolkit = null;
+                }
+                if (m_bitmapGraphic1 != null)
+                {
+                    m_bitmapGraphic1.Dispose();
+                    m_bitmapGraphic1 = null;
+                }
+                if (m_bitmapGraphic2 != null)
+                {
+                    m_bitmapGraphic2.Dispose();
+                    m_bitmapGraphic2 = null;
+                }
+                if (m_brushBackground != null)
+                {
+                    m_brushBackground.Dispose();
+                    m_brushBackground = null;
+                }
+                components.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         /// <summary>
