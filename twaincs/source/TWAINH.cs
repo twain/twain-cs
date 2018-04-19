@@ -1736,6 +1736,21 @@ namespace TWAINWorkingGroup
             [SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
             public IntPtr DSM_MemUnlock;
         }
+        [StructLayout(LayoutKind.Sequential, Pack = 2)]
+        public struct TW_ENTRYPOINT_LINUX64
+        {
+            public long Size;
+            [SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
+            public IntPtr DSM_Entry;
+            [SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
+            public IntPtr DSM_MemAllocate;
+            [SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
+            public IntPtr DSM_MemFree;
+            [SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
+            public IntPtr DSM_MemLock;
+            [SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
+            public IntPtr DSM_MemUnlock;
+        }
         public struct TW_ENTRYPOINT_DELEGATES
         {
             public UInt32 Size;
@@ -5748,7 +5763,7 @@ namespace TWAINWorkingGroup
             TWAIN.DG dg,
             TWAIN.DAT dat,
             TWAIN.MSG msg,
-            ref TWAIN.TW_ENTRYPOINT twentrypoint
+            ref TWAIN.TW_ENTRYPOINT_LINUX64 twentrypoint
         );
         [SuppressMessage("Microsoft.Interoperability", "CA1400:PInvokeEntryPointsShouldExist")]
         [DllImport("/System/Library/Frameworks/TWAIN.framework/TWAIN", EntryPoint = "DSM_Entry", CharSet = CharSet.Ansi)]

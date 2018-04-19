@@ -164,20 +164,8 @@ namespace TWAINWorkingGroup
             m_runinuithreaddelegate = a_runinuithreaddelegate;
             m_intptrHwnd = a_intptrHwnd;
 
-            // Let's see what assumptions we can make about the DSM...
-            if (GetMachineWordBitSize() == 32)
-            {
-                // Always use the latest DSM with 32-bit
-                m_linuxdsm = LinuxDsm.IsLatestDsm;
-            }
-            else
-            {
-                // We have to flip between the 2.3.2 DSM for old drivers
-                // with the bad TW_INT32/TW_UINT32 sizes, and the new
-                // DSM.  We won't decide which one we're using until the
-                // driver is selected...
-                m_linuxdsm = LinuxDsm.Unknown;
-            }
+            // We always go through a discovery process, even on 32-bit...
+            m_linuxdsm = LinuxDsm.Unknown;
 
             // Placeholder for our DS identity...
             m_twidentityDs = default(TW_IDENTITY);
@@ -234,10 +222,10 @@ namespace TWAINWorkingGroup
                         // we find an old DSM...
                         foreach (string szDsm in aszDsm)
                         {
-                            if (    szDsm.Contains("so.2.0")
-                                ||  szDsm.Contains("so.2.1")
-                                ||  szDsm.Contains("so.2.2")
-                                ||  szDsm.Contains("so.2.3"))
+                            if (    szDsm.EndsWith("so.2.0") || szDsm.Contains(".so.2.0.")
+                                ||  szDsm.EndsWith("so.2.1") || szDsm.Contains(".so.2.1.")
+                                ||  szDsm.EndsWith("so.2.2") || szDsm.Contains(".so.2.2.")
+                                ||  szDsm.EndsWith("so.2.3") || szDsm.Contains(".so.2.3."))
                             {
                                 // If we get a match, see if the symbolic link is
                                 // pointing to old junk...
@@ -250,11 +238,12 @@ namespace TWAINWorkingGroup
                                 string szOutput = p.StandardOutput.ReadToEnd();
                                 p.WaitForExit();
                                 p.Dispose();
+                                // We never did any 1.x stuff...
                                 if (    (szOutput != null)
-                                    &&  (szOutput.Contains(".so.2.0")
-                                    ||   szOutput.Contains(".so.2.1")
-                                    ||   szOutput.Contains(".so.2.2")
-                                    ||   szOutput.Contains(".so.2.3")))
+                                    &&  (szOutput.EndsWith(".so.2.0") || szOutput.Contains(".so.2.0.")
+                                    ||   szOutput.EndsWith(".so.2.1") || szOutput.Contains(".so.2.1.")
+                                    ||   szOutput.EndsWith(".so.2.2") || szOutput.Contains(".so.2.2.")
+                                    ||   szOutput.EndsWith(".so.2.3") || szOutput.Contains(".so.2.3.")))
                                 {
                                     // libtwaindsm.so is pointing to an old DSM...
                                     blCheckForNewDsm = false;
@@ -269,13 +258,20 @@ namespace TWAINWorkingGroup
                     {
                         foreach (string szDsm in aszDsm)
                         {
+                            // I guess this is reasonably future-proof...
                             if (    szDsm.Contains("so.2.4")
                                 ||  szDsm.Contains("so.2.5")
                                 ||  szDsm.Contains("so.2.6")
                                 ||  szDsm.Contains("so.2.7")
                                 ||  szDsm.Contains("so.2.8")
                                 ||  szDsm.Contains("so.2.9")
-                                ||  szDsm.Contains("so.3"))
+                                ||  szDsm.Contains("so.2.10")
+                                ||  szDsm.Contains("so.2.11")
+                                ||  szDsm.Contains("so.2.12")
+                                ||  szDsm.Contains("so.2.13")
+                                ||  szDsm.Contains("so.2.14")
+                                ||  szDsm.Contains("so.3")
+                                ||  szDsm.Contains("so.4"))
                             {
                                 // libtwaindsm.so is pointing to a new DSM...
                                 m_blFoundLatestDsm = true;
@@ -992,7 +988,8 @@ namespace TWAINWorkingGroup
                             csvEnum.Add(twenumerationmacosx.CurrentIndex.ToString());
                             csvEnum.Add(twenumerationmacosx.DefaultIndex.ToString());
                         }
-                        else if ((m_linuxdsm == LinuxDsm.Unknown) || (m_linuxdsm == LinuxDsm.IsLatestDsm))
+                        // Windows or the 2.4+ Linux DSM...
+                        else if ((ms_platform == Platform.WINDOWS) || (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
                         {
                             // Crack the container...
                             TW_ENUMERATION twenumeration = default(TW_ENUMERATION);
@@ -1008,7 +1005,8 @@ namespace TWAINWorkingGroup
                             csvEnum.Add(twenumeration.CurrentIndex.ToString());
                             csvEnum.Add(twenumeration.DefaultIndex.ToString());
                         }
-                        else
+                        // The -2.3 Linux DSM...
+                        else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                         {
                             // Crack the container...
                             TW_ENUMERATION_LINUX64 twenumerationlinux64 = default(TW_ENUMERATION_LINUX64);
@@ -1023,6 +1021,13 @@ namespace TWAINWorkingGroup
                             csvEnum.Add(NumItems.ToString());
                             csvEnum.Add(twenumerationlinux64.CurrentIndex.ToString());
                             csvEnum.Add(twenumerationlinux64.DefaultIndex.ToString());
+                        }
+                        // This shouldn't be possible, but what the hey...
+                        else
+                        {
+                            Log.Error("This is serious, you win a cookie for getting here...");
+                            DsmMemUnlock(a_twcapability.hContainer);
+                            return ("");
                         }
 
                         // Tack on the stuff from the ItemList...
@@ -1100,12 +1105,14 @@ namespace TWAINWorkingGroup
                             twrangefix32.DefaultValue = twrangefix32macosx.DefaultValue;
                             twrangefix32.CurrentValue = twrangefix32macosx.CurrentValue;
                         }
-                        else if ((m_linuxdsm == LinuxDsm.Unknown) || (m_linuxdsm == LinuxDsm.IsLatestDsm))
+                        // Windows or the 2.4+ Linux DSM...
+                        else if ((m_linuxdsm == LinuxDsm.IsLatestDsm) || (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
                         {
                             intptrLocked = DsmMemLock(a_twcapability.hContainer);
                             twrange = (TW_RANGE)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE));
                             twrangefix32 = (TW_RANGE_FIX32)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE_FIX32));
                         }
+                        // The -2.3 Linux DSM...
                         else
                         {
                             intptrLocked = DsmMemLock(a_twcapability.hContainer);
@@ -1362,7 +1369,8 @@ namespace TWAINWorkingGroup
                             // Get the pointer to the ItemList...
                             intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twenumerationmacosx));
                         }
-                        else if ((m_linuxdsm == LinuxDsm.Unknown) || (m_linuxdsm == LinuxDsm.IsLatestDsm))
+                        // Windows or the 2.4+ Linux DSM...
+                        else if ((m_linuxdsm == LinuxDsm.IsLatestDsm) || (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
                         {
                             // Allocate...
                             a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_ENUMERATION)) + (((int)u32NumItems + 1) * Marshal.SizeOf(default(TW_STR255)))));
@@ -1379,6 +1387,7 @@ namespace TWAINWorkingGroup
                             // Get the pointer to the ItemList...
                             intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twenumeration));
                         }
+                        // The -2.3 Linux DSM...
                         else
                         {
                             // Allocate...
@@ -1475,12 +1484,14 @@ namespace TWAINWorkingGroup
                             a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_RANGE_MACOSX))));
                             intptr = DsmMemLock(a_twcapability.hContainer);
                         }
-                        else if ((m_linuxdsm == LinuxDsm.Unknown) || (m_linuxdsm == LinuxDsm.IsLatestDsm))
+                        // Windows or the 2.4+ Linux DSM...
+                        else if ((m_linuxdsm == LinuxDsm.IsLatestDsm) || (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
                         {
                             // Allocate...
                             a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_RANGE))));
                             intptr = DsmMemLock(a_twcapability.hContainer);
                         }
+                        // The -2.3 Linux DSM...
                         else
                         {
                             // Allocate...
@@ -2338,11 +2349,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryNullDest(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, a_dat, a_msg, a_twmemref);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryNullDest(ref m_twidentityApp, IntPtr.Zero, a_dg, a_dat, a_msg, a_twmemref);
                     }
@@ -2480,11 +2491,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntry(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, a_dat, a_msg, a_twmemref);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntry(ref m_twidentityApp, ref m_twidentityDs, a_dg, a_dat, a_msg, a_twmemref);
                     }
@@ -2621,11 +2632,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryAudioAudioinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.AUDIOINFO, a_msg, ref a_twaudioinfo);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryAudioAudioinfo(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.AUDIOINFO, a_msg, ref a_twaudioinfo);
                     }
@@ -2762,11 +2773,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryCallback(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CALLBACK, a_msg, ref a_twcallback);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryCallback(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CALLBACK, a_msg, ref a_twcallback);
                     }
@@ -2903,11 +2914,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryCallback2(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CALLBACK2, a_msg, ref a_twcallback2);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryCallback2(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CALLBACK2, a_msg, ref a_twcallback2);
                     }
@@ -3078,11 +3089,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryCapability(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryCapability(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
                     }
@@ -3226,11 +3237,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryCiecolor(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CIECOLOR, a_msg, ref a_twciecolor);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryCiecolor(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CIECOLOR, a_msg, ref a_twciecolor);
                     }
@@ -3368,11 +3379,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryCustomdsdata(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CUSTOMDSDATA, a_msg, ref a_twcustomdsdata);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryCustomdsdata(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.CUSTOMDSDATA, a_msg, ref a_twcustomdsdata);
                     }
@@ -3509,11 +3520,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryDeviceevent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.DEVICEEVENT, a_msg, ref a_twdeviceevent);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryDeviceevent(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.DEVICEEVENT, a_msg, ref a_twdeviceevent);
                     }
@@ -3651,24 +3662,40 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    // Alright, this is super nasty.  The application issues the call to
+                    // DAT_ENTRYPOINT before the call to MSG_OPENDS.  We don't know which
+                    // driver they're going to use, so we don't know which DSM they're
+                    // going to end up with.  This sucks in all kinds of ways.  The only
+                    // reason we can hope for this to work is if all of the DSM's are in
+                    // agreement about the memory functions they're using.  Lucky for us
+                    // on Linux it's always been calloc/free.  So, we may be in the weird
+                    // situation of using a different DSM for the memory functions, but
+                    // it'l be okay.  You can stop breathing in and out of that paper bag...
+                    sts = STS.BUMMER;
+                    if (m_blFoundLatestDsm)
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryEntrypoint(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
                     }
+                    else if (m_blFound020302Dsm64bit)
+                    {
+                        TW_ENTRYPOINT_LINUX64 twentrypointlinux64 = default(TW_ENTRYPOINT_LINUX64);
+                        twentrypointlinux64.Size = a_twentrypoint.Size;
+                        twentrypointlinux64.DSM_MemAllocate = a_twentrypoint.DSM_MemAllocate;
+                        twentrypointlinux64.DSM_MemFree = a_twentrypoint.DSM_MemFree;
+                        twentrypointlinux64.DSM_MemLock = a_twentrypoint.DSM_MemLock;
+                        twentrypointlinux64.DSM_MemUnlock = a_twentrypoint.DSM_MemUnlock;
+                        sts = (STS)NativeMethods.Linux020302Dsm64bitEntryEntrypoint(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.ENTRYPOINT, a_msg, ref twentrypointlinux64);
+                        a_twentrypoint = default(TW_ENTRYPOINT);
+                        a_twentrypoint.Size = (uint)(twentrypointlinux64.Size & 0xFFFFFFFF);
+                        a_twentrypoint.DSM_MemAllocate = twentrypointlinux64.DSM_MemAllocate;
+                        a_twentrypoint.DSM_MemFree = twentrypointlinux64.DSM_MemFree;
+                        a_twentrypoint.DSM_MemLock = twentrypointlinux64.DSM_MemLock;
+                        a_twentrypoint.DSM_MemUnlock = twentrypointlinux64.DSM_MemUnlock;
+                    }
                     else
                     {
-                        // We'll spit this out if we have no DSM...
+                        Log.Error("apparently we don't have a DSM...");
                         sts = STS.BUMMER;
-                        // Load the new DSM, whatever it is, if we found one...
-                        if (m_blFoundLatestDsm)
-                        {
-                            sts = (STS)NativeMethods.LinuxDsmEntryEntrypoint(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
-                        }
-                        // Load libtwaindsm.so.2.3.2, if we found it...
-                        if (m_blFound020302Dsm64bit)
-                        {
-                            sts = (STS)NativeMethods.LinuxDsmEntryEntrypoint(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ENTRYPOINT, a_msg, ref a_twentrypoint);
-                        }
                     }
                 }
                 catch (Exception exception)
@@ -3795,11 +3822,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryEvent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryEvent(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
                     }
@@ -3942,11 +3969,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryExtimageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryExtimageinfo(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
                     }
@@ -4083,11 +4110,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryFilesystem(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.FILESYSTEM, a_msg, ref a_twfilesystem);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryFilesystem(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.FILESYSTEM, a_msg, ref a_twfilesystem);
                     }
@@ -4224,11 +4251,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryFilter(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.FILTER, a_msg, ref a_twfilter);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryFilter(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.FILTER, a_msg, ref a_twfilter);
                     }
@@ -4365,11 +4392,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryGrayresponse(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.GRAYRESPONSE, a_msg, ref a_twgrayresponse);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryGrayresponse(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.GRAYRESPONSE, a_msg, ref a_twgrayresponse);
                     }
@@ -4506,11 +4533,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryIccprofile(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.ICCPROFILE, a_msg, ref a_twmemory);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryIccprofile(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.ICCPROFILE, a_msg, ref a_twmemory);
                     }
@@ -4661,26 +4688,19 @@ namespace TWAINWorkingGroup
                 {
                     // Since life is complex, start by assuming failure...
                     sts = STS.FAILURE;
-                    // We never have a problem with 32-bit, so just do it...
-                    if (GetMachineWordBitSize() == 32)
-                    {
-                        m_linuxdsm = LinuxDsm.IsLatestDsm; // set it so debugging makes sense
-                        TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
-                        sts = (STS)NativeMethods.LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
-                        a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
-                    }
+
                     // Handle closeds...
-                    else if (a_msg == MSG.CLOSEDS)
+                    if (a_msg == MSG.CLOSEDS)
                     {
                         // We've opened this source, and we know it's the new style...
-                        if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                        if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                         {
                             TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
                             sts = (STS)NativeMethods.LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
                             a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
                         }
                         // We've opened this source, and we know it's the old style...
-                        else if (m_linuxdsm == LinuxDsm.Is020302Dsm64bit)
+                        else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                         {
                             TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
                             TW_IDENTITY_LINUX64 twidentitylinux64 = TwidentityToTwidentitylinux64(a_twidentity);
@@ -4694,44 +4714,39 @@ namespace TWAINWorkingGroup
                             sts = STS.SEQERROR;
                         }
                     }
-                    // Getfirst always starts with the current DSM, if it can't find it,
+
+                    // Getfirst always starts with the latest DSM, if it can't find it,
                     // or if it reports end of list, then go on to the old DSM, if we
-                    // have one...
+                    // have one.  Note that it's up to the caller to handle any errors
+                    // and keep searching.  We're not trying to figure out anything
+                    // about the driver at this level...
                     else if (a_msg == MSG.GETFIRST)
                     {
                         m_linux64bitdsmDatIdentity = LinuxDsm.Unknown;
 
-                        // Try with the latest DSM first, hopefully this just works...
-                        sts = STS.FAILURE;
+                        // Assume end of list for the outcome...
+                        sts = STS.ENDOFLIST;
+
+                        // Try to start with the latest DSM...
                         if (m_blFoundLatestDsm)
                         {
+                            m_linux64bitdsmDatIdentity = LinuxDsm.IsLatestDsm;
                             TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
                             sts = (STS)NativeMethods.LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
                             a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
                         }
 
-                        // We got it...
-                        if (sts == STS.SUCCESS)
+                        // If the lastest DSM didn't work, try the old stuff...
+                        if (m_blFound020302Dsm64bit && (sts == STS.ENDOFLIST))
                         {
-                            m_linux64bitdsmDatIdentity = LinuxDsm.IsLatestDsm;
-                        }
-
-                        // No joy, so try the other one...
-                        else
-                        {
-                            if (m_blFound020302Dsm64bit)
-                            {
-                                TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
-                                TW_IDENTITY_LINUX64 twidentitylinux64 = TwidentityToTwidentitylinux64(a_twidentity);
-                                sts = (STS)NativeMethods.Linux020302Dsm64bitEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylinux64);
-                                a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
-                                if (sts == STS.SUCCESS)
-                                {
-                                    m_linux64bitdsmDatIdentity = LinuxDsm.Is020302Dsm64bit;
-                                }
-                            }
+                            m_linux64bitdsmDatIdentity = LinuxDsm.Is020302Dsm64bit;
+                            TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
+                            TW_IDENTITY_LINUX64 twidentitylinux64 = TwidentityToTwidentitylinux64(a_twidentity);
+                            sts = (STS)NativeMethods.Linux020302Dsm64bitEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylinux64);
+                            a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
                         }
                     }
+
                     // Getnext gets its lead from getfirst, if we have a DSM
                     // value, we try it out, if we don't have one, we must be
                     // at the end of list.  We'll do the new DSM and then the
@@ -4740,40 +4755,41 @@ namespace TWAINWorkingGroup
                     {
                         bool blChangeToGetFirst = false;
 
-                        // We're done...
+                        // We're done, they'll have to use MSG_GETFIRST to start again...
                         if (m_linux64bitdsmDatIdentity == LinuxDsm.Unknown)
                         {
                             sts = STS.ENDOFLIST;
                         }
 
-                        // We're working the latest DSM...
-                        if (m_linux64bitdsmDatIdentity == LinuxDsm.IsLatestDsm)
+                        // We're working the latest DSM, if we hit end of list, then we'll
+                        // try to switch over to the old DSM...
+                        if (m_blFoundLatestDsm && (m_linux64bitdsmDatIdentity == LinuxDsm.IsLatestDsm))
                         {
                             TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
                             sts = (STS)NativeMethods.LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
                             a_twidentity = TwidentitylegacyToTwidentity(twidentitylegacy);
-                            if (sts != STS.SUCCESS)
+                            if (sts == STS.ENDOFLIST)
                             {
-                                m_linux64bitdsmDatIdentity = LinuxDsm.Is020302Dsm64bit;
-                                sts = STS.ENDOFLIST;
+                                m_linux64bitdsmDatIdentity = m_blFound020302Dsm64bit ? LinuxDsm.Is020302Dsm64bit : LinuxDsm.Unknown;
                                 blChangeToGetFirst = true;
                             }
                         }
 
-                        // We're working the old DSM...
-                        if (m_linux64bitdsmDatIdentity == LinuxDsm.Is020302Dsm64bit)
+                        // We're working the old DSM, if we hit the end of list, then we
+                        // clear the DSM indicator...
+                        if (m_blFound020302Dsm64bit && (m_linux64bitdsmDatIdentity == LinuxDsm.Is020302Dsm64bit))
                         {
                             TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
                             TW_IDENTITY_LINUX64 twidentitylinux64 = blChangeToGetFirst ? default(TW_IDENTITY_LINUX64) : TwidentityToTwidentitylinux64(a_twidentity);
                             sts = (STS)NativeMethods.Linux020302Dsm64bitEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, blChangeToGetFirst ? MSG.GETFIRST : a_msg, ref twidentitylinux64);
                             a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
-                            if (sts != STS.SUCCESS)
+                            if (sts == STS.ENDOFLIST)
                             {
                                 m_linux64bitdsmDatIdentity = LinuxDsm.Unknown;
-                                sts = STS.ENDOFLIST;
                             }
                         }
                     }
+
                     // Open always tries the current DSM, and then the older one, if needed...
                     else if (a_msg == MSG.OPENDS)
                     {
@@ -4782,23 +4798,21 @@ namespace TWAINWorkingGroup
                         // Prime the pump by assuming we didn't find anything...
                         sts = STS.NODS;
 
-                        // Try with the latest DSM first, hopefully this just works, if we
-                        // got here as part of getfirst/getnext, use that info.  Or do this
-                        // if we just popped in here...
-                        if (    (m_linux64bitdsmDatIdentity == LinuxDsm.Unknown)
-                            ||  (m_linux64bitdsmDatIdentity == LinuxDsm.IsLatestDsm))
+                        // Try with the latest DSM first, if we have one...
+                        if (m_blFoundLatestDsm)
                         {
-                            // Result of getfirst/getnext...
-                            if (m_linux64bitdsmDatIdentity == LinuxDsm.IsLatestDsm)
+                            twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
+                            twidentitylegacy.Id = 0;
+                            try
                             {
-                                twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
+                                sts = (STS)NativeMethods.LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                                Log.Error("mlm>>> new " + sts);
                             }
-                            // Hitting us from out of the blue...
-                            else
+                            catch
                             {
-                                twidentitylegacy.ProductFamily = a_twidentity.ProductFamily;
+                                Log.Error("mlm>>> new " + twidentitylegacy.ProductName.Get());
+                                sts = STS.NODS;
                             }
-                            sts = (STS)NativeMethods.LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
                         }
 
                         // We got it...
@@ -4808,35 +4822,32 @@ namespace TWAINWorkingGroup
                             m_linuxdsm = LinuxDsm.IsLatestDsm;
                         }
 
-                        // No joy, so try the other one...
-                        else
+                        // No joy, so try the old DSM...
+                        else if (m_blFound020302Dsm64bit)
                         {
-                            // If we got here as part of getfirst/getnext, use that info.
-                            // Or do this if we just popped in here...
-                            if (    (m_linux64bitdsmDatIdentity == LinuxDsm.Unknown)
-                                ||  (m_linux64bitdsmDatIdentity == LinuxDsm.Is020302Dsm64bit))
+                            TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
+                            TW_IDENTITY_LINUX64 twidentitylinux64 = TwidentityToTwidentitylinux64(a_twidentity);
+                            twidentitylinux64.Id = 0;
+                            try
                             {
-                                TW_IDENTITY_LINUX64 twidentitylinux64App = TwidentityToTwidentitylinux64(m_twidentityApp);
-                                TW_IDENTITY_LINUX64 twidentitylinux64 = default(TW_IDENTITY_LINUX64);
-                                // Result of getfirst/getnext...
-                                if (m_linux64bitdsmDatIdentity == LinuxDsm.IsLatestDsm)
-                                {
-                                    twidentitylinux64 = TwidentityToTwidentitylinux64(a_twidentity);
-                                }
-                                // Hitting us from out of the blue...
-                                else
-                                {
-                                    twidentitylinux64.ProductFamily = a_twidentity.ProductFamily;
-                                }
                                 sts = (STS)NativeMethods.Linux020302Dsm64bitEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylinux64);
-                                if (sts == STS.SUCCESS)
-                                {
-                                    a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
-                                    m_linuxdsm = LinuxDsm.Is020302Dsm64bit;
-                                }
+                                Log.Error("mlm>>> old " + sts);
+                            }
+                            catch
+                            {
+                                Log.Error("mlm>>> old " + twidentitylegacy.ProductName.Get());
+                                sts = STS.NODS;
+                            }
+
+                            // We got it...
+                            if (sts == STS.SUCCESS)
+                            {
+                                a_twidentity = Twidentitylinux64ToTwidentity(twidentitylinux64);
+                                m_linuxdsm = LinuxDsm.Is020302Dsm64bit;
                             }
                         }
                     }
+
                     // TBD: figure out how to safely do a set on Linux...
                     else if (a_msg == MSG.SET)
                     {
@@ -4959,11 +4970,11 @@ namespace TWAINWorkingGroup
                         // Issue the command...
                         try
                         {
-                            if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                            if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                             {
                                 sts = (STS)NativeMethods.LinuxDsmEntryCallback(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.CALLBACK, MSG.REGISTER_CALLBACK, ref twcallback);
                             }
-                            else if (m_blFound020302Dsm64bit)
+                            else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                             {
                                 sts = (STS)NativeMethods.Linux020302Dsm64bitEntryCallback(ref m_twidentityApp, ref m_twidentityDs, DG.CONTROL, DAT.CALLBACK, MSG.REGISTER_CALLBACK, ref twcallback);
                             }
@@ -5113,11 +5124,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryImageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         TW_IMAGEINFO_LINUX64 twimageinfolinux64 = default(TW_IMAGEINFO_LINUX64);
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryImageinfo(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.IMAGEINFO, a_msg, ref twimageinfolinux64);
@@ -5272,11 +5283,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryImagelayout(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryImagelayout(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
                     }
@@ -5485,11 +5496,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryImagefilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryImagefilexfer(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.IMAGEFILEXFER, a_msg, IntPtr.Zero);
                     }
@@ -5711,11 +5722,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryImagememfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMFILEXFER, a_msg, ref a_twimagememxfer);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         TW_IMAGEMEMXFER_LINUX64 twimagememxferlinux64 = default(TW_IMAGEMEMXFER_LINUX64);
                         twimagememxferlinux64.BytesPerRow = a_twimagememxfer.BytesPerRow;
@@ -5979,11 +5990,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryImagememxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEMEMXFER, a_msg, ref a_twimagememxfer);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         TW_IMAGEMEMXFER_LINUX64 twimagememxferlinux64 = default(TW_IMAGEMEMXFER_LINUX64);
                         twimagememxferlinux64.BytesPerRow = a_twimagememxfer.BytesPerRow;
@@ -6255,11 +6266,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryImagenativexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryImagenativexfer(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.IMAGENATIVEXFER, a_msg, ref intptrBitmap);
                     }
@@ -6411,11 +6422,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryJpegcompression(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.JPEGCOMPRESSION, a_msg, ref a_twjpegcompression);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryJpegcompression(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.JPEGCOMPRESSION, a_msg, ref a_twjpegcompression);
                     }
@@ -6552,11 +6563,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryPalette8(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PALETTE8, a_msg, ref a_twpalette8);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryPalette8(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.PALETTE8, a_msg, ref a_twpalette8);
                     }
@@ -6691,35 +6702,45 @@ namespace TWAINWorkingGroup
             // Linux...
             else if (ms_platform == Platform.LINUX)
             {
-                // Issue the command...
-                try
+                STS stsLatest = STS.BUMMER;
+                STS sts020302Dsm64bit = STS.BUMMER;
+
+                // We're trying both DSM's...
+                sts = STS.BUMMER;
+
+                // Load the new DSM, whatever it is, if we found one...
+                if (m_blFoundLatestDsm)
                 {
-                    if (GetMachineWordBitSize() == 32)
+                    try
                     {
-                        sts = (STS)NativeMethods.LinuxDsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        stsLatest = (STS)NativeMethods.LinuxDsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
                     }
-                    else
+                    catch
                     {
-                        // We'll spit this out if we have no DSM...
-                        sts = STS.BUMMER;
-                        // Load the new DSM, whatever it is, if we found one...
-                        if (m_blFoundLatestDsm)
-                        {
-                            sts = (STS)NativeMethods.LinuxDsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
-                        }
-                        // Load libtwaindsm.so.2.3.2, if we found it...
-                        if (m_blFound020302Dsm64bit)
-                        {
-                            sts = (STS)NativeMethods.Linux020302Dsm64bitEntryParent(ref m_twidentityApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
-                        }
+                        // Forget this...
+                        m_blFoundLatestDsm = false;
                     }
                 }
-                catch (Exception exception)
+
+                // Load libtwaindsm.so.2.3.2, if we found it...
+                if (m_blFound020302Dsm64bit)
                 {
-                    // The driver crashed...
-                    Log.Error("crash - " + exception.Message);
-                    Log.LogSendAfter(STS.BUMMER, "");
-                    return (STS.BUMMER);
+                    try
+                    {
+                        sts020302Dsm64bit = (STS)NativeMethods.Linux020302Dsm64bitEntryParent(ref m_twidentityApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                    }
+                    catch
+                    {
+                        // Forget this...
+                        m_blFound020302Dsm64bit = false;
+                    }
+                }
+
+                // We only need one success to get through this...
+                sts = STS.BUMMER;
+                if ((stsLatest == STS.SUCCESS) || (sts020302Dsm64bit == STS.SUCCESS))
+                {
+                    sts = STS.SUCCESS;
                 }
             }
 
@@ -6863,11 +6884,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryPassthru(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PASSTHRU, a_msg, ref a_twpassthru);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryPassthru(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.PASSTHRU, a_msg, ref a_twpassthru);
                     }
@@ -7004,11 +7025,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryPendingxfers(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryPendingxfers(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
                     }
@@ -7172,11 +7193,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryRgbresponse(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.RGBRESPONSE, a_msg, ref a_twrgbresponse);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryRgbresponse(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.RGBRESPONSE, a_msg, ref a_twrgbresponse);
                     }
@@ -7313,11 +7334,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntrySetupfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntrySetupfilexfer(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
                     }
@@ -7454,11 +7475,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntrySetupmemxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntrySetupmemxfer(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
                     }
@@ -7595,11 +7616,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryStatusutf8(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.STATUSUTF8, a_msg, ref a_twstatusutf8);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryStatusutf8(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.STATUSUTF8, a_msg, ref a_twstatusutf8);
                     }
@@ -7736,11 +7757,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryTwaindirect(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.TWAINDIRECT, a_msg, ref a_twtwaindirect);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryTwaindirect(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.TWAINDIRECT, a_msg, ref a_twtwaindirect);
                     }
@@ -7983,11 +8004,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryUserinterface(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
                     }
@@ -8160,11 +8181,11 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_linuxdsm == LinuxDsm.IsLatestDsm)
+                    if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
                         sts = (STS)NativeMethods.LinuxDsmEntryXfergroup(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.XFERGROUP, a_msg, ref a_twuint32);
                     }
-                    else if (m_blFound020302Dsm64bit)
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
                         sts = (STS)NativeMethods.Linux020302Dsm64bitEntryXfergroup(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.XFERGROUP, a_msg, ref a_twuint32);
                     }
