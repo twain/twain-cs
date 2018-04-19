@@ -203,14 +203,24 @@ namespace TWAINWorkingGroup
                 m_blUseCallbacks = true;
                 m_linuxdsmentrycontrolcallbackdelegate = LinuxDsmEntryCallbackProxy;
 
-                // Check for the old DSM...
-                if (File.Exists("/usr/local/lib/libtwaindsm.so.2.3.2"))
+                // We assume the new DSM for 32-bit systems...
+                if (GetMachineWordBitSize() == 32)
+                {
+                    m_blFound020302Dsm64bit = false;
+                    if (File.Exists("/usr/local/lib/libtwaindsm.so"))
+                    {
+                        m_blFoundLatestDsm = true;
+                    }
+                }
+
+                // Check for the old DSM, but only on 64-bit systems...
+                if ((GetMachineWordBitSize() == 64) && File.Exists("/usr/local/lib/libtwaindsm.so.2.3.2"))
                 {
                     m_blFound020302Dsm64bit = true;
                 }
 
-                // Check for any newer DSM...
-                if (File.Exists("/usr/local/lib/libtwaindsm.so"))
+                // Check for any newer DSM, but only on 64-bit systems...
+                if ((GetMachineWordBitSize() == 64) && File.Exists("/usr/local/lib/libtwaindsm.so"))
                 {
                     bool blCheckForNewDsm = true;
 
