@@ -30,7 +30,7 @@
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2018 Kodak Alaris Inc.
+//  Copyright (C) 2013-2019 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -188,6 +188,7 @@ namespace TWAINWorkingGroupToolkit
         {
             TWAIN.STS sts;
             uint u32SupportedGroups;
+			TWAINWorkingGroup.TWAIN.RunInUiThreadDelegate runinuithreaddelegate;
 
             // Init stuff...
             m_intptrHwnd = a_intptrHwnd;
@@ -205,6 +206,14 @@ namespace TWAINWorkingGroupToolkit
             m_iImageCount = 0;
             m_runinuithreaddelegate = a_runinuithreaddelegate;
             m_objectRunInUiThreadDelegate = a_objectRunInUiThreadDelegate;
+			if (a_runinuithreaddelegate == (TWAINCSToolkit.RunInUiThreadDelegate)null)
+			{
+				runinuithreaddelegate = null;
+			}
+			else
+			{
+				runinuithreaddelegate = RunInUiThread;
+			}
 
             // Convert the supported groups from strings to flags...
             u32SupportedGroups = 0;
@@ -235,7 +244,7 @@ namespace TWAINWorkingGroupToolkit
                 a_blUseCallbacks,
                 DeviceEventCallback,
                 ScanCallback,
-                RunInUiThread,
+				runinuithreaddelegate,
                 m_intptrHwnd
             );
 
@@ -630,7 +639,7 @@ namespace TWAINWorkingGroupToolkit
             {
                 dat = (TWAIN.DAT)Enum.Parse(typeof(TWAIN.DAT), a_szDat.Remove(0, 4), true);
             }
-            else if (a_szDg.ToLower().StartsWith("0x"))
+            else if (a_szDat.ToLower().StartsWith("0x"))
             {
                 dat = (TWAIN.DAT)Convert.ToUInt16(a_szDat.Remove(0, 2), 16);
             }
@@ -644,7 +653,7 @@ namespace TWAINWorkingGroupToolkit
             {
                 msg = (TWAIN.MSG)Enum.Parse(typeof(TWAIN.MSG), a_szMsg.Remove(0, 4), true);
             }
-            else if (a_szDg.ToLower().StartsWith("0x"))
+            else if (a_szMsg.ToLower().StartsWith("0x"))
             {
                 msg = (TWAIN.MSG)Convert.ToUInt16(a_szMsg.Remove(0, 2), 16);
             }
@@ -889,17 +898,31 @@ namespace TWAINWorkingGroupToolkit
         /// </summary>
         /// <param name="a_szImagePath">Folder to save images in</param>
         /// <param name="a_iImageCount">New image count number</param>
-        public void SetImagePath(string a_szImagePath, int a_iImageCount)
+		/// <param name="a_blInitializeXferCount">also initialize XferCount for DAT_SETUPFILEXFER?</param>
+        public void SetImagePath(string a_szImagePath, int a_iImageCount, bool a_blInitializeXferCount = false)
         {
             m_szImagePath = a_szImagePath;
             m_iImageCount = a_iImageCount;
+			if (a_blInitializeXferCount)
+			{
+				m_iImageXferCount = a_iImageCount;
+			}
         }
 
-        /// <summary>
-        /// Get our TWAIN object...
-        /// </summary>
-        /// <returns></returns>
-        public TWAIN Twain()
+		/// <summary>
+		/// Set the delegate to override file info prior to DAT_SETUPFILEXFER being called...
+		/// </summary>
+		/// <param name="a_setupfilexferdelegate">the delegate</param>
+		public void SetSetupFileXferDelegate(SetupFileXferDelegate a_setupfilexferdelegate)
+		{
+			m_setupfilexferdelegate = a_setupfilexferdelegate;
+		}
+
+		/// <summary>
+		/// Get our TWAIN object...
+		/// </summary>
+		/// <returns></returns>
+		public TWAIN Twain()
         {
             return (m_twain);
         }
@@ -961,7 +984,14 @@ namespace TWAINWorkingGroupToolkit
         /// <param name="a_action">code to run</param>
         public delegate void RunInUiThreadDelegate(Object a_object, Action a_action);
 
-        /// <summary>
+		/// <summary>
+		/// We use this to override the file prior to DAT_SETUPFILEXFER being sent to the driver
+		/// </summary>
+		/// <param name="a_twsetupfilexfer">file information</param>
+		/// <param name="a_iImageXferCount">file number</param>
+		public delegate void SetupFileXferDelegate(ref TWAIN.TW_SETUPFILEXFER a_twsetupfilexfer, int a_iImageXferCount);
+
+		/// <summary>
         /// Some messages, taken from TWAINCS.H...
         /// </summary>
         public enum MSG
@@ -1047,36 +1077,59 @@ namespace TWAINWorkingGroupToolkit
         private TWAIN.STS SendDat(TWAIN.DG a_dg, TWAIN.DAT a_dat, TWAIN.MSG a_msg, ref string a_szStatus, ref string a_szMemref)
         {
             TWAIN.STS sts;
+            long lTwMemref;
             IntPtr twmemref;
+
+            // Okay, for this to work the caller has to provide
+            // us an IntPtr to the data they want to pass down
+            // to the driver...
+            if (string.IsNullOrEmpty(a_szMemref))
+            {
+                Log.Error("SendDat error - memref must be an intptr, not null or empty");
+                return (TWAIN.STS.BADVALUE);
+            }
+
+            // Allow us to debug stuff...
+            if (a_szMemref == "debug")
+            {
+                twmemref = Marshal.AllocHGlobal(0x100000);
+                if (twmemref == IntPtr.Zero)
+                {
+                    Log.Error("AllocHGlobal failed...");
+                    return (TWAIN.STS.LOWMEMORY);
+                }
+            }
+
+            // This is what we really want to see...
+            else
+            {
+                if (!Int64.TryParse(a_szMemref, out lTwMemref))
+                {
+                    Log.Error("SendDat error - memref must be an intptr");
+                    return (TWAIN.STS.BADVALUE);
+                }
+                twmemref = (IntPtr)lTwMemref;
+            }
 
             // State 2 and 3, we don't have a destination...
             a_szStatus = "";
             if (m_twain.GetState() < TWAIN.STATE.S4)
             {
-                twmemref = Marshal.AllocHGlobal(8192);
-                if (twmemref == IntPtr.Zero)
-                {
-                    Log.Error("AllocHGlobal failed...");
-                    return (TWAIN.STS.LOWMEMORY);
-                }
                 sts = m_twain.DsmEntryNullDest(a_dg, a_dat, a_msg, twmemref);
-                Marshal.FreeHGlobal(twmemref);
-                return (sts);
             }
 
-            // State 4,5,6 and 7...
+            // State 4, 5, 6 and 7...
             else
             {
-                twmemref = Marshal.AllocHGlobal(8192);
-                if (twmemref == IntPtr.Zero)
-                {
-                    Log.Error("AllocHGlobal failed...");
-                    return (TWAIN.STS.LOWMEMORY);
-                }
                 sts = m_twain.DsmEntry(a_dg, a_dat, a_msg, twmemref);
-                Marshal.FreeHGlobal(twmemref);
-                return (sts);
             }
+
+            // Cleanup and scoot...
+            if (a_szMemref == "debug")
+            {
+                Marshal.FreeHGlobal(twmemref);
+            }
+            return (sts);
         }
 
         /// <summary>
@@ -1920,6 +1973,12 @@ namespace TWAINWorkingGroupToolkit
                     case TWAIN.TWFF.XBM: twsetupfilexfer.FileName.Set(szFile + ".xbm"); break;
                 }
 
+				// Update file information as needed
+				if (m_setupfilexferdelegate != null)
+				{
+					m_setupfilexferdelegate(ref twsetupfilexfer, m_iImageXferCount);
+				}
+
                 // Setup the file transfer...
                 sts = m_twain.DatSetupfilexfer(TWAIN.DG.CONTROL, TWAIN.MSG.SET, ref twsetupfilexfer);
                 if (sts != TWAIN.STS.SUCCESS)
@@ -1943,12 +2002,28 @@ namespace TWAINWorkingGroupToolkit
                 {
                     try
                     {
+                        byte[] abImage;
                         szFilename = twsetupfilexfer.FileName.Get();
                         Image image = Image.FromFile(szFilename);
                         bitmap = new Bitmap(image);
+                        switch (twimageinfo.Compression)
+                        {
+                            default:
+                            case (ushort)TWAIN.TWCP.GROUP4:
+                                //tbd:mlm need just the G4 data!!! not sure how to do
+                                //that yet, so this decompresses it...
+                                abImage = null; // send all the data
+                                break;
+                            case (ushort)TWAIN.TWCP.JPEG:
+                                abImage = File.ReadAllBytes(szFilename); // send all the data
+                                break;
+                            case (ushort)TWAIN.TWCP.NONE:
+                                abImage = null; // taken care of inside of ReportImage
+                                break;
+                        }
                         image.Dispose();
                         image = null;
-                        twainmsg = ReportImage("ScanCallback: 010", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), sts, bitmap, szFilename, m_twain.ImageinfoToCsv(twimageinfo), null, 0);
+                        twainmsg = ReportImage("ScanCallback: 010", TWAIN.DG.IMAGE.ToString(), TWAIN.DAT.IMAGEFILEXFER.ToString(), TWAIN.MSG.GET.ToString(), sts, bitmap, szFilename, m_twain.ImageinfoToCsv(twimageinfo), abImage, 0);
                         if (twainmsg == MSG.STOPFEEDER)
                         {
                             m_twainmsgPendingXfers = MSG.STOPFEEDER;
@@ -3500,9 +3575,14 @@ namespace TWAINWorkingGroupToolkit
         /// <summary>
         /// Image transfer counter...
         /// </summary>
-        private int m_iImageXferCount;
+        private int m_iImageXferCount = 0;
 
-        /// <summary>
+		/// <summary>
+		/// Delegate for overriding file info prior to DAT_SETUPFILEXFER...
+		/// </summary>
+		private SetupFileXferDelegate m_setupfilexferdelegate = null;
+
+		/// <summary>
         /// We're stepping into the scan callback for the first
         /// time since the call to MSG_ENABLEDS...
         /// </summary>

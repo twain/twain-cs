@@ -3,7 +3,7 @@
 // TWAINWorkingGroupToolkit AssemblyInfo
 //
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2017 Kodak Alaris Inc.
+//  Copyright (C) 2013-2019 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -57,5 +57,5 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("2.4.0.1")]
-[assembly: AssemblyFileVersion("2.4.0.1")]
+[assembly: AssemblyVersion("2.4.0.2")]
+[assembly: AssemblyFileVersion("2.4.0.2")]

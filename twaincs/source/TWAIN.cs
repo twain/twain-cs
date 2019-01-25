@@ -19,7 +19,7 @@
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2018 Kodak Alaris Inc.
+//  Copyright (C) 2013-2019 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -1089,6 +1089,7 @@ namespace TWAINWorkingGroup
                 case TWON.RANGE:
                     {
                         CSV csvRange;
+                        string szTmp;
                         TW_RANGE twrange;
                         TW_RANGE_LINUX64 twrangelinux64;
                         TW_RANGE_MACOSX twrangemacosx;
@@ -1116,7 +1117,7 @@ namespace TWAINWorkingGroup
                             twrangefix32.CurrentValue = twrangefix32macosx.CurrentValue;
                         }
                         // Windows or the 2.4+ Linux DSM...
-                        else if ((m_linuxdsm == LinuxDsm.IsLatestDsm) || (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
+                        else if ((ms_platform == Platform.WINDOWS) || (m_linuxdsm == LinuxDsm.IsLatestDsm) || (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
                         {
                             intptrLocked = DsmMemLock(a_twcapability.hContainer);
                             twrange = (TW_RANGE)Marshal.PtrToStructure(intptrLocked, typeof(TW_RANGE));
@@ -1208,11 +1209,16 @@ namespace TWAINWorkingGroup
                                 return (csvRange.Get());
 
                             case TWTY.FIX32:
-                                csvRange.Add(((double)twrangefix32.MinValue.Whole + ((double)twrangefix32.MinValue.Frac / 65536.0)).ToString());
-                                csvRange.Add(((double)twrangefix32.MaxValue.Whole + ((double)twrangefix32.MaxValue.Frac / 65536.0)).ToString());
-                                csvRange.Add(((double)twrangefix32.StepSize.Whole + ((double)twrangefix32.StepSize.Frac / 65536.0)).ToString());
-                                csvRange.Add(((double)twrangefix32.DefaultValue.Whole + ((double)twrangefix32.DefaultValue.Frac / 65536.0)).ToString());
-                                csvRange.Add(((double)twrangefix32.CurrentValue.Whole + ((double)twrangefix32.CurrentValue.Frac / 65536.0)).ToString());
+                                szTmp = ((double)twrangefix32.MinValue.Whole + ((double)twrangefix32.MinValue.Frac / 65536.0)).ToString("0." + new string('#', 339));
+                                csvRange.Add(szTmp);
+                                szTmp = ((double)twrangefix32.MaxValue.Whole + ((double)twrangefix32.MaxValue.Frac / 65536.0)).ToString("0." + new string('#', 339));
+                                csvRange.Add(szTmp);
+                                szTmp = ((double)twrangefix32.StepSize.Whole + ((double)twrangefix32.StepSize.Frac / 65536.0)).ToString("0." + new string('#', 339));
+                                csvRange.Add(szTmp);
+                                szTmp = ((double)twrangefix32.DefaultValue.Whole + ((double)twrangefix32.DefaultValue.Frac / 65536.0)).ToString("0." + new string('#', 339));
+                                csvRange.Add(szTmp);
+                                szTmp = ((double)twrangefix32.CurrentValue.Whole + ((double)twrangefix32.CurrentValue.Frac / 65536.0)).ToString("0." + new string('#', 339));
+                                csvRange.Add(szTmp);
                                 DsmMemUnlock(a_twcapability.hContainer);
                                 return (csvRange.Get());
                         }
@@ -1252,7 +1258,15 @@ namespace TWAINWorkingGroup
                 // Set the capability from text or hex...
                 try
                 {
-                    a_twcapability.Cap = (CAP)Enum.Parse(typeof(CAP), asz[0], true);
+					// see if it is a custom cap
+					if ((asz[0][0] == '8') || asz[0].StartsWith("0x8"))
+					{
+						a_twcapability.Cap = (CAP)0xFFFF;
+					}
+					else
+					{
+						a_twcapability.Cap = (CAP)Enum.Parse(typeof(CAP), asz[0], true);
+					}
                 }
                 catch
                 {
@@ -4816,11 +4830,9 @@ namespace TWAINWorkingGroup
                             try
                             {
                                 sts = (STS)NativeMethods.LinuxDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
-                                Log.Error("mlm>>> new " + sts);
                             }
                             catch
                             {
-                                Log.Error("mlm>>> new " + twidentitylegacy.ProductName.Get());
                                 sts = STS.NODS;
                             }
                         }
@@ -4841,11 +4853,9 @@ namespace TWAINWorkingGroup
                             try
                             {
                                 sts = (STS)NativeMethods.Linux020302Dsm64bitEntryIdentity(ref twidentitylinux64App, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylinux64);
-                                Log.Error("mlm>>> old " + sts);
                             }
                             catch
                             {
-                                Log.Error("mlm>>> old " + twidentitylegacy.ProductName.Get());
                                 sts = STS.NODS;
                             }
 
