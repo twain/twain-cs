@@ -8677,7 +8677,15 @@ namespace TWAINWorkingGroup
                         // call to MSG_ENABLEDS.  We can just do it...
                         else
                         {
-                            m_blAcceptXferReady = false;
+                            // To handle data sources that return MSG_XFERREADY in
+                            // the midst of processing MSG_ENABLEDS, we need to clear
+                            // the flag so we don't get in here again. However, if
+                            // the UI is up, we DO want to see all MSG_XFERREADYs.
+                            if (m_twuserinterface.ShowUI == 0)
+                            {
+                                m_blAcceptXferReady = false;
+                            }
+
                             m_state = STATE.S6;
                             m_blIsMsgxferready = true;
                             // TBD
