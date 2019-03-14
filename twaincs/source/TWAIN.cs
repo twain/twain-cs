@@ -9,6 +9,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    13-Mar-2019     2.4.0.3     Add language code page support for strings
 //  M.McLaughlin    13-Nov-2015     2.4.0.0     Updated to latest spec
 //  M.McLaughlin    13-Sep-2015     2.3.1.2     DsmMem bug fixes
 //  M.McLaughlin    26-Aug-2015     2.3.1.1     Log fix and sync with TWAIN Direct
@@ -3183,6 +3184,52 @@ namespace TWAINWorkingGroup
                 }
             }
 
+            // if MSG_SET/CAP_LANGUAGE, then we want to track it
+            if ((a_twcapability.Cap == CAP.CAP_LANGUAGE) && (a_msg == MSG.SET) && (a_twcapability.ConType == TWON.ONEVALUE))
+            {
+                string str;
+
+                // if it was successful, then go with what was set.
+                // otherwise ask the DS what it is currently set to
+                if (sts == STS.SUCCESS)
+                {
+                    str = CapabilityToCsv(a_twcapability);
+                }
+                else
+                {
+                    TW_CAPABILITY twcapability = new TW_CAPABILITY();
+                    twcapability.Cap = CAP.CAP_LANGUAGE;
+                    twcapability.ConType = TWON.ONEVALUE;
+                    sts = DatCapability(a_dg, MSG.GETCURRENT, ref twcapability);
+                    if (sts == STS.SUCCESS)
+                    {
+                        str = CapabilityToCsv(twcapability);
+                    }
+                    else
+                    {
+                        // couldn't get the value, so go with English
+                        str = "x," + ((int)TWLG.ENGLISH).ToString();
+                    }
+                }
+
+                // get the value from the CSV string
+                TWLG twlg = TWLG.ENGLISH;
+                try
+                {
+                    string[] astr = str.Split(new char[] { ',' });
+                    int result;
+                    if (int.TryParse(astr[astr.Length - 1], out result))
+                    {
+                       twlg = (TWLG)result;
+                    }
+                }
+                catch
+                {
+                    twlg = TWLG.ENGLISH;
+                }
+                Language.Set(twlg);
+            }
+
             // All done...
             return (stsRcOrCc);
         }
@@ -4935,6 +4982,9 @@ namespace TWAINWorkingGroup
                     m_twidentityDs = a_twidentity;
                     m_twidentitylegacyDs = TwidentityToTwidentitylegacy(m_twidentityDs);
                     m_twidentitymacosxDs = TwidentityToTwidentitymacosx(m_twidentityDs);
+
+                    // update language
+                    Language.Set(m_twidentityDs.Version.Language);
 
                     // Register for callbacks...
 
