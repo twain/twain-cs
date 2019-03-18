@@ -36,7 +36,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Kodak Alaris Inc.")]
 [assembly: AssemblyProduct("twaincstool")]
-[assembly: AssemblyCopyright("Copyright © 2013-2017, Kodak Alaris Inc.")]
+[assembly: AssemblyCopyright("Copyright © 2013-2019, Kodak Alaris Inc.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
