@@ -722,6 +722,10 @@ namespace TWAINWorkingGroupToolkit
                     sts = SendDatImagelayout(dg, msg, ref a_szStatus, ref a_szMemref);
                     break;
 
+                case TWAIN.DAT.PENDINGXFERS:
+                    sts = SendDatPendingxfers(dg, msg, ref a_szStatus, ref a_szMemref);
+                    break;
+
                 case TWAIN.DAT.SETUPFILEXFER:
                     sts = SendDatSetupfilexfer(dg, msg, ref a_szStatus, ref a_szMemref);
                     break;
@@ -1461,8 +1465,8 @@ namespace TWAINWorkingGroupToolkit
 
                 // If we're MSG_OPENDS and callbacks aren't in use, then
                 // we need to activate the message filter...
-                if ((a_msg == TWAIN.MSG.OPENDS)
-                    && (!m_blUseCallbacks))
+                if (    (a_msg == TWAIN.MSG.OPENDS)
+                    &&  (!m_blUseCallbacks))
                 {
                     SetMessageFilter(true);
                 }
@@ -1501,6 +1505,30 @@ namespace TWAINWorkingGroupToolkit
             if (sts == TWAIN.STS.SUCCESS)
             {
                 a_szMemref = m_twain.ImagelayoutToCsv(twimagelayout);
+            }
+
+            // All done...
+            return (sts);
+        }
+
+        /// <summary>
+        /// Handle DG_IMAGE / DAT_PENDINGXFERS / MSG_*
+        /// </summary>
+        /// <param name="a_dg">Data group</param>
+        /// <param name="a_msg">Operation</param>
+        /// <param name="a_szStatus">Result of operation</param>
+        /// <param name="a_szMemref">Pointer to data</param>
+        /// <returns>TWAIN status</returns>
+        private TWAIN.STS SendDatPendingxfers(TWAIN.DG a_dg, TWAIN.MSG a_msg, ref string a_szStatus, ref string a_szMemref)
+        {
+            TWAIN.STS sts;
+            TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
+
+            // Issue the command...
+            sts = m_twain.DatPendingxfers(a_dg, a_msg, ref twpendingxfers);
+            if (sts == TWAIN.STS.SUCCESS)
+            {
+                a_szMemref = m_twain.PendingxfersToCsv(twpendingxfers);
             }
 
             // All done...

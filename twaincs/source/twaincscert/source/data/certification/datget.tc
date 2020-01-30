@@ -1,0 +1,54 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Datget v1.0 14-Jan-2020
+; ${arg:1} - dg to use
+; ${arg:2} - dat to use
+; ${arg:3} - (optional) override for msg_get
+; returns: pass or fail
+;
+; Do a MSG_GET on a capability...
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Usage (gotta have at least two arguments)
+;
+if '${arg:2}' != '' goto MAIN.GETARGS
+echo 'datget dg dat [msg]'
+goto MAIN.PASS
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Figure out which msg to use...
+;
+:MAIN.GETARGS
+set capget.msg 'msg_get'
+if '${arg:3}' == '' goto MAIN.GET
+set capget.msg '${arg:3}'
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get
+;
+:MAIN.GET
+dsmentry src ds '${arg:1}' '${arg:2}' '${get:capget.msg}' undefined
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+echo '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Bye-bye...
+;
+:MAIN.PASS
+return pass
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Bye-bye...
+;
+:MAIN.FAIL
+echo 'Fail...${sts:}'
+return fail

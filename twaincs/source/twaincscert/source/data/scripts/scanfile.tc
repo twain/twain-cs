@@ -1,0 +1,188 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Scannative v1.0 21-Jan-2020
+; ${arg:1} - product name of scanner to open
+; returns: pass or fail
+;
+; Scan with DAT_IMAGENATIVEXFER...
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Init stuff...
+;
+set twain.state '0'
+set index.twimageinfo.count '16'
+set index.twpendingxfers.count '0'
+set index.twsetupmemxfer.preferred '2'
+set image.handle '0'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Load and open the DSM...
+;
+set twain.state '1'
+dsmload
+echo 'dsmload'
+set twain.state '2'
+dsmentry src null dg_control dat_parent msg_opendsm hwnd
+echo 'parent/opendsm.............${sts:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+set twain.state '3'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Open the driver...
+;
+dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
+echo 'identity/opends............${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+set twain.state '4'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_XFERMECH to TWSX_FILE...
+;
+dsmentry src null dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,TWSX_FILE'
+echo 'capability/set.............${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Start scanning...
+;
+wait reset
+dsmentry src null dg_control dat_userinterface msg_enableds '0,0'
+echo 'userinterface/enableds.....${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+set twain.state '5'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Wait for MSG_XFERREADY, if we don't see it then scoot...
+;
+wait 5000
+echo 'wait.......................${ret:}'
+if '${ret:}' !~contains 'msg_xferready' goto MAIN.PASS
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get information about the image...
+;
+:MAIN.NEXTIMAGEINFO
+set twain.state '6'
+dsmentry src ds dg_image dat_imageinfo msg_get '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
+echo 'imageinfo/get..............${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+set twimageinfo.compression '${ret:${get:index.twimageinfo.compression}}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set up the file transfer...
+;
+if '${get:twimageinfo.compression}' == 'JPEG' goto MAIN.JPEG
+set twsetupfilexfer.filename 'c:/twain/image.tif'
+set twsetupfilexfer.format 'TWFF_TIFF'
+goto MAIN.SETUPFILEXFER
+set twsetupfilexfer.filename 'c:/twain/image.jpg'
+set twsetupfilexfer.format 'TWFF_JFIF'
+:MAIN.SETUPFILEXFER
+dsmentry src ds dg_control dat_setupfilexfer msg_set '"${get:twsetupfilexfer.filename}",${get:twsetupfilexfer.format},0'
+echo 'setupfilexfer/get..........${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Transfer the image...
+;
+dsmentry src ds dg_image dat_imagefilexfer msg_get null
+echo 'imagefilexfer/get..........${sts:} - ${ret:}'
+if '${sts:}' != 'XFERDONE' goto MAIN.FAIL
+set twain.state '7'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; End the transfer, see if we're done...
+;
+dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
+echo 'pendingxfers/endxfer.......${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+if '${ret:${get:index.twpendingxfers.count}}' != '0' goto MAIN.NEXTIMAGEINFO
+set twain.state '5'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We've passed...
+;
+:MAIN.PASS
+set main.result pass
+goto MAIN.EXIT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We're run into a problem...
+;
+:MAIN.FAIL
+echo 'ERROR...........${sts:}'
+set main.result fail
+goto MAIN.EXIT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Rewind the driver, close and unload the DSM, return...
+;
+:MAIN.EXIT
+call TWAIN.REWIND
+return '${get:main.result}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Rewind from any TWAIN state...
+; returns: (nothing)
+;
+:TWAIN.REWIND
+;
+if '${get:twain.state}' < '7' goto REWIND.6
+dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
+echo 'pendingxfers/endxfer.......${sts:}'
+set twain.state '6'
+:REWIND.6
+if '${get:twain.state}' < '6' goto REWIND.5
+dsmentry src ds dg_control dat_pendingxfers msg_reset '0,0'
+echo 'pendingxfers/reset.........${sts:}'
+set twain.state '5'
+:REWIND.5
+if '${get:twain.state}' < '5' goto REWIND.4
+dsmentry src null dg_control dat_userinterface msg_disableds '0,0'
+echo 'userinterface/disableds....${sts:}'
+set twain.state '4'
+:REWIND.4
+if '${get:twain.state}' < '4' goto REWIND.3
+dsmentry src null dg_control dat_identity msg_closeds '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
+echo 'identity/closeds...........${sts:}'
+set twain.state '3'
+:REWIND.3
+if '${get:twain.state}' < '3' goto REWIND.2
+dsmentry src null dg_control dat_parent msg_closedsm hwnd
+echo 'parent/closedsm............${sts:}'
+set twain.state '2'
+:REWIND.2
+if '${get:twain.state}' < '2' goto REWIND.1
+dsmunload
+echo 'dsmunload'
+set twain.state '1'
+:REWIND.1
+return

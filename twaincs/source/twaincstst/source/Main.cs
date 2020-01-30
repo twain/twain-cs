@@ -195,16 +195,7 @@ namespace TWAINCSTst
         {
             if (m_twaincstoolkit != null)
             {
-                return
-                (
-                    m_twaincstoolkit.PreFilterMessage
-                    (
-                        a_message.HWnd,
-                        a_message.Msg,
-                        a_message.WParam,
-                        a_message.LParam
-                    )
-                );
+                return (m_twaincstoolkit.PreFilterMessage(a_message.HWnd, a_message.Msg, a_message.WParam, a_message.LParam));
             }
             return (true);
         }
