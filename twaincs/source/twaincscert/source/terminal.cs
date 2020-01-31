@@ -187,7 +187,7 @@ namespace twaincscert
                 string[] aszCmd;
 
                 // Prompt...
-                szCmd = interpreter.Prompt(m_streamreaderConsole);
+                szCmd = interpreter.Prompt(m_streamreaderConsole, ((m_twain == null) ? 0 : (int)m_twain.GetState()) + 1);
 
                 // Tokenize...
                 aszCmd = interpreter.Tokenize(szCmd);
@@ -821,6 +821,10 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdDsmLoad(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            Assembly assembly = typeof(Terminal).Assembly;
+            AssemblyName assemblyname = assembly.GetName();
+            Version version = assemblyname.Version;
+
             string szManufacturer = "TWAIN Working Group";
             string szProductFamily = "TWAIN Open Source";
             string szProductName = "TWAIN Certification";
@@ -830,8 +834,8 @@ namespace twaincscert
             TWAIN.TWCY twcy = TWAIN.TWCY.USA;
             string szInfo = "TWAIN Certification";
             TWAIN.TWLG twlg = TWAIN.TWLG.ENGLISH;
-            UInt16 u16MajorNum = 1;
-            UInt16 u16MinorNum = 0;
+            UInt16 u16MajorNum = (UInt16)version.Major;
+            UInt16 u16MinorNum = (UInt16)version.Minor;
             bool blUseLegacyDSM = false;
             bool blUseCallbacks = false;
             TWAIN.DeviceEventCallback deviceeventcallback = DeviceEventCallback;
@@ -1635,35 +1639,16 @@ namespace twaincscert
                 Display("help certification...........................certifying a scanner");
                 Display("help scripting...............................general discussion of scripting");
                 Display("");
-                DisplayRed("Discovery and Selection");
+                DisplayRed("Data Source Manager (DSM) commands");
                 Display("help [command]...............................this text or info about a command");
-                Display("list.........................................list scanners");
-                Display("quit.........................................exit the program");
-                Display("cloud........................................pick which cloud to use");
-                Display("select [cloud:|local:|signin:]{pattern}......select a cloud (signin) or local scanner");
-                Display("signin.......................................sign in to the current cloud");
-                Display("status.......................................status of the program");
-                Display("");
-                DisplayRed("Image Capture APIs (in order of use)");
-                Display("info.........................................get baseline information about the scanner");
-                Display("infoex.......................................get extended information about the scanner");
-                Display("invalidCommand...............................see how scanner handles an invalid command");
-                Display("invalidUri...................................see how scanner handles an invalid uri");
-                Display("createSession................................create a new session");
-                Display("getSession...................................show the current session object");
-                Display("waitForEvents................................wait for events, like session object changes");
-                Display("sendTask {task|file}.........................send task");
-                Display("startCapturing...............................start capturing new images");
-                Display("readImageBlockMetadata {block} {thumbnail}...read metadata for a block");
-                Display("readImageBlock {block} {metadata}............read image data block");
-                Display("releaseImageBlocks {first} {last}............release images blocks in the scanner");
-                Display("stopCapturing................................stop capturing new images");
-                Display("closeSession.................................close the current session");
+                Display("dsmload [args]...............................load the DSM");
+                Display("dsmunload....................................unload the DSM");
+                Display("dsmentry.....................................send a command to the DSM");
+                Display("wait [timeout]...............................wait for a DAT_NULL message");
                 Display("");
                 DisplayRed("Scripting");
                 Display("call {label}.................................call function");
                 Display("cd [path]....................................shows or sets the current directory");
-                Display("checkpdfraster [path]........................validate PDF/raster files");
                 Display("clean........................................clean the images folder");
                 Display("dir..........................................lists files and folders in the current directory");
                 Display("echo [text]..................................echo text");
@@ -1678,8 +1663,6 @@ namespace twaincscert
                 Display("runv [script]................................run a script verbosely");
                 Display("set [key [value]]............................show, set, or delete keys");
                 Display("sleep {milliseconds}.........................pause the current thread");
-                Display("twainlocalsession {create|destroy}...........use to test calls without using createSession");
-                Display("waitforsessionupdate {milliseconds}..........wait for the session object to update");
                 return (false);
             }
 
@@ -1697,7 +1680,9 @@ namespace twaincscert
                 Display("The TWAIN Certification program is an interpreter that interacts with TWAIN scanners.");
                 Display("It's main purpose is to run certification scripts testing compliance with the TWAIN");
                 Display("Specification.  It can also be used to test individual TWAIN commands with a high");
-                Display("degree of granularity.");
+                Display("degree of granularity.  User's should be prepared to snuggle up with a copy of the");
+                Display("TWAIN Specification if they want to get the most out of this program.  The most current");
+                Display("version can be found at:  https://twain.org");
                 Display("");
                 Display("For help with scripting enter 'help scripting'.  It will also be instructive to look at the");
                 Display("certification scripts, which are extensive, and exercise most of this program's features.");
@@ -1705,13 +1690,9 @@ namespace twaincscert
                 Display("For information about certifying scanners enter 'help certification'.");
                 Display("");
                 Display("Commands that may be of special interest are (use help for more info):");
-                Display("  cloud - pick which cloud to use");
-                Display("  signin - sign in to the currently selected cloud");
-                Display("  list - list the available TWAIN Local and TWAIN Cloud scanners");
-                Display("  select - select a TWAIN Cloud or a TWAIN Local scanner");
-                Display("  infoex - report information about the selected scanner");
-                Display("  createSession - connect to the selected scanner");
-                Display("  closeSession - disconnect from the selected scanner");
+                Display("  dsmload - load a DSM");
+                Display("  dsmunload - unload a DSM");
+                Display("  dsmentry - send a command to a DSM");
                 Display("  quit - exit from this program");
                 Display("  cd - change the current folder");
                 Display("  run [script] - with no arguments lists scripts, or run a script");
@@ -1724,18 +1705,14 @@ namespace twaincscert
                 /////////0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
                 DisplayRed("CERTIFYING A SCANNER");
                 Display("Certification is accomplished using scripts contained in the data/certification folder.  These");
-                Display("need to be run for the protocols supported by the scanner (TWAIN Local, TWAIN Cloud, or both).");
+                Display("need to be run for both 32-bit and 64-bit systems on the processors supported by the driver.");
                 Display("");
-                Display("The following commands can be used to locate the scanner, and run certification:");
-                Display("  cloud - pick which cloud to use");
-                Display("  signin - signs in to current TWAIN Cloud");
-                Display("  list - list available TWAIN Local and TWAIN Cloud scanners");
-                Display("  cd data/certification - change to the certification folder");
-                Display("  run certification \"protocol:scanner\"");
+                Display("The following script can be used to run certification:");
+                Display("  run certification \"scanner product name\"");
                 Display("    where protocol is one of the following:");
                 Display("      signin - for TWAIN Cloud");
                 Display("      local - for TWAIN Local");
-                Display("    and where scanner is the unique name of the scanner shown by the list command");
+                Display("    read about DG_CONTROL / DAT_IDENTITY / MSG_* to learn how to enumerate scanners.");
                 return (false);
             }
 
@@ -1750,8 +1727,10 @@ namespace twaincscert
                 Display("");
                 Display("The 'language' is not sophisticated.  It supports a goto, a conditional goto, and a call");
                 Display("function.  The set and increment commands manage variables.  All of the TWAIN calls are");
-                Display("accessible, including some extras used to stress the system.  The semicolon ';' is the comment");
-                Display("indicator.  At this time it must appear on a line by itself.");
+                Display("accessible, including some extras used to stress the system.  Custom capabilities can be");
+                Display("accessed using numbers.  Custom operations are not supported at this time (a flexible");
+                Display("marshalling system would be needed).  The semicolon ';' is the comment indicator.  At this");
+                Display("time it must appear on a line by itself.");
                 Display("");
                 Display("The most interesting part of the scripting support is variable expansion.  Variables take the");
                 Display("form ${source:target} with the following available sources:");
@@ -1761,58 +1740,11 @@ namespace twaincscert
                 Display("  or label; 1 - n accesses the rest of the arguments.  An index can be specified to access any");
                 Display("  command in the stack, but only 0 is recommended to look at the last user command.");
                 Display("");
-                Display("  '${ej:target}'");
-                Display("  Accesses the JSON contents of the last event.  For instance, ${ej:results.success} returns a");
-                Display("  value of true or false for the last event, or an empty string if communication failed.  If");
-                Display("  the target is #, then it expands to the number of UTF-8 bytes in the JSON payload.  If the");
-                Display("  value can't be found it expands to an empty string.  Use this in the WAITFOREVENTS script.");
-                Display("");
-                Display("  '${ejx:target}'");
-                Display("  Works like ${ej:target}, but if the target can't be found it expands to '(null)'.  Use this");
-                Display("  in the WAITFOREVENTS script.");
-                Display("");
-                Display("  '${ests:}'");
-                Display("  The HTTP status from the last waitForEvents command.  Use this in the WAITFOREVENTS script.");
-                Display("");
                 Display("  '${folder:target}'");
                 Display("  Resolves to the full path for targeted special folder: desktop, local, pictures, roaming");
                 Display("");
                 Display("  '${get:target}'");
                 Display("  The value last assigned to the target using the set command.");
-                Display("");
-                Display("  '${hdrkey:target}'");
-                Display("  Accesses the header keys in the response from the last command.  Target can be # for the number");
-                Display("  of headers, or a value from 0 - (${hdrkey:#} - 1) to access a particular header.");
-                Display("");
-                Display("  '${hdrvalue:target}'");
-                Display("  Accesses the header values in the response from the last command.  Target can be # for the number");
-                Display("  of headers, or a value from 0 - (${hdrkey:#} - 1) to access a particular header.");
-                Display("");
-                Display("  '${hdrjsonkey:target}'");
-                Display("  Accesses the header keys in the JSON multipart response from the last command.  Target can be #");
-                Display("  for the number of headers, or a value from 0 - (${hdrkey:#} - 1) to access a particular header.");
-                Display("");
-                Display("  '${hdrjsonvalue:target}'");
-                Display("  Accesses the header values in the JSON multipart response from the last command.  Target can be #");
-                Display("  for the number of headers, or a value from 0 - (${hdrkey:#} - 1) to access a particular header.");
-                Display("");
-                Display("  '${hdrimagekey:target}'");
-                Display("  Accesses the header keys in the image multipart response from the last command.  Target can be #");
-                Display("  for the number of headers, or a value from 0 - (${hdrkey:#} - 1) to access a particular header.");
-                Display("");
-                Display("  '${hdrimagevalue:target}'");
-                Display("  Accesses the header values in the image multipart response from the last command.  Target can be");
-                Display("  # for the number of headers, or a value from 0 - (${hdrkey:#} - 1) to access a particular header.");
-                Display("");
-                Display("  '${hdrthumbnailkey:target}'");
-                Display("  Accesses the header keys in the thumbnail multipart response from the last command.  Target can");
-                Display("  be # for the number of headers, or a value from 0 - (${hdrkey:#} - 1) to access a particular");
-                Display("  header.");
-                Display("");
-                Display("  '${hdrthumbnailvalue:target}'");
-                Display("  Accesses the header values in the thumbnail multipart response from the last command.  Target");
-                Display("  can be # for the number of headers, or a value from 0 - (${hdrkey:#} - 1) to access a particular");
-                Display("  header.");
                 Display("");
                 Display("  '${localtime:[format]}'");
                 Display("  Returns the current local time using the DateTime format.");
@@ -1831,41 +1763,22 @@ namespace twaincscert
                 Display("  The TWAIN TWRC return code for the command.  If the status was TWRC_FAILURE, then this will");
                 Display("  contain the TWCC condition code.");
                 Display("");
-                Display("  '${rj:target}'");
-                Display("  Accesses the JSON contents of the last command.  For instance, ${rj:results.success} returns a");
-                Display("  value of true or false for the last command, or an empty string if communication failed.  If");
-                Display("  the target is #, then it expands to the number of UTF-8 bytes in the JSON payload.  If the");
-                Display("  value can't be found it expands to an empty string.");
-                Display("");
-                Display("  '${rjx:target}'");
-                Display("  Works like ${rj:target}, but if the target can't be found it expands to '(null)'");
-                Display("");
-                Display("  '${rsts:}'");
-                Display("  The HTTP status from the last command.");
-                Display("");
-                Display("  '${txt:target}'");
-                Display("  Access the mDNS TXT fields.  If a target can't be found, it expands to an empty string.");
-                Display("");
-                Display("  '${txtx:target}'");
-                Display("  Works like ${txt:target}, but if the target can't be found it expands to '(null)'");
-                Display("");
-                Display("Note that some tricks are allowed, one can do ${hdrkey:${get:index}}, using the set and increment");
-                Display("increment commands to enumerate through all of the header keys.  Or ${rj:${arg:1}} to pass a JSON");
-                Display("key into a function.");
+                Display("Note that some tricks are allowed, one can do ${ret:${get:index}}, using the set and increment");
+                Display("increment commands to enumerate through all of the fields returned in a TW_* structure.");
                 return (false);
             }
 
             #endregion
 
-            // Discovery and Selection
-            #region Discovery and Selection
+            // Data Source Manager (DSM) commands
+            #region Data Source Manager (DSM) commands
 
             // Help...
             if ((szCommand == "help"))
             {
                 DisplayRed("HELP [COMMAND]");
                 Display("Provides assistence with command and their arguments.  It does not");
-                Display("go into detail on TWAIN.  Please read the Specifications for more");
+                Display("go into detail on TWAIN.  Please read the Specification for more");
                 Display("information.");
                 Display("");
                 Display("Curly brackets {} indicate mandatory arguments to a command.  Square");
@@ -1873,13 +1786,75 @@ namespace twaincscert
                 return (false);
             }
 
-            // List...
-            if ((szCommand == "list"))
+            // Dsmload...
+            if ((szCommand == "dsmload"))
             {
-                DisplayRed("LIST");
-                Display("List the scanners that are advertising themselves.  Note that the");
-                Display("same scanner may be seen multiple times, if it's being advertised");
-                Display("on more than one network interface card.");
+                Assembly assembly = typeof(Terminal).Assembly;
+                AssemblyName assemblyname = assembly.GetName();
+                Version version = assemblyname.Version;
+
+                DisplayRed("DSMLOAD");
+                Display("Load the Data Source Manager (DSM).  This must be done before using");
+                Display("dsmentry.  There are several arguments, which must be prefaced with");
+                Display("their name:");
+                Display("  manufacturer - tw_identity.Manufacturer (default='TWAIN Working Group')");
+                Display("  productfamily - tw_identity.ProductFamily (default='TWAIN Open Source')");
+                Display("  productname - tw_identity.ProductName (default='TWAIN Certification')");
+                Display("  protocolmajor - tw_identity.ProtocolMajor (default=TWON_PROTOCOLMAJOR)");
+                Display("  protocolminor - tw_identity.ProtocolMinor (default=TWON_PROTOCOLMINOR)");
+                Display("  supportedgroups - tw_identity.SupportedGroups (default=DG_APP2|DG_CONTROL|DG_IMAGE)");
+                Display("  twcy - tw_identity.Version.Country (default=TWCY_USA)");
+                Display("  info - tw_identity.Version.Info (default='TWAIN Certification')");
+                Display("  twlg - tw_identity.Version.Language (default=TWLG_ENGLISH)");
+                Display("  majornum - tw_identity.Version.MajorNum (default=" + version.Major + ")");
+                Display("  minornum - tw_identity.Version.MinorNum (default=" + version.Minor + ")");
+                Display("  uselegacydsm - true|false (default=false)");
+                Display("  usecallbacks - true|false (default=true, ignore if uselegacydsm is false)");
+                return (false);
+            }
+
+            // Dsmload...
+            if ((szCommand == "dsmunload"))
+            {
+                DisplayRed("DSMUNLOAD");
+                Display("Unload the Data Source Manager (DSM).");
+                return (false);
+            }
+
+            // Dsmentry...
+            if ((szCommand == "dsmentry"))
+            {
+                DisplayRed("DSMENTRY src dst dg dat msg memref");
+                Display("Send a command to the DSM with the following arguments:");
+                Display("  src - source of the message (this application)");
+                Display("  dst - destination, null for DSM commands, otherwise the Data Source");
+                Display("  dg - Data group (DG_*)");
+                Display("  dat - Data access type (DAT_*)");
+                Display("  msg - Message");
+                Display("  memref - the corresponding TW_* structure in CSV format");
+                Display(" ");
+                Display("Most commands support MSG_GET which can be used to get a look at the");
+                Display("CSV format, which can be compared to the TW_* structure described in");
+                Display("the TWAIN Specification.");
+                return (false);
+            }
+
+            // Wait...
+            if ((szCommand == "wait [reset|timeout]"))
+            {
+                DisplayRed("WAIT");
+                Display("Wait for a DSM_NULL message, such as MSG_XFERREADY.  The message can");
+                Display("arrive through the message pump on Windows, or the callback system on");
+                Display("any of the platforms (assuming TWAINDSM is in use).");
+                Display(" ");
+                Display("The reset argument clears any pending messages.  It's recommended to");
+                Display("do this before calls transitioning to state 5.");
+                Display(" ");
+                Display("The timeout is optional.  Specify it in milliseconds.  If the timeout");
+                Display("is triggered the value of ${ret:} is 'timeout'.");
+                Display(" ");
+                Display("If one more messages are received they'll appear in ${ret:} as a comma");
+                Display("separated list (ex: 'MSG_XFERREADY').");
                 return (false);
             }
 
@@ -1891,167 +1866,11 @@ namespace twaincscert
                 return (false);
             }
 
-            // Cloud...
-            if ((szCommand == "cloud"))
-            {
-                DisplayRed("CLOUD [cloud name]");
-                Display("Pick which cloud to use.  If a cloud name isn't provided then the");
-                Display("command list all of the available clouds.  The cloud names are in");
-                Display("the first column.  To manage the list of available clouds, edit the");
-                Display("cloud property in the twaincscert.appdata.txt file.");
-                return (false);
-            }
-
-            // Cloud...
-            if ((szCommand == "signin"))
-            {
-                DisplayRed("SIGNIN");
-                Display("Sign in to the current selected cloud.");
-                return (false);
-            }
-
-            // Select...
-            if ((szCommand == "select"))
-            {
-                DisplayRed("SELECT [local:]{PATTERN}");
-                Display("Selects one of the scanners shown in the list command, which is");
-                Display("the scanner that will be accessed by the API commands.  The pattern");
-                Display("must match some or all of the name, the IP address, or the note.");
-                Display("");
-                Display("Note that with HTTPS we have to use the link local name, which");
-                Display("means that you can't select which network interface is going to");
-                Display("be used to talk to the scanner.  Put another way, we can't use the");
-                Display("raw IP address.");
-                Display("");
-                Display("Prefix the pattern with 'local:' if you have to use 127.0.0.1 due");
-                Display("to HTTPS certificate restrictions.");
-                return (false);
-            }
-
             // Status...
             if ((szCommand == "status"))
             {
                 DisplayRed("STATUS");
                 Display("General information about the current operation of the program.");
-                return (false);
-            }
-
-            #endregion
-
-            // Image Capture APIs (in order of use)
-            #region Image Capture APIs (in order of use)
-
-            // infoex...
-            if ((szCommand == "info"))
-            {
-                DisplayRed("INFO");
-                Display("Issues an info command to the scanner that picked out using");
-                Display("the SELECT command.  The command must be issued before making");
-                Display("a call to CREATESESSION.");
-                return (false);
-            }
-
-            // infoex...
-            if ((szCommand == "infoex"))
-            {
-                DisplayRed("INFOEX");
-                Display("Issues an infoex command to the scanner that picked out using");
-                Display("the SELECT command.  The command must be issued before making");
-                Display("a call to CREATESESSION.");
-                return (false);
-            }
-
-            // invalidCommand...
-            if ((szCommand == "invalidcommand"))
-            {
-                DisplayRed("INVALIDCOMMAND");
-                Display("See how the scanner handles an invalid command.");
-                return (false);
-            }
-
-            // invalidUri...
-            if ((szCommand == "invaliduri"))
-            {
-                DisplayRed("INVALIDURI");
-                Display("See how the scanner handles an invalid uri.");
-                return (false);
-            }
-
-            // createSession...
-            if ((szCommand == "createsession"))
-            {
-                DisplayRed("CREATESESSION");
-                Display("Creates a session for the scanner picked out using the SELECT");
-                Display("command.  To end the session use CLOSESESSION.");
-                return (false);
-            }
-
-            // getSession...
-            if ((szCommand == "getsession"))
-            {
-                DisplayRed("GETSESSION");
-                Display("Gets infornation about the current session.");
-                return (false);
-            }
-
-            // startCapturing...
-            if ((szCommand == "startcapturing"))
-            {
-                DisplayRed("STARTCAPTURING");
-                Display("Start capturing images from the scanner.");
-                return (false);
-            }
-
-            // readImageBlockMetadata...
-            if ((szCommand == "readimageblockmetadata"))
-            {
-                DisplayRed("READIMAGEBLOCKMETADATA {BLOCK} {INCLUDETHUMBNAIL}");
-                Display("Reads the metadata for the specified image BLOCK, and");
-                Display("optionally includes a thumbnail for that image.  The");
-                Display("value of BLOCK matches one of the numbers in the session");
-                Display("object's imageBlocks array.  The INCLUDETHUMBNAIL value");
-                Display("mustt be set to true to get a thumbnail.");
-                return (false);
-            }
-
-            // readImageBlock...
-            if ((szCommand == "readimageblock"))
-            {
-                DisplayRed("READIMAGEBLOCK {BLOCK} {INCLUDEMETADATA}");
-                Display("Reads the image data for the specified image BLOCK, and");
-                Display("optionally includes the metadata for that image.  The");
-                Display("value of BLOCK matches one of the numbers in the session");
-                Display("object's imageBlocks array.  The INCLUDEMETADATA value");
-                Display("must be set to true to get metadata with the image.");
-                return (false);
-            }
-
-            // releaseImageBlocks...
-            if ((szCommand == "releaseimageblocks"))
-            {
-                DisplayRed("RELEASEIMAGEBLOCKS {FIRST} {LAST}");
-                Display("Releases the image blocks from FIRST to LAST inclusive.");
-                Display("The value of FIRST and LAST matches one of the numbers in");
-                Display("the session object's imageBlocks array.");
-                return (false);
-            }
-
-            // stopCapturing...
-            if ((szCommand == "stopCapturing"))
-            {
-                DisplayRed("STOPCAPTURING");
-                Display("Stop capturing images from the scanner, the scanner will");
-                Display("complete scanning the current image.");
-                return (false);
-            }
-
-            // closeSession...
-            if ((szCommand == "closeSession"))
-            {
-                DisplayRed("CLOSESESSION");
-                Display("Close the session, which unlocks the scanner.  The user");
-                Display("is responsible for releasing any remaining images.  The");
-                Display("scanner is not unlocked until all images are released.");
                 return (false);
             }
 
@@ -2250,26 +2069,6 @@ namespace twaincscert
             {
                 DisplayRed("SLEEP {MILLISECONDS}");
                 Display("Pause the thread for the specified number of milliseconds.");
-                return (false);
-            }
-
-            // Twainlocalsession...
-            if ((szCommand == "twainlocalsession"))
-            {
-                DisplayRed("TWAINLOCALSESSION {CREATE|DESTROY}");
-                Display("Use this to test the behavior of commands called before");
-                Display("createSession.  They should return 'invalidSessionId'.");
-                return (false);
-            }
-
-            // Waitforsessionupdate...
-            if ((szCommand == "waitforsessionupdate"))
-            {
-                DisplayRed("WAITFORSESSIONUPDATE {MILLISECONDS}");
-                Display("Wait MILLISECONDS for the session object to be updated, which");
-                Display("means that its revision number has been incremented.  The '${ret:}'");
-                Display("symbol is set to true if the command was signaled.  A value of");
-                Display("false means the command timed out.");
                 return (false);
             }
 
@@ -2629,7 +2428,7 @@ namespace twaincscert
             while (true)
             {
                 // Get the command...
-                szCmd = interpreter.Prompt(m_streamreaderConsole);
+                szCmd = interpreter.Prompt(m_streamreaderConsole, ((m_twain == null) ? 0 : (int)m_twain.GetState()) + 1);
 
                 // If we have no commands to compare it against, we're done...
                 if (lszCommands.Count == 0)
@@ -3126,8 +2925,27 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdStatus(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            // Current scanner...
-            DisplayRed("SELECTED SCANNER");
+            // Platform...
+            Display("Platform........." + TWAINWorkingGroup.TWAIN.GetPlatform() + " (" + TWAINWorkingGroup.TWAIN.GetMachineWordBitSize() + "-bit)");
+
+            // DSM is not loaded...
+            if (m_twain == null)
+            {
+                Display("DSM Path.........(not loaded)");
+                return (false);
+            }
+
+            // DSM in use...
+            Display("DSM Path........." + m_twain.GetDsmPath());
+
+            // State...
+            Display("TWAIN State......" + ((int)m_twain.GetState() + 1));
+
+            // If state 4 or higher, what is our driver?
+            if (m_twain.GetState() >= TWAIN.STATE.S4)
+            {
+                Display("TWAIN Driver....." + m_twain.GetDsIdentity());
+            }
 
             // All done...
             return (false);
@@ -3477,33 +3295,18 @@ namespace twaincscert
                     // Expand the stuff to the right of the source, so if we have
                     // ${rj:x} we'll get x back, but if we have ${rj:${arg:1}}, we'll
                     // get the value of ${arg:1} back...
-                    if (szSymbol.StartsWith("${rdata:")
-                        || szSymbol.StartsWith("${rj:")
-                        || szSymbol.StartsWith("${rjx:")
-                        || szSymbol.StartsWith("${rsts:")
-                        || szSymbol.StartsWith("${edata:")
-                        || szSymbol.StartsWith("${ej:")
-                        || szSymbol.StartsWith("${ejx:")
-                        || szSymbol.StartsWith("${ests:")
-                        || szSymbol.StartsWith("${session:")
+                    if (   szSymbol.StartsWith("${arg:")
+                        || szSymbol.StartsWith("${bits:")
+                        || szSymbol.StartsWith("${ds:")
                         || szSymbol.StartsWith("${folder:")
                         || szSymbol.StartsWith("${get:")
-                        || szSymbol.StartsWith("${arg:")
-                        || szSymbol.StartsWith("${ret:")
-                        || szSymbol.StartsWith("${sts:")
-                        || szSymbol.StartsWith("${hdrkey:")
-                        || szSymbol.StartsWith("${hdrvalue:")
-                        || szSymbol.StartsWith("${hdrjsonkey:")
-                        || szSymbol.StartsWith("${hdrjsonvalue:")
-                        || szSymbol.StartsWith("${hdrimagekey:")
-                        || szSymbol.StartsWith("${hdrimagevalue:")
-                        || szSymbol.StartsWith("${hdrthumbnailkey:")
-                        || szSymbol.StartsWith("${hdrthumbnailvalue:")
-                        || szSymbol.StartsWith("${txt:")
-                        || szSymbol.StartsWith("${txtx:")
+                        || szSymbol.StartsWith("${localtime:")
+                        || szSymbol.StartsWith("${platform:")
                         || szSymbol.StartsWith("${program:")
                         || szSymbol.StartsWith("${report:")
-                        || szSymbol.StartsWith("${localtime:"))
+                        || szSymbol.StartsWith("${ret:")
+                        || szSymbol.StartsWith("${state:")
+                        || szSymbol.StartsWith("${sts:"))
                     {
                         int iSymbolIndexLeft = szSymbol.IndexOf(":") + 1;
                         int iSymbolIndexLength;
@@ -3618,6 +3421,56 @@ namespace twaincscert
                         {
                             // Not the most brilliant idea, but what the hell...
                             szValue = szSymbol.Replace("${", "").Replace(":", "").Replace("}", "");
+                        }
+                    }
+
+                    // Get number of bits in the machine word...
+                    else if (szSymbol.StartsWith("${bits:"))
+                    {
+                        szValue = TWAINWorkingGroup.TWAIN.GetMachineWordBitSize().ToString();
+                    }
+
+                    // Get the platform...
+                    else if (szSymbol.StartsWith("${platform:"))
+                    {
+                        szValue = TWAINWorkingGroup.TWAIN.GetPlatform().ToString();
+                    }
+
+                    // Get the TWAIN state...
+                    else if (szSymbol.StartsWith("${state:"))
+                    {
+                        if (m_twain == null)
+                        {
+                            szValue = "0";
+                        }
+                        else
+                        {
+                            szValue = ((int)m_twain.GetState()).ToString();
+                        }
+                    }
+
+                    // Get data from the data source (indexible)...
+                    else if (szSymbol.StartsWith("${ds:"))
+                    {
+                        if (szSymbol == "${ds:}")
+                        {
+                            szValue = m_twain.GetDsIdentity();
+                        }
+                        else
+                        {
+                            int iIndex = 0;
+                            if (int.TryParse(szSymbol.Replace("${ds:", "").Replace("}", ""), out iIndex))
+                            {
+                                string[] asz = CSV.Parse(m_twain.GetDsIdentity());
+                                if ((iIndex < 0) || (iIndex >= asz.Length))
+                                {
+                                    szValue = "";
+                                }
+                                else
+                                {
+                                    szValue = asz[iIndex];
+                                }
+                            }
                         }
                     }
 
@@ -4221,24 +4074,27 @@ namespace twaincscert
         /// Prompt for input, returning a string, if there's any data...
         /// </summary>
         /// <param name="a_streamreaderConsole">the console to use</param>
+        /// <param name="a_iTwainState">twain state</param>
         /// <returns>data captured</returns>
-        public string Prompt(StreamReader a_streamreaderConsole)
+        public string Prompt(StreamReader a_streamreaderConsole, int a_iTwainState)
         {
             string szCmd;
 
             // Read in a line...
             while (true)
             {
+                string szPrompt = m_szPrompt.Replace(">>>", a_iTwainState + ">>>");
+
                 // Write out the prompt...
                 if (Console.BackgroundColor == ConsoleColor.Black)
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.Out.Write(m_szPrompt);
+                    Console.Out.Write(szPrompt);
                     Console.ForegroundColor = ConsoleColor.Gray;
                 }
                 else
                 {
-                    Console.Out.Write(m_szPrompt);
+                    Console.Out.Write(szPrompt);
                 }
 
                 // Read in a line...

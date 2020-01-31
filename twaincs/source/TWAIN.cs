@@ -331,6 +331,82 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Report the path to the DSM we're using...
+        /// </summary>
+        /// <returns>full path to the DSM</returns>
+        public string GetDsmPath()
+        {
+            string szDsmPath = "";
+
+            // Windows...
+            if (ms_platform == Platform.WINDOWS)
+            {
+                if (m_blUseLegacyDSM)
+                {
+                    szDsmPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "twain_32.dll");
+                }
+                else
+                {
+                    szDsmPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "twaindsm.dll");
+                }
+            }
+
+            // Linux...
+            else if (ms_platform == Platform.LINUX)
+            {
+                if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
+                {
+                    szDsmPath = "/usr/local/lib/libtwaindsm.so";
+                }
+                else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
+                {
+                    szDsmPath = "/usr/local/lib/libtwaindsm.so.2.3.2";
+                }
+            }
+
+            // Mac OS X, which has to be different...
+            else if (ms_platform == Platform.MACOSX)
+            {
+                if (m_blUseLegacyDSM)
+                {
+                    szDsmPath = "/System/Library/Frameworks/TWAIN.framework/TWAIN";
+                }
+                else
+                {
+                    szDsmPath = "/Library/Frameworks/TWAIN.framework/TWAIN";
+                }
+            }
+
+            // If found...
+            if (File.Exists(szDsmPath))
+            {
+                return (szDsmPath);
+            }
+
+            // Ruh-roh...
+            if (string.IsNullOrEmpty(szDsmPath))
+            {
+                return ("(could not identify a DSM candidate for this platform - '" + ms_platform + "')");
+            }
+
+            // Hmmm...
+            return ("(could not find '" + szDsmPath + "')");
+        }
+
+        /// <summary>
+        /// Get the identity of the current driver, if we have one...
+        /// </summary>
+        /// <returns></returns>
+        public string GetDsIdentity()
+        {
+            if (m_state < STATE.S4)
+            {
+                return (IdentityToCsv(default(TW_IDENTITY)));
+            }
+            return (IdentityToCsv(m_twidentityDs));
+        }
+
+        /// <summary>
         /// Cleanup...
         /// </summary>
         [SuppressMessage("Microsoft.Security", "CA2123:OverrideLinkDemandsShouldBeIdenticalToBase")]
