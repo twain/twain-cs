@@ -111,7 +111,7 @@ if '${ret:}' != 'pass' goto MAIN.FAIL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Wait for MSG_XFERREADY, if we don't see it then scoot...
 ;
-wait 5000
+wait 30000
 echo 'wait.......................${ret:}'
 if '${ret:}' !~contains 'msg_xferready' goto MAIN.PASS
 set twain.state '6'
@@ -144,10 +144,10 @@ set twimageinfo.compression '${ret:${get:index.twimageinfo.compression}}'
 ; Set up the file transfer...
 ;
 if '${get:twimageinfo.compression}' == 'JPEG' goto MAIN.JPEG
-set twsetupfilexfer.filename 'c:/twain/image.tif'
+set twsetupfilexfer.filename '${folder:desktop}/twaincscert/image.tif'
 set twsetupfilexfer.format 'TWFF_TIFF'
 goto MAIN.SETUPFILEXFER
-set twsetupfilexfer.filename 'c:/twain/image.jpg'
+set twsetupfilexfer.filename '${folder:desktop}/twaincscert/image.jpg'
 set twsetupfilexfer.format 'TWFF_JFIF'
 :MAIN.SETUPFILEXFER
 dsmentry src ds dg_control dat_setupfilexfer msg_set '"${get:twsetupfilexfer.filename}",${get:twsetupfilexfer.format},0'

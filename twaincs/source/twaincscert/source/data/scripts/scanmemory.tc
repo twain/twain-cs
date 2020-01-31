@@ -81,7 +81,7 @@ set twain.state '5'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Wait for MSG_XFERREADY, if we don't see it then scoot...
 ;
-wait 5000
+wait 30000
 echo 'wait.......................${ret:}'
 if '${ret:}' !~contains 'msg_xferready' goto MAIN.PASS
 

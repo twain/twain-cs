@@ -71,7 +71,11 @@ namespace twaincscert
             m_lkeyvalue = new List<KeyValue>();
             m_objectKeyValue = new object();
             m_lcallstack = new List<CallStack>();
-            m_intptrHwnd = a_formmain.Handle;
+            m_intptrHwnd = IntPtr.Zero;
+            if (a_formmain != null)
+            {
+                m_intptrHwnd = a_formmain.Handle;
+            }
 
             // Set up the base stack with the program arguments, we know
             // this is the base stack for two reasons: first, it has no
@@ -159,6 +163,21 @@ namespace twaincscert
         {
             string szPrompt = "tc";
             Interpreter interpreter = new Interpreter(szPrompt + ">>> ");
+
+            // If not windows we have to turn on echo...
+            if (TWAINWorkingGroup.TWAIN.GetPlatform() != TWAIN.Platform.WINDOWS)
+            {
+                var typeSystemConsoleDriver = System.Type.GetType("System.ConsoleDriver");
+                if (typeSystemConsoleDriver != null)
+                {
+                    var setecho = typeSystemConsoleDriver.GetMethod("SetEcho", BindingFlags.Static | BindingFlags.NonPublic);
+                    if (setecho != null)
+                    {
+                        setecho.Invoke(System.Console.In, new object[] { false });
+                        setecho.Invoke(System.Console.In, new object[] { true });
+                    }
+                }
+            }
 
             // Run until told to stop...
             while (true)
@@ -1754,6 +1773,9 @@ namespace twaincscert
                 Display("");
                 Display("  '${ests:}'");
                 Display("  The HTTP status from the last waitForEvents command.  Use this in the WAITFOREVENTS script.");
+                Display("");
+                Display("  '${folder:target}'");
+                Display("  Resolves to the full path for targeted special folder: desktop, local, pictures, roaming");
                 Display("");
                 Display("  '${get:target}'");
                 Display("  The value last assigned to the target using the set command.");
@@ -3464,6 +3486,7 @@ namespace twaincscert
                         || szSymbol.StartsWith("${ejx:")
                         || szSymbol.StartsWith("${ests:")
                         || szSymbol.StartsWith("${session:")
+                        || szSymbol.StartsWith("${folder:")
                         || szSymbol.StartsWith("${get:")
                         || szSymbol.StartsWith("${arg:")
                         || szSymbol.StartsWith("${ret:")
@@ -3572,6 +3595,32 @@ namespace twaincscert
                         }
                     }
 
+                    // Special folders
+                    else if (szSymbol.StartsWith("${folder:"))
+                    {
+                        if (szSymbol == "${folder:desktop}")
+                        {
+                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                        }
+                        else if (szSymbol == "${folder:local}")
+                        {
+                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                        }
+                        else if (szSymbol == "${folder:pictures}")
+                        {
+                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+                        }
+                        else if (szSymbol == "${folder:roaming}")
+                        {
+                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                        }
+                        else
+                        {
+                            // Not the most brilliant idea, but what the hell...
+                            szValue = szSymbol.Replace("${", "").Replace(":", "").Replace("}", "");
+                        }
+                    }
+
                     // Get data from the return value...
                     else if (szSymbol.StartsWith("${ret:"))
                     {
@@ -3630,7 +3679,7 @@ namespace twaincscert
                         AssemblyName assemblyname = assembly.GetName();
                         Version version = assemblyname.Version;
                         DateTime datetime = new DateTime(2000, 1, 1).AddDays(version.Build).AddSeconds(version.MinorRevision * 2);
-                        szValue = assemblyname.Name +" v" + version.Major + "." + version.Minor + " " + datetime.Day + "-" + datetime.ToString("MMM") + "-" + datetime.Year + " " + ((IntPtr.Size == 4) ? "(32-bit)" : "(64-bit)");
+                        szValue = assemblyname.Name + " v" + version.Major + "." + version.Minor + " " + datetime.Day + "-" + datetime.ToString("MMM") + "-" + datetime.Year + " " + ((IntPtr.Size == 4) ? "(32-bit)" : "(64-bit)");
                     }
 
                     // Failsafe (we should catch all of these up above)...
@@ -4193,10 +4242,55 @@ namespace twaincscert
                 }
 
                 // Read in a line...
-                szCmd = (a_streamreaderConsole == null) ? Console.In.ReadLine() : a_streamreaderConsole.ReadLine();
-                if (string.IsNullOrEmpty(szCmd))
+                if (Environment.OSVersion.ToString().Contains("Microsoft Windows"))
                 {
-                    continue;
+                    szCmd = (a_streamreaderConsole == null) ? Console.In.ReadLine() : a_streamreaderConsole.ReadLine();
+                    if (string.IsNullOrEmpty(szCmd))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    List<char> lchLine = new List<char>();
+                    TextReader textreader = (a_streamreaderConsole == null) ? Console.In : a_streamreaderConsole;
+                    bool blTyping = true;
+                    while (blTyping)
+                    {
+                        int iCh = textreader.Read();
+                        switch (iCh)
+                        {
+                            // A character...
+                            default:
+                                lchLine.Add((char)iCh);
+                                Console.Out.Write((char)iCh);
+                                break;
+
+                            // Backspace and delete...
+                            case 0x08:
+                            case 0x7f:
+                                if (lchLine.Count > 0)
+                                {
+                                    lchLine.RemoveAt(lchLine.Count - 1);
+                                    Console.Out.Write('\b');
+                                    Console.Out.Write(' ');
+                                    Console.Out.Write('\b');
+                                }
+                                break;
+
+                            // Newline and carriage return...
+                            case 0x0a:
+                            case 0x0d:
+                                Console.Out.Write((char)iCh);
+                                blTyping = false;
+                                break;
+                        }
+                    }
+                    szCmd = "";
+                    foreach (char ch in lchLine)
+                    {
+                        szCmd += ch;
+                    }
                 }
 
                 // Trim whitespace...
