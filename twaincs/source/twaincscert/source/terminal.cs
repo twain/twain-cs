@@ -42,6 +42,7 @@ using System.Resources;
 using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using TWAINWorkingGroup;
@@ -121,6 +122,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIncrement,                    new string[] { "increment" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdInput,                        new string[] { "input" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdLog,                          new string[] { "log" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReport,                       new string[] { "report" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReturn,                       new string[] { "return" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRun,                          new string[] { "run" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRunv,                         new string[] { "runv" }));
@@ -1664,6 +1666,7 @@ namespace twaincscert
                 Display("increment {dst} {src} [step].................increment src by step and store in dst");
                 Display("json2xml {file|json}.........................convert json formatted data to xml");
                 Display("log {info|warn|error,etc} text...............add a line to the log file");
+                Display("report {initialize|save {folder}}............self certification report");
                 Display("return [status]..............................return from call function");
                 Display("run [script].................................run a script");
                 Display("runv [script]................................run a script verbosely");
@@ -2030,6 +2033,14 @@ namespace twaincscert
             {
                 DisplayRed("PWD");
                 Display("Show the path to the current working directory.");
+                return (false);
+            }
+
+            // Report...
+            if ((szCommand == "report"))
+            {
+                DisplayRed("REPORT {INITIALIZE | SAVE {FOLDER}}");
+                Display("Initialize or save a self certification report.");
                 return (false);
             }
 
@@ -2580,6 +2591,74 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Manage the self cert report...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdReport(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            // If we have no arguments, then log a complaint...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[1] == null))
+            {
+                DisplayError("please specify initialize or save");
+                return (false);
+            }
+
+            // Clear...
+            if (a_functionarguments.aszCmd[1].ToLowerInvariant() == "initialize")
+            {
+                m_stringbuilderSelfCertReport = new StringBuilder();
+                m_szSelfCertReportPath = null;
+            }
+
+            // Save file...
+            else if (a_functionarguments.aszCmd[1].ToLowerInvariant() == "save")
+            {
+                string szFolder;
+                if ((a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null))
+                {
+                    DisplayError("please specify a filename");
+                    return (false);
+                }
+                try
+                {
+                    if (m_twain == null)
+                    {
+                        DisplayError("we need twain to tell us what driver was used");
+                        return (false);
+                    }
+                    else
+                    {
+                        string[] asz = CSV.Parse(m_twain.GetDsIdentity());
+                        szFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
+                        szFolder = Path.Combine(szFolder, Regex.Replace(asz[11], "[^a-zA-Z0-9]", "_"));
+                        if (!Directory.Exists(szFolder))
+                        {
+                            Directory.CreateDirectory(szFolder);
+                        }
+                        m_szSelfCertReportPath = Path.Combine(szFolder, a_functionarguments.aszCmd[2]);
+                        File.WriteAllText(m_szSelfCertReportPath, m_stringbuilderSelfCertReport.ToString());
+                    }
+                }
+                catch (Exception exception)
+                {
+                    DisplayError("save threw exception: " + exception.Message);
+                    m_szSelfCertReportPath = null;
+                    return (false);
+                }
+            }
+
+            // No idea...
+            else
+            {
+                DisplayError("unrecognized commend: " + a_functionarguments.aszCmd[1]);
+            }
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
         /// Return from the current function...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
@@ -3107,6 +3186,10 @@ namespace twaincscert
             {
                 Console.Out.WriteLine(a_szText);
             }
+            if (m_stringbuilderSelfCertReport != null)
+            {
+                m_stringbuilderSelfCertReport.AppendLine(a_szText);
+            }
         }
 
         /// <summary>
@@ -3126,6 +3209,10 @@ namespace twaincscert
                 else
                 {
                     Console.Out.WriteLine(a_szText);
+                }
+                if (m_stringbuilderSelfCertReport != null)
+                {
+                    m_stringbuilderSelfCertReport.AppendLine(a_szText);
                 }
             }
         }
@@ -3148,6 +3235,10 @@ namespace twaincscert
                 {
                     Console.Out.WriteLine(a_szText);
                 }
+                if (m_stringbuilderSelfCertReport != null)
+                {
+                    m_stringbuilderSelfCertReport.AppendLine(a_szText);
+                }
             }
         }
 
@@ -3168,6 +3259,10 @@ namespace twaincscert
                 else
                 {
                     Console.Out.WriteLine(a_szText);
+                }
+                if (m_stringbuilderSelfCertReport != null)
+                {
+                    m_stringbuilderSelfCertReport.AppendLine(a_szText);
                 }
             }
         }
@@ -3190,6 +3285,10 @@ namespace twaincscert
                 {
                     Console.Out.WriteLine(a_szText);
                 }
+                if (m_stringbuilderSelfCertReport != null)
+                {
+                    m_stringbuilderSelfCertReport.AppendLine(a_szText);
+                }
             }
         }
 
@@ -3200,6 +3299,10 @@ namespace twaincscert
         private void DisplayError(string a_szText)
         {
             Console.Out.WriteLine("ERROR: " + a_szText);
+            if (m_stringbuilderSelfCertReport != null)
+            {
+                m_stringbuilderSelfCertReport.AppendLine(a_szText);
+            }
         }
 
         /// <summary>
@@ -3706,6 +3809,12 @@ namespace twaincscert
         /// A last in first off stack of function calls...
         /// </summary>
         private List<CallStack> m_lcallstack;
+
+        /// <summary>
+        /// Our certification report, in glorious text...
+        /// </summary>
+        private StringBuilder m_stringbuilderSelfCertReport;
+        private string m_szSelfCertReportPath;
 
         /// <summary>
         /// The opening banner (program, version, etc)...
