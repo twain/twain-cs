@@ -380,7 +380,9 @@ namespace twaincscert
             // Send the command...
             switch (a_functionarguments.iDat)
             {
-                // Ruh-roh...
+                // Ruh-roh, since we can't marshal it, we have to return an error,
+                // it would be nice to have a solution for this, but that will need
+                // a dynamic marshalling system...
                 default:
                     a_functionarguments.sts = TWAIN.STS.BADPROTOCOL;
                     break;
@@ -513,12 +515,12 @@ namespace twaincscert
                 // DAT_EXTIMAGEINFO...
                 case (int)TWAIN.DAT.EXTIMAGEINFO:
                     {
-                        //TWAIN.TW_EXTIMAGEINFO twextimageinfo = default(TWAIN.TW_EXTIMAGEINFO);
-                        //m_twain.CsvToExtimageinfo(ref twextimageinfo, a_functionarguments.aszCmd[6]);
-                        //a_functionarguments.sts = m_twain.DatExtimageinfo((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twextimageinfo);
-                        //a_functionarguments.szReturnValue = m_twain.ExtimageinfoToCsv(twextimageinfo);
-                        //callstack.functionarguments.sts = a_functionarguments.sts;
-                        //callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+                        TWAIN.TW_EXTIMAGEINFO twextimageinfo = default(TWAIN.TW_EXTIMAGEINFO);
+                        m_twain.CsvToExtimageinfo(ref twextimageinfo, a_functionarguments.aszCmd[6]);
+                        a_functionarguments.sts = m_twain.DatExtimageinfo((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twextimageinfo);
+                        a_functionarguments.szReturnValue = m_twain.ExtimageinfoToCsv(twextimageinfo);
+                        callstack.functionarguments.sts = a_functionarguments.sts;
+                        callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
                     break;
 
@@ -697,12 +699,12 @@ namespace twaincscert
                 // DAT_PASSTHRU...
                 case (int)TWAIN.DAT.PASSTHRU:
                     {
-                        //TWAIN.TW_PASSTHRU twpassthru = default(TWAIN.TW_PASSTHRU);
-                        //m_twain.CsvToPassthru(ref twpassthru, a_functionarguments.aszCmd[6]);
-                        //a_functionarguments.sts = m_twain.DatPassthru((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twpassthru);
-                        //a_functionarguments.szReturnValue = m_twain.PassthruToCsv(twpassthru);
-                        //callstack.functionarguments.sts = a_functionarguments.sts;
-                        //callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+                        TWAIN.TW_PASSTHRU twpassthru = default(TWAIN.TW_PASSTHRU);
+                        m_twain.CsvToPassthru(ref twpassthru, a_functionarguments.aszCmd[6]);
+                        a_functionarguments.sts = m_twain.DatPassthru((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twpassthru);
+                        a_functionarguments.szReturnValue = m_twain.PassthruToCsv(twpassthru);
+                        callstack.functionarguments.sts = a_functionarguments.sts;
+                        callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
                     break;
 
@@ -1472,6 +1474,10 @@ namespace twaincscert
             {
                 DisplayRed(szLine, true);
             }
+            else if (a_functionarguments.aszCmd[2].Contains("warn"))
+            {
+                DisplayYellow(szLine, true);
+            }
             else
             {
                 Display(szLine, true);
@@ -1696,6 +1702,10 @@ namespace twaincscert
                 Display("  quit - exit from this program");
                 Display("  cd - change the current folder");
                 Display("  run [script] - with no arguments lists scripts, or run a script");
+                Display("");
+                Display("The command prompt includes what the certification tool regards as the current TWAIN state,");
+                Display("(ex: tw4>>>).  It's important to remember that while this should match the TWAIN state in");
+                Display("the driver, there is no guarantee it is doing so.");
                 return (false);
             }
 
@@ -1745,6 +1755,9 @@ namespace twaincscert
                 Display("");
                 Display("  '${get:target}'");
                 Display("  The value last assigned to the target using the set command.");
+                Display("");
+                Display("  '${getindex:target.index}'");
+                Display("  Runs the target through CSV and returns the item at the requested index.");
                 Display("");
                 Display("  '${localtime:[format]}'");
                 Display("  Returns the current local time using the DateTime format.");
@@ -2753,6 +2766,8 @@ namespace twaincscert
                 if (    (aszCmd[0] == "allocatehandle")
                     ||  (aszCmd[0] == "allocatepointer")
                     ||  (aszCmd[0] == "dsmentry")
+                    ||  (aszCmd[0] == "run")
+                    ||  (aszCmd[0] == "runv")
                     ||  (aszCmd[0] == "wait"))
                 {
                     sts = functionarguments.sts;
@@ -3300,6 +3315,7 @@ namespace twaincscert
                         || szSymbol.StartsWith("${ds:")
                         || szSymbol.StartsWith("${folder:")
                         || szSymbol.StartsWith("${get:")
+                        || szSymbol.StartsWith("${getindex:")
                         || szSymbol.StartsWith("${localtime:")
                         || szSymbol.StartsWith("${platform:")
                         || szSymbol.StartsWith("${program:")
@@ -3329,12 +3345,48 @@ namespace twaincscert
                         {
                             if (m_lkeyvalue.Count >= 0)
                             {
+                                // Strip off ${...}
                                 string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(6);
                                 foreach (KeyValue keyvalue in m_lkeyvalue)
                                 {
                                     if (keyvalue.szKey == szGet)
                                     {
                                         szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Use value as a GET key to get a value, we don't allow a null in this
+                    // case, it has to be an empty string.  CSV the value we get, and return
+                    // just the item indicated by the index...
+                    if (szSymbol.StartsWith("${getindex:"))
+                    {
+                        lock (m_objectKeyValue)
+                        {
+                            if (m_lkeyvalue.Count >= 0)
+                            {
+                                // Strip off ${...}
+                                string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(11);
+                                // Split name and index...
+                                string[] aszGet = szGet.Split('.');
+                                foreach (KeyValue keyvalue in m_lkeyvalue)
+                                {
+                                    if (keyvalue.szKey == aszGet[0])
+                                    {
+                                        int iIndex = 0;
+                                        szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                        string[] aszValue = CSV.Parse(szValue);
+                                        szValue = ""; // make sure we're empty before processing...
+                                        if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
+                                        {
+                                            if ((iIndex >= 0) && (iIndex < aszValue.Length))
+                                            {
+                                                szValue = aszValue[iIndex];
+                                            }
+                                        }
                                         break;
                                     }
                                 }

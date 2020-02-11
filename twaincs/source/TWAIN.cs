@@ -1838,7 +1838,143 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
-        /// Convert the contents of a filesystem string to a string that we can show in
+        /// Convert the contents of an extimageinfo to a string that we can show in
+        /// our simple GUI...
+        /// </summary>
+        /// <param name="a_twextimageinfo">A TWAIN structure</param>
+        /// <returns>A CSV string of the TWAIN structure</returns>
+        public string ExtimageinfoToCsv(TW_EXTIMAGEINFO a_twextimageinfo)
+        {
+            try
+            {
+                uint uTwinfo = 0;
+                CSV csv = new CSV();
+                csv.Add(a_twextimageinfo.NumInfos.ToString());
+                for (int ii = 0; (ii < a_twextimageinfo.NumInfos) && (ii < 200); ii++)
+                {
+                    TWEI twei;
+                    TWTY twty;
+                    STS sts;
+                    TW_INFO twinfo = default(TW_INFO);
+                    a_twextimageinfo.Get(uTwinfo, ref twinfo);
+                    twei = (TWEI)twinfo.InfoId;
+                    if (twei.ToString() != twinfo.InfoId.ToString())
+                    {
+                        csv.Add("TWEI_" + twei.ToString());
+                    }
+                    else
+                    {
+                        csv.Add(string.Format("0x{0:X}", twinfo.InfoId));
+                    }
+                    twty = (TWTY)twinfo.ItemType;
+                    if (twty.ToString() != twinfo.ItemType.ToString())
+                    {
+                        csv.Add("TWTY_" + twty.ToString());
+                    }
+                    else
+                    {
+                        csv.Add(string.Format("0x{0:X}", twinfo.ItemType));
+                    }
+                    csv.Add(twinfo.NumItems.ToString());
+                    sts = (STS)twinfo.ReturnCode;
+                    if (sts.ToString() != twinfo.ReturnCode.ToString())
+                    {
+                        csv.Add("TWRC_" + sts.ToString());
+                    }
+                    else
+                    {
+                        csv.Add(string.Format("0x{0:X}", twinfo.ReturnCode));
+                    }
+                    csv.Add(twinfo.ReturnCode.ToString());
+                    csv.Add(twinfo.Item.ToString());
+                    uTwinfo += 1;
+                }
+                return (csv.Get());
+            }
+            catch (Exception exception)
+            {
+                Log.Error("***error*** - " + exception.Message);
+                return ("***error***");
+            }
+        }
+
+        /// <summary>
+        /// Convert the contents of a string to an extimageinfo structure,
+        /// note that we don't have to worry about containers going in this
+        /// direction...
+        /// </summary>
+        /// <param name="a_twextimageinfo">A TWAIN structure</param>
+        /// <param name="a_szExtimageinfo">A CSV string of the TWAIN structure</param>
+        /// <returns>True if the conversion is successful</returns>
+        public bool CsvToExtimageinfo(ref TW_EXTIMAGEINFO a_twextimageinfo, string a_szExtimageinfo)
+        {
+            // Init stuff...
+            a_twextimageinfo = default(TW_EXTIMAGEINFO);
+
+            // Build the string...
+            try
+            {
+                int iField;
+                uint uTwinfo;
+                string[] asz = CSV.Parse(a_szExtimageinfo);
+
+                // Set the number of entries (this is the easy bit)...
+                uint.TryParse(asz[0], out a_twextimageinfo.NumInfos);
+                if (a_twextimageinfo.NumInfos > 200)
+                {
+                    Log.Error("***error*** - we're limited to 200 entries, if this is a problem, just add more, and fix this code...");
+                    return (false);
+                }
+
+                // Okay, walk all the entries in steps of TW_INFO...
+                uTwinfo = 0;
+                for (iField = 1; iField < asz.Length; iField += 5)
+                {
+                    UInt64 u64;
+                    TWEI twei;
+                    TW_INFO twinfo = default(TW_INFO);
+                    if ((iField + 5) > asz.Length)
+                    {
+                        Log.Error("***error*** - badly constructed list, should be: num,(twinfo),(twinfo)...");
+                        return (false);
+                    }
+                    if (TWEI.TryParse(asz[iField + 0].Replace("TWEI_", ""), out twei))
+                    {
+                        twinfo.InfoId = (ushort)twei;
+                    }
+                    else
+                    {
+                        if (asz[iField + 0].ToLowerInvariant().StartsWith("0x"))
+                        {
+                            ushort.TryParse(asz[iField + 0].Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out twinfo.InfoId);
+                        }
+                        else
+                        {
+                            ushort.TryParse(asz[iField + 0], out twinfo.InfoId);
+                        }
+                    }
+                    // We really don't care about these...
+                    ushort.TryParse(asz[iField + 1], out twinfo.ItemType);
+                    ushort.TryParse(asz[iField + 2], out twinfo.NumItems);
+                    ushort.TryParse(asz[iField + 3], out twinfo.ReturnCode);
+                    UInt64.TryParse(asz[iField + 4], out u64);
+                    twinfo.Item = (UIntPtr)u64;
+                    a_twextimageinfo.Set(uTwinfo, ref twinfo);
+                    uTwinfo += 1;
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.Error("***error*** - " + exception.Message);
+                return (false);
+            }
+
+            // All done...
+            return (true);
+        }
+
+        /// <summary>
+        /// Convert the contents of a filesystem to a string that we can show in
         /// our simple GUI...
         /// </summary>
         /// <param name="a_twfilesystem">A TWAIN structure</param>
@@ -2245,6 +2381,66 @@ namespace TWAINWorkingGroup
                 Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
+        }
+
+        /// <summary>
+        /// Convert the contents of a patthru structure to a string that
+        /// we can show in our simple GUI...
+        /// </summary>
+        /// <param name="a_twpassthru">A TWAIN structure</param>
+        /// <returns>A CSV string of the TWAIN structure</returns>
+        public string PassthruToCsv(TW_PASSTHRU a_twpassthru)
+        {
+            try
+            {
+                CSV csv = new CSV();
+                csv.Add(a_twpassthru.pCommand.ToString());
+                csv.Add(a_twpassthru.CommandBytes.ToString());
+                csv.Add(a_twpassthru.Direction.ToString());
+                csv.Add(a_twpassthru.pData.ToString());
+                csv.Add(a_twpassthru.DataBytes.ToString());
+                csv.Add(a_twpassthru.DataBytesXfered.ToString());
+                return (csv.Get());
+            }
+            catch (Exception exception)
+            {
+                Log.Error("***error*** - " + exception.Message);
+                return ("***error***");
+            }
+        }
+
+        /// <summary>
+        /// Convert the contents of a string to a passthru structure...
+        /// </summary>
+        /// <param name="a_twpassthru">A TWAIN structure</param>
+        /// <param name="a_szPassthru">A CSV string of the TWAIN structure</param>
+        /// <returns>True if the conversion is successful</returns>
+        public bool CsvToPassthru(ref TW_PASSTHRU a_twpassthru, string a_szPassthru)
+        {
+            // Init stuff...
+            a_twpassthru = default(TW_PASSTHRU);
+
+            // Build the string...
+            try
+            {
+                string[] asz = CSV.Parse(a_szPassthru);
+
+                // Sort out the frame...
+                a_twpassthru.pCommand = (IntPtr)UInt64.Parse(asz[0]);
+                a_twpassthru.CommandBytes = uint.Parse(asz[1]);
+                a_twpassthru.Direction = int.Parse(asz[2]);
+                a_twpassthru.pData = (IntPtr)UInt64.Parse(asz[3]);
+                a_twpassthru.DataBytes = uint.Parse(asz[4]);
+                a_twpassthru.DataBytesXfered = uint.Parse(asz[5]);
+            }
+            catch (Exception exception)
+            {
+                Log.Error("***error*** - " + exception.Message);
+                return (false);
+            }
+
+            // All done...
+            return (true);
         }
 
         /// <summary>

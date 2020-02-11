@@ -12,6 +12,9 @@
 ; Init stuff...
 ;
 set twain.state '0'
+set twextimageinfo ''
+set cap_supportedcaps ''
+set icap_supportedextimageinfo ''
 set index.twimageinfo.count '16'
 set index.twpendingxfers.count '0'
 set index.twsetupmemxfer.preferred '2'
@@ -44,11 +47,40 @@ set twain.state '4'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get CAP_SUPPORTEDCAPS...
+;
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS'
+echo 'capability/get.............${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+set cap_supportedcaps '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Set ICAP_XFERMECH to TWSX_FILE...
 ;
-dsmentry src null dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,TWSX_FILE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,TWSX_FILE'
 echo 'capability/set.............${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get ICAP_SUPPORTEDEXTIMAGEINFO (we just want the array portion)...
+;
+if '${get:cap_supportedcaps}' !~contains 'ICAP_SUPPORTEDEXTIMAGEINFO' goto MAIN.SKIPICAPSUPPORTEDEXTIMAGEINFO
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO'
+echo 'capability/get.............${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+set ienum '4'
+set comma ''
+:MAIN.NEXTEXTIMAGEINFO
+if '${ret:${get:ienum}}' == '' goto MAIN.SKIPICAPSUPPORTEDEXTIMAGEINFO
+set icap_supportedextimageinfo '${get:icap_supportedextimageinfo}${get:comma}${ret:${get:ienum}}'
+increment ienum '${get:ienum}' 1
+set comma ','
+goto MAIN.NEXTEXTIMAGEINFO
+:MAIN.SKIPICAPSUPPORTEDEXTIMAGEINFO
 
 
 
@@ -56,7 +88,7 @@ if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 ; Start scanning...
 ;
 wait reset
-dsmentry src null dg_control dat_userinterface msg_enableds '0,0'
+dsmentry src ds dg_control dat_userinterface msg_enableds '0,0'
 echo 'userinterface/enableds.....${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 set twain.state '5'
@@ -104,9 +136,19 @@ if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 ; Transfer the image...
 ;
 dsmentry src ds dg_image dat_imagefilexfer msg_get null
-echo 'imagefilexfer/get..........${sts:} - ${ret:}'
+echo 'imagefilexfer/get..........${sts:}'
 if '${sts:}' != 'XFERDONE' goto MAIN.FAIL
 set twain.state '7'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get more info about the image (if we can)...
+;
+if '${get:icap_supportedextimageinfo}' == '' goto MAIN.SKIPEXTIMAGEINFO
+run 'extimageinfo' 'twextimageinfo' '${get:icap_supportedextimageinfo}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+:MAIN.SKIPEXTIMAGEINFO
 
 
 

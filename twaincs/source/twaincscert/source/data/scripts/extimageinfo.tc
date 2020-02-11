@@ -1,0 +1,62 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Extimageinfo v1.0 11-Feb-2020
+; ${arg:1} - variable to put the return data into
+; ${arg:2 - n} - list of TWEI_* values to get
+; returns: pass or fail
+;
+; Get the TW_EXTIMAGEINFO for this image, must be called in state 7
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Init stuff...
+;
+set twextimageinfo '0'
+set twextimageinfo.numinfos '0'
+set twextimageinfo.twinfo ''
+set comma ''
+set tweilist '${arg:2}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Walk the TWE_* values...
+;
+if '${arg:${get:twextimageinfo.numinfos}}' == '' goto MAIN.DATEXTIMAGEINGO
+:MAIN.NEXTTWINFO
+set twei '${getindex:tweilist.${get:twextimageinfo.numinfos}}'
+if '${get:twei}' == '' goto MAIN.SETTWEXTIMAGEINFO
+set twextimageinfo.twinfo '${get:twextimageinfo.twinfo}${get:comma}${get:twei},0,0,0,0'
+increment twextimageinfo.numinfos '${get:twextimageinfo.numinfos}' '1'
+set comma ','
+goto MAIN.NEXTTWINFO
+:MAIN.SETTWEXTIMAGEINFO
+set twextimageinfo '${get:twextimageinfo.numinfos},${get:twextimageinfo.twinfo}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Send the command...
+;
+:MAIN.DATEXTIMAGEINGO
+dsmentry src ds dg_image dat_extimageinfo msg_get '${get:twextimageinfo}'
+echo 'extimageinfo/get...........${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We've passed...
+;
+:MAIN.PASS
+set '${arg:1}' '${ret:}'
+return 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We're run into a problem...
+;
+:MAIN.FAIL
+return 'fail'
