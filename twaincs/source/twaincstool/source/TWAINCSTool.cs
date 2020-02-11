@@ -30,7 +30,7 @@
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     ShowImage additions
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2019 Kodak Alaris Inc.
+//  Copyright (C) 2013-2020 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -3056,7 +3056,7 @@ namespace TWAINWorkingGroupToolkit
                 TWAIN.TW_EXTIMAGEINFO twextimageinfo = default(TWAIN.TW_EXTIMAGEINFO);
                 TWAIN.TW_INFO twinfo = default(TWAIN.TW_INFO);
                 twextimageinfo.NumInfos = 0;
-                twinfo.InfoId = (ushort)TWAIN.TWEI.DOCUMENTNUMBER; twextimageinfo.Set(twextimageinfo.NumInfos++, ref twinfo);
+                twinfo.InfoId = (ushort)TWAIN.TWEI.PAPERCOUNT; twextimageinfo.Set(twextimageinfo.NumInfos++, ref twinfo);
                 twinfo.InfoId = (ushort)TWAIN.TWEI.PAGESIDE; twextimageinfo.Set(twextimageinfo.NumInfos++, ref twinfo);
                 sts = m_twain.DatExtimageinfo(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twextimageinfo);
                 if (sts == TWAIN.STS.SUCCESS)
