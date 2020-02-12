@@ -146,6 +146,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>echo Post-build actions...
+RMDIR /S /Q "$(TargetDir)data"
 XCOPY "$(ProjectDir)data" "$(TargetDir)data" /i /e /y /q
 </PostBuildEvent>
   </PropertyGroup>

@@ -45,6 +45,7 @@ set certifyresulttwain 'pass'
 call CERTIFY 'Opends' '${get:twidentity.productname}'
 call CERTIFY '010 - TWAIN Standard Capability Tests/CAP_SUPPORTEDCAPS' '${get:twidentity.productname}'
 call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_PIXELTYPE' '${get:twidentity.productname}'
+call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_XFERMECH' '${get:twidentity.productname}'
 call CERTIFY 'Closeds' '${get:twidentity.productname}'
 
 

@@ -1,9 +1,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; CAP_SUPPORTEDCAPS
+; ICAP_XFERMECH
 ; arg:1 - scanner to test
 ; returns: pass or fail
 ;
-; Confirm Basic Negotiation with CAP_SUPPORTEDCAPS
+; Confirm Basic Negotiation with ICAP_XFERMECH
 ;
 
 
@@ -11,41 +11,41 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-call INITIALIZE 'CAP_SUPPORTEDCAPS v1.0 12-Feb-2020' '${arg:1}'
+call INITIALIZE 'ICAP_XFERMECH v1.0 12-Feb-2020' '${arg:1}'
 set index.twcapability.cap '0'
 set index.twcapability.contype '1'
 set index.twcapability.hcontainer '2'
-set index.twarray.itemtype '2'
-set index.twarray.numitems '3'
+set index.twenumeration.itemtype '2'
+set index.twenumeration.numitems '3'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; MSG_GET CAP_SUPPORTEDCAPS
+; MSG_GET ICAP_XFERMECH
 ; If result is not TWRC_SUCCESS, then end with error
 ;
 set name 'MSG_GET'
-dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
-set cap_supportedcaps '${ret:}'
+set icap_xfermech '${ret:}'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If TW_CAPABILITY.Cap is not CAP_SUPPORTEDCAPS, then end with error
+; If TW_CAPABILITY.Cap is not ICAP_XFERMECH, then end with error
 ;
-set name 'TW_CAPABILITY.Cap is CAP_SUPPORTEDCAPS'
-if '${getindex:cap_supportedcaps.${get:index.twcapability.cap}}' != 'CAP_SUPPORTEDCAPS' goto MAIN.ERROR.ECHOPASSFAIL
+set name 'TW_CAPABILITY.Cap is ICAP_XFERMECH'
+if '${getindex:icap_xfermech.${get:index.twcapability.cap}}' != 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If TW_CAPABILITY.ConType is not TWON_ARRAY, then end with error
+; If TW_CAPABILITY.ConType is not TWON_ENUMERATION, then end with error
 ;
-set name 'TW_CAPABILITY.ConType is TWON_ARRAY'
-if '${getindex:cap_supportedcaps.${get:index.twcapability.contype}}' != 'TWON_ARRAY' goto MAIN.ERROR.ECHOPASSFAIL
+set name 'TW_CAPABILITY.ConType is TWON_ENUMERATION'
+if '${getindex:icap_xfermech.${get:index.twcapability.contype}}' != 'TWON_ENUMERATION' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
@@ -55,52 +55,36 @@ echopassfail '${get:name}' 'pass'
 ; (just see if we have more data, that'll satisfy the test)
 ;
 set name 'TW_CAPABILITY.hContainer is TW_HANDLE'
-if '${getindex:cap_supportedcaps.${get:index.twcapability.hcontainer}}' == '' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:icap_xfermech.${get:index.twcapability.hcontainer}}' == '' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If TW_ARRAY.ItemType is not TWTY_UINT16, then end with error
+; If TW_ENUMERATION.ItemType is not TWTY_UINT16, then end with error
 ;
-set name 'TW_ARRAY.ItemType is TWTY_UINT16'
-if '${getindex:cap_supportedcaps.${get:index.twarray.itemtype}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+set name 'TW_ENUMERATION.ItemType is TWTY_UINT16'
+if '${getindex:icap_xfermech.${get:index.twarray.itemtype}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If TW_ARRAY.NumItems is equal to zero, then end with error
+; If TW_ENUMERATION contains TWSX_NATIVE (0)...
 ;
-set name 'TW_ARRAY.NumItems > 0'
-if '${getindex:cap_supportedcaps.${get:index.twarray.numitems}}' <= '0' goto MAIN.ERROR.ECHOPASSFAIL
+set name 'TW_ENUMERATION contains TWSX_NATIVE'
+call CHECKENUMERATION '${get:icap_xfermech}' '0'
+if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If CAP_SUPPORTEDCAPS not found, then end with error
+; If TW_ENUMERATION contains TWSX_MEMORY (2)...
 ;
-set name 'Find CAP_SUPPORTEDCAPS'
-if '${get:cap_supportedcaps}' !~contains 'CAP_SUPPORTEDCAPS' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If ICAP_PIXELTYPE not found, then end with error
-;
-set name 'Find ICAP_PIXELTYPE'
-if '${get:cap_supportedcaps}' !~contains 'ICAP_PIXELTYPE' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If ICAP_XFERMECH not found, then end with error
-;
-set name 'Find ICAP_XFERMECH'
-if '${get:cap_supportedcaps}' !~contains 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
+set name 'TW_ENUMERATION contains TWSX_MEMORY'
+call CHECKENUMERATION '${get:icap_xfermech}' '2'
+if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
@@ -109,6 +93,7 @@ echopassfail '${get:name}' 'pass'
 ; Summary and cleanup...
 ;
 ; Did we pass?
+:MAIN.PASS
 echopassfail 'SUMMARY' 'pass'
 return 'pass'
 ;
@@ -135,3 +120,29 @@ echo.yellow
 echo.yellow '********************************************************************************'
 echo.yellow '${arg:1}'
 return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Check Enumeration
+; arg:1 - enumeration to check
+; arg:2/n - values to check for
+; returns: pass/fail
+;
+:CHECKENUMERATION
+;
+set enum '${arg:1}'
+set ee '5'
+:NEXTENUM
+increment ee '${get:ee}'
+if '${getindex:enum.${get:ee}}' == '' goto CHECKENUMERATION.FAIL
+set aa '2'
+:NEXTARG
+if '${arg:${get:aa}}' == '' goto NEXTENUM
+if '${arg:${get:aa}}' == '${getindex:enum.${get:ee}}' goto CHECKENUMERATION.PASS
+increment aa '${get:aa}'
+goto NEXTARG
+:CHECKENUMERATION.FAIL
+return 'fail'
+:CHECKENUMERATION.PASS
+return 'pass'

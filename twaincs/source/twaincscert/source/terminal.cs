@@ -2287,8 +2287,23 @@ namespace twaincscert
                 Display("");
                 Display("");
 
+                // Try our binary path first, if that fails use the current folder...
+                string szCertificationFolder = Path.Combine(Application.ExecutablePath, Path.Combine("data", "Certification"));
+                if (!Directory.Exists(szCertificationFolder))
+                {
+                    szCertificationFolder = Path.Combine(Directory.GetCurrentDirectory(), Path.Combine("data", "Certification"));
+                    if (!Directory.Exists(szCertificationFolder))
+                    {
+                        Display("");
+                        DisplayRed("Can't find our data/Certification folder, it should be in the");
+                        DisplayRed("same folder as this application, or the current folder.");
+                        return (false);
+                    }
+                }
+
+                // Go there and fire up the intepreter...
                 string szCurrentDirectory = Directory.GetCurrentDirectory();
-                Directory.SetCurrentDirectory("data/Certification");
+                Directory.SetCurrentDirectory(szCertificationFolder);
                 Interpreter.FunctionArguments functionarguments = new Interpreter.FunctionArguments();
                 functionarguments = new Interpreter.FunctionArguments();
                 functionarguments.aszCmd = new string[3] { "run", "certification", szSelection };
@@ -2307,7 +2322,7 @@ namespace twaincscert
                 Display("If you are the manufacturer of this driver, please go to the TWAIN");
                 Display("website at https://twain.org to register your scanner.  There is a");
                 Display("'TWAIN Self Certification' folder on your desktop that contains the");
-                Display("report of this run.");
+                Display("report for this run.");
             }
 
             // Report unsuccessful results, and point the user to twaindirect.org...
