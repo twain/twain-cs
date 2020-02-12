@@ -72,9 +72,11 @@ namespace twaincscert
             m_lkeyvalue = new List<KeyValue>();
             m_objectKeyValue = new object();
             m_lcallstack = new List<CallStack>();
+            m_formmain = null;
             m_intptrHwnd = IntPtr.Zero;
             if (a_formmain != null)
             {
+                m_formmain = a_formmain;
                 m_intptrHwnd = a_formmain.Handle;
             }
 
@@ -189,7 +191,7 @@ namespace twaincscert
                 string[] aszCmd;
 
                 // Prompt...
-                szCmd = interpreter.Prompt(m_streamreaderConsole, ((m_twain == null) ? 0 : (int)m_twain.GetState()) + 1);
+                szCmd = interpreter.Prompt(m_streamreaderConsole, ((m_twain == null) ? 1 : (int)m_twain.GetState()));
 
                 // Tokenize...
                 aszCmd = interpreter.Tokenize(szCmd);
@@ -268,7 +270,7 @@ namespace twaincscert
             }
             if (a_functionarguments.aszCmd.Length != 7)
             {
-                DisplayRed("***ERROR*** - command needs 6 arguments: dsmentry src dst dg dat msg memref");
+                DisplayRed("***ERROR*** - command needs 7 arguments: dsmentry src dst dg dat msg memref");
                 return (false);
             }
 
@@ -1666,7 +1668,7 @@ namespace twaincscert
                 Display("increment {dst} {src} [step].................increment src by step and store in dst");
                 Display("json2xml {file|json}.........................convert json formatted data to xml");
                 Display("log {info|warn|error,etc} text...............add a line to the log file");
-                Display("report {initialize|save {folder}}............self certification report");
+                Display("report {initialize {driver}|save {folder}}...self certification report");
                 Display("return [status]..............................return from call function");
                 Display("run [script].................................run a script");
                 Display("runv [script]................................run a script verbosely");
@@ -1753,6 +1755,12 @@ namespace twaincscert
                 Display("  or label; 1 - n accesses the rest of the arguments.  An index can be specified to access any");
                 Display("  command in the stack, but only 0 is recommended to look at the last user command.");
                 Display("");
+                Display("  '${bits:}'");
+                Display("  32 or 64.");
+                Display("");
+                Display("  '${ds:}'");
+                Display("  Complete TW_IDENTITY of the current scanner driver.");
+                Display("");
                 Display("  '${folder:target}'");
                 Display("  Resolves to the full path for targeted special folder: desktop, local, pictures, roaming");
                 Display("");
@@ -1765,6 +1773,9 @@ namespace twaincscert
                 Display("  '${localtime:[format]}'");
                 Display("  Returns the current local time using the DateTime format.");
                 Display("");
+                Display("  '${platform:}'");
+                Display("  WINDOWS, LINUX, or MACOSX.");
+                Display("");
                 Display("  '${program:}'");
                 Display("  Gets the name of the program running this script, its version, date, and machine word size.");
                 Display("");
@@ -1774,6 +1785,9 @@ namespace twaincscert
                 Display("  '${ret:[index]}'");
                 Display("  The value supplied to the return command that ended the last run, runv, or call.  If an");
                 Display("  index is supplied the string is run through CSV and the indexed element is returned.");
+                Display("");
+                Display("  '${state:}'");
+                Display("  The current TWAIN state (1 through 7).");
                 Display("");
                 Display("  '${sts:}'");
                 Display("  The TWAIN TWRC return code for the command.  If the status was TWRC_FAILURE, then this will");
@@ -2106,12 +2120,207 @@ namespace twaincscert
         }
 
         /// <summary>
-        /// Certify a scanner...
+        /// Certify a TWAIN driver...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
         /// <returns>true to quit</returns>
         private bool CmdCertify(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            bool blTwainSuccess = false;
+            string szSelection = "";
+            Interpreter interpreter = new Interpreter("");
+
+            // If we have arguments, drop them in...
+            if ((a_functionarguments.aszCmd != null) && (a_functionarguments.aszCmd.Length > 1) && (a_functionarguments.aszCmd[1] != null))
+            {
+                szSelection = a_functionarguments.aszCmd[1];
+            }
+
+            // Tell the user the plan...
+            DisplayYellow("TWAIN Certification");
+            Display("  This tool certifies TWAIN drivers.  To complete certification it must be run on.");
+            Display("  all platforms supported by the driver:  Windows, Linux, macOS for 32-bit and 64-bit.");
+            Display("");
+            Display("  The tool will ask for some information, and begin the test, which only takes a");
+            Display("  few minutes to complete.  On success the tool will provide instructions on how");
+            Display("  submit information about a TWAIN driver that has passed certification.");
+
+            // Show the available scanners, so the user can pick one...
+            if (string.IsNullOrEmpty(szSelection))
+            {
+                List<string> aszDrivers = new List<string>();
+                Interpreter.FunctionArguments functionarguments;
+
+                // Load the DSM...
+                functionarguments = new Interpreter.FunctionArguments();
+                functionarguments.aszCmd = new string[] { "dsmload" };
+                CmdDsmLoad(ref functionarguments);
+                if (functionarguments.sts != TWAIN.STS.SUCCESS)
+                {
+                    Display("");
+                    DisplayRed("dsmload error...");
+                    return (false);
+                }
+
+                // Open the DSM...
+                functionarguments = new Interpreter.FunctionArguments();
+                functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_parent", "msg_opendsm", "hwnd" };
+                CmdDsmEntry(ref functionarguments);
+                if (functionarguments.sts != TWAIN.STS.SUCCESS)
+                {
+                    Display("");
+                    DisplayRed("dsmopen error...");
+                    return (false);
+                }
+
+                // Walk the driver list...
+                functionarguments = new Interpreter.FunctionArguments();
+                functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_identity", "msg_getfirst", "0,0,0,ENGLISH_USA,USA,,0,0,0x0,,," };
+                while (true)
+                {
+                    // Ask for this item...
+                    CmdDsmEntry(ref functionarguments);
+                    if (functionarguments.sts != TWAIN.STS.SUCCESS)
+                    {
+                        break;
+                    }
+
+                    // Parse out the data...
+                    string[] aszTwidentity = CSV.Parse(functionarguments.szReturnValue);
+                    if (aszTwidentity.Length == 12)
+                    {
+                        aszDrivers.Add(aszTwidentity[11]);
+                    }
+
+                    // Next entry...
+                    functionarguments = new Interpreter.FunctionArguments();
+                    functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_identity", "msg_getnext", "0,0,0,ENGLISH_USA,USA,,0,0,0x0,,," };
+                }
+
+                // Close the DSM...
+                functionarguments = new Interpreter.FunctionArguments();
+                functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_parent", "msg_closedsm", "hwnd" };
+
+                // Unload the DSM...
+                functionarguments = new Interpreter.FunctionArguments();
+                functionarguments.aszCmd = new string[] { "dsmunload" };
+                CmdDsmUnload(ref functionarguments);
+
+                // Ruh-roh...
+                if (aszDrivers.Count == 0)
+                {
+                    Display("");
+                    DisplayRed("No drivers found...");
+                    return (false);
+                }
+
+                // Sort it...
+                aszDrivers.Sort();
+
+                // What we found...
+                Display("");
+                DisplayYellow("Available TWAIN Drivers:");
+                foreach (string szDriver in aszDrivers)
+                {
+                    Display("  " + szDriver);
+                }
+
+                // Ask for a scanner...
+                bool blFound = false;
+                Display("");
+                Display("Please enter the name of a scanner from the list above (or quit to get out):");
+                Display("(partial names are okay, as long as they are unique)");
+                while (true)
+                {
+                    interpreter.SetPrompt("certify driver>>> ");
+                    szSelection = interpreter.Prompt(m_streamreaderConsole, 0);
+                    if (   (szSelection.ToLowerInvariant() == "quit")
+                        || (szSelection.ToLowerInvariant() == "q"))
+                    {
+                        szSelection = "";
+                        return (false);
+                    }
+                    if (szSelection.Length > 0)
+                    {
+                        foreach (string szDriver in aszDrivers)
+                        {
+                            if (szDriver.ToLowerInvariant().Contains(szSelection.ToLowerInvariant()))
+                            {
+                                szSelection = szDriver;
+                                blFound = true;
+                                break;
+                            }
+                        }
+                        if (blFound)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // We're bailing...
+            if (string.IsNullOrEmpty(szSelection))
+            {
+                return (false);
+            }
+
+            // Confirmation to proceed...
+            Display("");
+            while (true)
+            {
+                interpreter.SetPrompt("Cerify '" + szSelection + "'" + " (yes/no)? ");
+                string szAnswer = interpreter.Prompt(m_streamreaderConsole, 0);
+                if (szAnswer.ToLowerInvariant().StartsWith("y"))
+                {
+                    break;
+                }
+                else if (szAnswer.ToLowerInvariant().StartsWith("n"))
+                {
+                    return (false);
+                }
+            }
+
+            // Let's do it!
+            {
+                Display("");
+                Display("");
+                Display("");
+
+                string szCurrentDirectory = Directory.GetCurrentDirectory();
+                Directory.SetCurrentDirectory("data/Certification");
+                Interpreter.FunctionArguments functionarguments = new Interpreter.FunctionArguments();
+                functionarguments = new Interpreter.FunctionArguments();
+                functionarguments.aszCmd = new string[3] { "run", "certification", szSelection };
+                CmdRun(ref functionarguments);
+                blTwainSuccess = (functionarguments.szReturnValue == "pass");
+                Directory.SetCurrentDirectory(szCurrentDirectory);
+            }
+
+            // Report successful results, and point the user to twaindirect.org...
+            if (blTwainSuccess)
+            {
+                Display("");
+                Display("");
+                Display("");
+                DisplayGreen("TWAIN Certification passed...");
+                Display("If you are the manufacturer of this driver, please go to the TWAIN");
+                Display("website at https://twain.org to register your scanner.  There is a");
+                Display("'TWAIN Self Certification' folder on your desktop that contains the");
+                Display("report of this run.");
+            }
+
+            // Report unsuccessful results, and point the user to twaindirect.org...
+            else
+            {
+                Display("");
+                Display("");
+                Display("");
+                DisplayRed("TWAIN Certification failed...");
+                Display("Please refer to the log files in the 'TWAIN Self Certification' folder");
+                Display("on your desktop for additional information.");
+            }
+
             // All done...
             return (false);
         }
@@ -2392,7 +2601,7 @@ namespace twaincscert
             }
 
             // Get the step...
-            if ((a_functionarguments.aszCmd.Length >= 4) || (a_functionarguments.aszCmd[3] != null))
+            if ((a_functionarguments.aszCmd.Length >= 4) && (a_functionarguments.aszCmd[3] != null))
             {
                 if (!int.TryParse(a_functionarguments.aszCmd[3], out iStep))
                 {
@@ -2452,7 +2661,7 @@ namespace twaincscert
             while (true)
             {
                 // Get the command...
-                szCmd = interpreter.Prompt(m_streamreaderConsole, ((m_twain == null) ? 0 : (int)m_twain.GetState()) + 1);
+                szCmd = interpreter.Prompt(m_streamreaderConsole, ((m_twain == null) ? 1 : (int)m_twain.GetState()));
 
                 // If we have no commands to compare it against, we're done...
                 if (lszCommands.Count == 0)
@@ -2506,7 +2715,6 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdQuit(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            // Bye-bye...
             return (true);
         }
 
@@ -2609,36 +2817,40 @@ namespace twaincscert
             {
                 m_stringbuilderSelfCertReport = new StringBuilder();
                 m_szSelfCertReportPath = null;
+                m_szSelfCertReportProductname = "";
+                if ((a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null))
+                {
+                    DisplayError("please specify a driver productname");
+                    return (false);
+                }
+                m_szSelfCertReportProductname = a_functionarguments.aszCmd[2];
             }
 
             // Save file...
             else if (a_functionarguments.aszCmd[1].ToLowerInvariant() == "save")
             {
-                string szFolder;
-                if ((a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null))
+                string szFolder = "";
+                if (string.IsNullOrEmpty(m_szSelfCertReportProductname))
                 {
-                    DisplayError("please specify a filename");
+                    DisplayError("'report initialize' must come before 'report save'...");
                     return (false);
+                }
+                if ((a_functionarguments.aszCmd.Length >= 3) && (a_functionarguments.aszCmd[2] != null))
+                {
+                    szFolder = a_functionarguments.aszCmd[2];
                 }
                 try
                 {
-                    if (m_twain == null)
+                    if (string.IsNullOrEmpty(szFolder))
                     {
-                        DisplayError("we need twain to tell us what driver was used");
-                        return (false);
-                    }
-                    else
-                    {
-                        string[] asz = CSV.Parse(m_twain.GetDsIdentity());
                         szFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
-                        szFolder = Path.Combine(szFolder, Regex.Replace(asz[11], "[^a-zA-Z0-9]", "_"));
-                        if (!Directory.Exists(szFolder))
-                        {
-                            Directory.CreateDirectory(szFolder);
-                        }
-                        m_szSelfCertReportPath = Path.Combine(szFolder, a_functionarguments.aszCmd[2]);
-                        File.WriteAllText(m_szSelfCertReportPath, m_stringbuilderSelfCertReport.ToString());
                     }
+                    if (!Directory.Exists(szFolder))
+                    {
+                        Directory.CreateDirectory(szFolder);
+                    }
+                    m_szSelfCertReportPath = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_")) + ".txt";
+                    File.WriteAllText(m_szSelfCertReportPath, m_stringbuilderSelfCertReport.ToString());
                 }
                 catch (Exception exception)
                 {
@@ -2818,7 +3030,14 @@ namespace twaincscert
 
                 // Restore the last dsmentry status and value, if this isn't a dsmentry command,
                 // we need this so we can examine the values in other commands...
-                if (aszCmd[0] != "dsmentry")
+                if (   (aszCmd[0] != "dsmentry")
+                    && (aszCmd[0] != "echo")
+                    && (aszCmd[0] != "goto")
+                    && (aszCmd[0] != "if")
+                    && (aszCmd[0] != "increment")
+                    && (aszCmd[0] != "log")
+                    && (aszCmd[0] != "set")
+                    && (aszCmd[0] != "sleep"))
                 {
                     callstack = m_lcallstack[m_lcallstack.Count - 1];
                     callstack.functionarguments.sts = sts;
@@ -2842,12 +3061,10 @@ namespace twaincscert
 
                 // Squirrel this stuff away, not every command should override these
                 // items, otherwise we can't test them...  :)
-                if (    (aszCmd[0] == "allocatehandle")
-                    ||  (aszCmd[0] == "allocatepointer")
-                    ||  (aszCmd[0] == "dsmentry")
-                    ||  (aszCmd[0] == "run")
-                    ||  (aszCmd[0] == "runv")
-                    ||  (aszCmd[0] == "wait"))
+                if (   (aszCmd[0] == "allocatehandle")
+                    || (aszCmd[0] == "allocatepointer")
+                    || (aszCmd[0] == "dsmentry")
+                    || (aszCmd[0] == "wait"))
                 {
                     sts = functionarguments.sts;
                     szReturnValue = functionarguments.szReturnValue;
@@ -3033,7 +3250,7 @@ namespace twaincscert
             Display("DSM Path........." + m_twain.GetDsmPath());
 
             // State...
-            Display("TWAIN State......" + ((int)m_twain.GetState() + 1));
+            Display("TWAIN State......" + ((int)m_twain.GetState()));
 
             // If state 4 or higher, what is our driver?
             if (m_twain.GetState() >= TWAIN.STATE.S4)
@@ -3440,65 +3657,8 @@ namespace twaincscert
                     // Assume the worse...
                     szValue = "";
 
-                    // Use value as a GET key to get a value, we don't allow a null in this
-                    // case, it has to be an empty string...
-                    if (szSymbol.StartsWith("${get:"))
-                    {
-                        lock (m_objectKeyValue)
-                        {
-                            if (m_lkeyvalue.Count >= 0)
-                            {
-                                // Strip off ${...}
-                                string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(6);
-                                foreach (KeyValue keyvalue in m_lkeyvalue)
-                                {
-                                    if (keyvalue.szKey == szGet)
-                                    {
-                                        szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Use value as a GET key to get a value, we don't allow a null in this
-                    // case, it has to be an empty string.  CSV the value we get, and return
-                    // just the item indicated by the index...
-                    if (szSymbol.StartsWith("${getindex:"))
-                    {
-                        lock (m_objectKeyValue)
-                        {
-                            if (m_lkeyvalue.Count >= 0)
-                            {
-                                // Strip off ${...}
-                                string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(11);
-                                // Split name and index...
-                                string[] aszGet = szGet.Split('.');
-                                foreach (KeyValue keyvalue in m_lkeyvalue)
-                                {
-                                    if (keyvalue.szKey == aszGet[0])
-                                    {
-                                        int iIndex = 0;
-                                        szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
-                                        string[] aszValue = CSV.Parse(szValue);
-                                        szValue = ""; // make sure we're empty before processing...
-                                        if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
-                                        {
-                                            if ((iIndex >= 0) && (iIndex < aszValue.Length))
-                                            {
-                                                szValue = aszValue[iIndex];
-                                            }
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     // Get data from the top of the call stack...
-                    else if (szSymbol.StartsWith("${arg:"))
+                    if (szSymbol.StartsWith("${arg:"))
                     {
                         if ((m_lcallstack != null) && (m_lcallstack.Count > 0))
                         {
@@ -3553,6 +3713,98 @@ namespace twaincscert
                         }
                     }
 
+                    // Get number of bits in the machine word...
+                    else if (szSymbol.StartsWith("${bits:"))
+                    {
+                        szValue = TWAINWorkingGroup.TWAIN.GetMachineWordBitSize().ToString();
+                    }
+
+                    // Get data from the data source (indexible)...
+                    else if (szSymbol.StartsWith("${ds:"))
+                    {
+                        if (m_twain == null)
+                        {
+                            szValue = "(driver not loaded)";
+                        }
+                        else if (szSymbol == "${ds:}")
+                        {
+                            szValue = m_twain.GetDsIdentity();
+                        }
+                        else
+                        {
+                            int iIndex = 0;
+                            if (int.TryParse(szSymbol.Replace("${ds:", "").Replace("}", ""), out iIndex))
+                            {
+                                string[] asz = CSV.Parse(m_twain.GetDsIdentity());
+                                if ((iIndex < 0) || (iIndex >= asz.Length))
+                                {
+                                    szValue = "";
+                                }
+                                else
+                                {
+                                    szValue = asz[iIndex];
+                                }
+                            }
+                        }
+                    }
+
+                    // Use value as a GET key to get a value, we don't allow a null in this
+                    // case, it has to be an empty string...
+                    else if (szSymbol.StartsWith("${get:"))
+                    {
+                        lock (m_objectKeyValue)
+                        {
+                            if (m_lkeyvalue.Count >= 0)
+                            {
+                                // Strip off ${...}
+                                string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(6);
+                                foreach (KeyValue keyvalue in m_lkeyvalue)
+                                {
+                                    if (keyvalue.szKey == szGet)
+                                    {
+                                        szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Use value as a GET key to get a value, we don't allow a null in this
+                    // case, it has to be an empty string.  CSV the value we get, and return
+                    // just the item indicated by the index...
+                    if (szSymbol.StartsWith("${getindex:"))
+                    {
+                        lock (m_objectKeyValue)
+                        {
+                            if (m_lkeyvalue.Count >= 0)
+                            {
+                                // Strip off ${...}
+                                string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(11);
+                                // Split name and index...
+                                string[] aszGet = szGet.Split('.');
+                                foreach (KeyValue keyvalue in m_lkeyvalue)
+                                {
+                                    if (keyvalue.szKey == aszGet[0])
+                                    {
+                                        int iIndex = 0;
+                                        szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                        string[] aszValue = CSV.Parse(szValue);
+                                        szValue = ""; // make sure we're empty before processing...
+                                        if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
+                                        {
+                                            if ((iIndex >= 0) && (iIndex < aszValue.Length))
+                                            {
+                                                szValue = aszValue[iIndex];
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Special folders
                     else if (szSymbol.StartsWith("${folder:"))
                     {
@@ -3579,10 +3831,19 @@ namespace twaincscert
                         }
                     }
 
-                    // Get number of bits in the machine word...
-                    else if (szSymbol.StartsWith("${bits:"))
+                    // Access to the local time...
+                    else if (szSymbol.StartsWith("${localtime:"))
                     {
-                        szValue = TWAINWorkingGroup.TWAIN.GetMachineWordBitSize().ToString();
+                        DateTime datetime = DateTime.Now;
+                        string szFormat = szSymbol.Substring(0, szSymbol.Length - 1).Substring(12);
+                        try
+                        {
+                            szValue = datetime.ToString(szFormat);
+                        }
+                        catch
+                        {
+                            szValue = datetime.ToString();
+                        }
                     }
 
                     // Get the platform...
@@ -3591,41 +3852,30 @@ namespace twaincscert
                         szValue = TWAINWorkingGroup.TWAIN.GetPlatform().ToString();
                     }
 
-                    // Get the TWAIN state...
-                    else if (szSymbol.StartsWith("${state:"))
+                    // Get the program, version, and machine word size (meant for display only)...
+                    else if (szSymbol.StartsWith("${program:"))
                     {
-                        if (m_twain == null)
-                        {
-                            szValue = "0";
-                        }
-                        else
-                        {
-                            szValue = ((int)m_twain.GetState()).ToString();
-                        }
+                        Assembly assembly = typeof(Terminal).Assembly;
+                        AssemblyName assemblyname = assembly.GetName();
+                        Version version = assemblyname.Version;
+                        DateTime datetime = new DateTime(2000, 1, 1).AddDays(version.Build).AddSeconds(version.MinorRevision * 2);
+                        szValue = assemblyname.Name + " v" + version.Major + "." + version.Minor + " " + datetime.Day + "-" + datetime.ToString("MMM") + "-" + datetime.Year + " " + ((IntPtr.Size == 4) ? "(32-bit)" : "(64-bit)");
                     }
 
-                    // Get data from the data source (indexible)...
-                    else if (szSymbol.StartsWith("${ds:"))
+                    // Full path to the self cert report (meant for display only)...
+                    else if (szSymbol.StartsWith("${report:"))
                     {
-                        if (szSymbol == "${ds:}")
+                        if (string.IsNullOrEmpty(m_szSelfCertReportPath))
                         {
-                            szValue = m_twain.GetDsIdentity();
+                            szValue = "(self cert file not specified)";
+                        }
+                        else if (!File.Exists(m_szSelfCertReportPath))
+                        {
+                            szValue = m_szSelfCertReportPath + " (not found)";
                         }
                         else
                         {
-                            int iIndex = 0;
-                            if (int.TryParse(szSymbol.Replace("${ds:", "").Replace("}", ""), out iIndex))
-                            {
-                                string[] asz = CSV.Parse(m_twain.GetDsIdentity());
-                                if ((iIndex < 0) || (iIndex >= asz.Length))
-                                {
-                                    szValue = "";
-                                }
-                                else
-                                {
-                                    szValue = asz[iIndex];
-                                }
-                            }
+                            szValue = m_szSelfCertReportPath;
                         }
                     }
 
@@ -3658,36 +3908,24 @@ namespace twaincscert
                         }
                     }
 
+                    // Get the TWAIN state...
+                    else if (szSymbol.StartsWith("${state:"))
+                    {
+                        if (m_twain == null)
+                        {
+                            szValue = "1";
+                        }
+                        else
+                        {
+                            szValue = ((int)m_twain.GetState()).ToString();
+                        }
+                    }
+
                     // Get data from the TWAIN status...
                     else if (szSymbol.StartsWith("${sts:"))
                     {
                         callstack = m_lcallstack[m_lcallstack.Count - 1];
                         szValue = callstack.functionarguments.sts.ToString();
-                    }
-
-                    // Access to the local time...
-                    else if (szSymbol.StartsWith("${localtime:"))
-                    {
-                        DateTime datetime = DateTime.Now;
-                        string szFormat = szSymbol.Substring(0, szSymbol.Length - 1).Substring(12);
-                        try
-                        {
-                            szValue = datetime.ToString(szFormat);
-                        }
-                        catch
-                        {
-                            szValue = datetime.ToString();
-                        }
-                    }
-
-                    // Get the program, version, and machine word size (meant for display only)...
-                    else if (szSymbol.StartsWith("${program:"))
-                    {
-                        Assembly assembly = typeof(Terminal).Assembly;
-                        AssemblyName assemblyname = assembly.GetName();
-                        Version version = assemblyname.Version;
-                        DateTime datetime = new DateTime(2000, 1, 1).AddDays(version.Build).AddSeconds(version.MinorRevision * 2);
-                        szValue = assemblyname.Name + " v" + version.Major + "." + version.Minor + " " + datetime.Day + "-" + datetime.ToString("MMM") + "-" + datetime.Year + " " + ((IntPtr.Size == 4) ? "(32-bit)" : "(64-bit)");
                     }
 
                     // Failsafe (we should catch all of these up above)...
@@ -3781,6 +4019,7 @@ namespace twaincscert
         private TWAIN m_twain;
 
         // The handle to our window...
+        private FormMain m_formmain;
         private IntPtr m_intptrHwnd;
 
         /// <summary>
@@ -3815,6 +4054,7 @@ namespace twaincscert
         /// </summary>
         private StringBuilder m_stringbuilderSelfCertReport;
         private string m_szSelfCertReportPath;
+        private string m_szSelfCertReportProductname;
 
         /// <summary>
         /// The opening banner (program, version, etc)...
@@ -4244,7 +4484,11 @@ namespace twaincscert
             // Read in a line...
             while (true)
             {
-                string szPrompt = m_szPrompt.Replace(">>>", a_iTwainState + ">>>");
+                string szPrompt = m_szPrompt;
+                if (a_iTwainState > 0)
+                {
+                    szPrompt = szPrompt.Replace(">>>", a_iTwainState + ">>>");
+                }
 
                 // Write out the prompt...
                 if (Console.BackgroundColor == ConsoleColor.Black)
@@ -7085,7 +7329,7 @@ namespace twaincscert
                         ms_iMessageNumber++,
                         DateTime.Now.ToString("HHmmssffffff"),
                         lThreadId,
-                        (GetState == null) ? "S0" : GetState(),
+                        (GetState == null) ? "S1" : GetState(),
                         a_szSeverity.ToString(),
                         DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss.ffffff"),
                         szPlatform
@@ -7102,7 +7346,7 @@ namespace twaincscert
                     ms_iMessageNumber++,
                     DateTime.Now.ToString("HHmmssffffff"),
                     lThreadId,
-                    (GetState == null) ? "S0" : GetState(),
+                    (GetState == null) ? "S1" : GetState(),
                     a_szSeverity.ToString(),
                     a_szMessage
                 )

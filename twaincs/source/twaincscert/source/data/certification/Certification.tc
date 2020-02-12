@@ -1,0 +1,105 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TWAIN Certification Script
+; This runs all of the tests needed to pass certification for TWAIN.
+;
+; Arguments
+; arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Locals
+; (none)
+;
+; returns: pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize stuff...
+;
+set title 'TWAIN Certification Script v1.0 12-Feb-2020'
+set twidentity.productname '${arg:1}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize our report...
+;
+report initialize '${get:twidentity.productname}'
+echo '${get:title}'
+echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+echo 'operating system is ${platform:}'
+echo 'program is ${program:}'
+echo 'started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+log info '#${get:title}'
+log info '#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+log info 'operating system is ${platform:} (${bits:}-bits)'
+log info '#program is ${program:}'
+log info '#started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Run all of our tests, start by assuming success...
+;
+set certifyresulttwain 'pass'
+call CERTIFY 'Opends' '${get:twidentity.productname}'
+call CERTIFY '010 - TWAIN Standard Capability Tests/CAP_SUPPORTEDCAPS' '${get:twidentity.productname}'
+call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_PIXELTYPE' '${get:twidentity.productname}'
+call CERTIFY 'Closeds' '${get:twidentity.productname}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; How did we do?
+;
+if '${get:certifyresulttwain}' != 'pass' goto MAIN.FAIL
+echo
+echo
+echo 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+echo.green '**************************************'
+echo.green 'The scanner passed TWAIN Certification'
+echo.green '**************************************'
+log info '#'
+log info '#'
+log info '#ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+log info '#**************************************'
+log info '#The scanner passed TWAIN Certification'
+log info '#**************************************'
+report save
+echo 'report saved to ${report:}'
+return 'pass'
+;
+:MAIN.FAIL
+echo
+echo
+echo 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+echo.red '********************************************'
+echo.red 'The scanner did not pass TWAIN Certification'
+echo.red '********************************************'
+log info '#'
+log info '#'
+log info '#ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+log error '#********************************************'
+log error '#The scanner did not pass TWAIN Certification'
+log error '#********************************************'
+report save
+echo 'report saved to ${report:}'
+return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Certify
+; arg:1 - script to run
+; arg:2 - scanner to test
+; returns: pass or fail
+;
+:CERTIFY
+;
+run '${arg:1}' '${arg:2}'
+if '${ret:}' != 'pass' goto CERTIFY.FAIL
+return 'pass'
+;
+:CERTIFY.FAIL
+set certifyresulttwain fail
+return 'fail'

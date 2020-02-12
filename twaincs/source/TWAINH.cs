@@ -4233,13 +4233,13 @@ namespace TWAINWorkingGroup
         /// </summary>
         public enum STATE
         {
-            S1, // Nothing loaded or open
-            S2, // DSM loaded
-            S3, // DSM open
-            S4, // Data Source open, programmatic mode (no GUI)
-            S5, // GUI up or waiting to transfer first image
-            S6, // ready to start transferring image
-            S7  // transferring image or transfer done
+            S1 = 1, // Nothing loaded or open
+            S2 = 2, // DSM loaded
+            S3 = 3, // DSM open
+            S4 = 4, // Data Source open, programmatic mode (no GUI)
+            S5 = 5, // GUI up or waiting to transfer first image
+            S6 = 6, // ready to start transferring image
+            S7 = 7  // transferring image or transfer done
         }
 
         #endregion

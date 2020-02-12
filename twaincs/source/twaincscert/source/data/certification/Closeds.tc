@@ -1,0 +1,63 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Closeds
+; arg:1 - scanner to close
+; returns: pass
+;
+; Close the requested TWAIN driver...
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+call INITIALIZE 'Closeds v1.0 12-Feb-2020' '${arg:1}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Rewind the driver, close and unload the DSM...
+;
+if '${state:}' < '7' goto REWIND.6
+dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
+:REWIND.6
+if '${state:}' < '6' goto REWIND.5
+dsmentry src ds dg_control dat_pendingxfers msg_reset '0,0'
+:REWIND.5
+if '${state:}' < '5' goto REWIND.4
+dsmentry src null dg_control dat_userinterface msg_disableds '0,0'
+:REWIND.4
+if '${state:}' < '4' goto REWIND.3
+dsmentry src null dg_control dat_identity msg_closeds '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
+:REWIND.3
+if '${state:}' < '3' goto REWIND.2
+dsmentry src null dg_control dat_parent msg_closedsm hwnd
+:REWIND.2
+if '${state:}' < '2' goto REWIND.1
+dsmunload
+:REWIND.1
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+echopassfail 'Closeds' 'pass'
+return 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Initialize
+; arg:1 - name of this test suite
+; arg:2 - scanner to test
+; returns: true or false
+;
+:INITIALIZE
+;
+echo.yellow
+echo.yellow
+echo.yellow
+echo.yellow '********************************************************************************'
+echo.yellow '${arg:1}'
+return

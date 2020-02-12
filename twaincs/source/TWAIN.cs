@@ -12640,7 +12640,7 @@ namespace TWAINWorkingGroup
         /// <returns>the level</returns>
         private static string GetStateLocal()
         {
-            return ((ms_twain == null) ? "S0" : ms_twain.GetState().ToString());
+            return ((ms_twain == null) ? "S1" : ms_twain.GetState().ToString());
         }
 
         /// <summary>
@@ -12833,7 +12833,7 @@ namespace TWAINWorkingGroup
                         "{0:D6} {1} {2} T{3:D8} V{4} ts:{5} os:{6}",
                         ms_iMessageNumber++,
                         DateTime.Now.ToString("HHmmssffffff"),
-                        (ms_twain != null) ? ms_twain.GetState().ToString() : "S0",
+                        (ms_twain != null) ? ms_twain.GetState().ToString() : "S1",
                         lThreadId,
                         a_szSeverity.ToString(),
                         DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss.ffffff"),
@@ -12850,7 +12850,7 @@ namespace TWAINWorkingGroup
                     "{0:D6} {1} {2} T{3:D8} V{4} {5}",
                     ms_iMessageNumber++,
                     DateTime.Now.ToString("HHmmssffffff"),
-                    (ms_twain != null) ? ms_twain.GetState().ToString() : "S0",
+                    (ms_twain != null) ? ms_twain.GetState().ToString() : "S1",
                     lThreadId,
                     a_szSeverity.ToString(),
                     a_szMessage

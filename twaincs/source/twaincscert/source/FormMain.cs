@@ -67,17 +67,8 @@ namespace twaincscert
         }
 
         /// <summary>
-        /// Shut us down...
+        /// Private attributes...
         /// </summary>
-        public void Shutdown()
-        {
-            // Let's make sure we do this in the right place...
-            Invoke(new MethodInvoker(delegate {
-                Close();
-            }));
-        }
-
-        // Private attributes...
         private Terminal m_terminal = null;
     }
 }

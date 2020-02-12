@@ -1,0 +1,143 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_SUPPORTEDCAPS
+; arg:1 - scanner to test
+; returns: pass or fail
+;
+; Confirm Basic Negotiation with CAP_SUPPORTEDCAPS
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+call INITIALIZE 'CAP_SUPPORTEDCAPS v1.0 12-Feb-2020' '${arg:1}'
+set index.twcapability.cap '0'
+set index.twcapability.contype '1'
+set index.twcapability.hcontainer '2'
+set index.twarray.itemtype '2'
+set index.twarray.numitems '3'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; MSG_GET CAP_SUPPORTEDCAPS
+; If result is not TWRC_SUCCESS, then end with error
+;
+set name 'MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+set cap_supportedcaps '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_CAPABILITY.Cap is not CAP_SUPPORTEDCAPS, then end with error
+;
+set name 'TW_CAPABILITY.Cap is CAP_SUPPORTEDCAPS'
+if '${getindex:cap_supportedcaps.${get:index.twcapability.cap}}' != 'CAP_SUPPORTEDCAPS' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_CAPABILITY.ConType is not TWON_ARRAY, then end with error
+;
+set name 'TW_CAPABILITY.ConType is TWON_ARRAY'
+if '${getindex:cap_supportedcaps.${get:index.twcapability.contype}}' != 'TWON_ARRAY' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_CAPABILITY.hContainer is not a valid TW_HANDLE value, then end with error
+; (just see if we have more data, that'll satisfy the test)
+;
+set name 'TW_CAPABILITY.hContainer is TW_HANDLE'
+if '${getindex:cap_supportedcaps.${get:index.twcapability.hcontainer}}' == '' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_ARRAY.ItemType is not TWTY_UINT16, then end with error
+;
+set name 'TW_ARRAY.ItemType is TWTY_UINT16'
+if '${getindex:cap_supportedcaps.${get:index.twarray.itemtype}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_ARRAY.NumItems is equal to zero, then end with error
+;
+set name 'TW_ARRAY.NumItems > 0'
+if '${getindex:cap_supportedcaps.${get:index.twarray.numitems}}' <= '0' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If CAP_SUPPORTEDCAPS not found, then end with error
+;
+set name 'Find CAP_SUPPORTEDCAPS'
+if '${get:cap_supportedcaps}' !~contains 'CAP_SUPPORTEDCAPS' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If ICAP_PIXELTYPE not found, then end with error
+;
+set name 'Find ICAP_PIXELTYPE'
+if '${get:cap_supportedcaps}' !~contains 'ICAP_PIXELTYPE' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If ICAP_XFERMECH not found, then end with error
+;
+set name 'Find ICAP_XFERMECH'
+if '${get:cap_supportedcaps}' !~contains 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+echopassfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'error'
+:MAIN.ERROR
+echopassfail 'SUMMARY' 'error'
+return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Initialize
+; arg:1 - name of this test suite
+; arg:2 - scanner to test
+; returns: true or false
+;
+:INITIALIZE
+;
+echo.yellow
+echo.yellow
+echo.yellow
+echo.yellow '********************************************************************************'
+echo.yellow '${arg:1}'
+return

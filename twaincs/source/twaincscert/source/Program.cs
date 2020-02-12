@@ -75,19 +75,22 @@ namespace twaincscert
                 FormMain formmain = new FormMain();
 
                 // Launch the terminal window, we're doing this in
-                // a thread so we can have a console and a form...
+                // a thread so we can have a console and a form.  When
+                // the thread is done there's no reason to be subtle,
+                // we can exit the application...
                 Terminal terminal = new twaincscert.Terminal(formmain);
                 Thread threadTerminal = new Thread(
                     new ThreadStart(
                         delegate ()
                         {
                             terminal.Run();
+                            Environment.Exit(0);
                         }
                     )
                 );
                 threadTerminal.Start();
 
-                // Run our form, wait here for it to finish...
+                // Run our form, the exit above will kill it off...
                 formmain.SetTerminal(terminal);
                 Application.Run(formmain);
             }

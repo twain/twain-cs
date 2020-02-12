@@ -1,10 +1,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Open v1.0 14-Jan-2020
-; ${arg:1} - product name of scanner to open
+; Opends
+; arg:1 - scanner to open
 ; returns: pass or fail
 ;
-; Open the specified driver...
+; Open the requested TWAIN driver...
 ;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+call INITIALIZE 'Opends v1.0 12-Feb-2020' '${arg:1}'
 
 
 
@@ -13,7 +20,7 @@
 ;
 dsmload
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
-if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 
 
 
@@ -21,21 +28,34 @@ if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 ; Open the driver...
 ;
 dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
-if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-echo '${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Bye-bye...
+; Summary and cleanup...
 ;
-return pass
+echopassfail 'Opends' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR
+echopassfail 'Opends' 'error'
+return 'fail'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Bye-bye...
+; Function: Initialize
+; arg:1 - name of this test suite
+; arg:2 - scanner to test
+; returns: true or false
 ;
-:MAIN.FAIL
-echo 'Fail...${sts:}'
-return fail
+:INITIALIZE
+;
+echo.yellow
+echo.yellow
+echo.yellow
+echo.yellow '********************************************************************************'
+echo.yellow '${arg:1}'
+return
