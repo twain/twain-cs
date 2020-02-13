@@ -1740,12 +1740,12 @@ namespace twaincscert
                 Display("script based to make it easier to manage the tests.  Users can create and run their own tests,");
                 Display("such as extracting key items from an existing test to make it easier to debug.");
                 Display("");
-                Display("The 'language' is not sophisticated.  It supports a goto, a conditional goto, and a call");
-                Display("function.  The set and increment commands manage variables.  All of the TWAIN calls are");
+                Display("The 'language' is not sophisticated.  It supports a goto, a conditional goto, and a call and");
+                Display("run function.  The set and increment commands manage variables.  All of the TWAIN calls are");
                 Display("accessible, including some extras used to stress the system.  Custom capabilities can be");
                 Display("accessed using numbers.  Custom operations are not supported at this time (a flexible");
-                Display("marshalling system would be needed).  The semicolon ';' is the comment indicator.  At this");
-                Display("time it must appear on a line by itself.");
+                Display("marshalling system would be needed).  The semicolon ';' is the comment indicator, it can appear");
+                Display("by itself or at the end of a line.");
                 Display("");
                 Display("The most interesting part of the scripting support is variable expansion.  Variables take the");
                 Display("form ${source:target} with the following available sources:");
@@ -2269,7 +2269,7 @@ namespace twaincscert
             Display("");
             while (true)
             {
-                interpreter.SetPrompt("Cerify '" + szSelection + "'" + " (yes/no)? ");
+                interpreter.SetPrompt("Certify '" + szSelection + "'" + " (yes/no)? ");
                 string szAnswer = interpreter.Prompt(m_streamreaderConsole, 0);
                 if (szAnswer.ToLowerInvariant().StartsWith("y"))
                 {
@@ -4604,7 +4604,7 @@ namespace twaincscert
         {
             int cc;
             int tt;
-            char szQuote;
+            char szQuote = (char)0;
             string[] aszTokens;
 
             // We're coming out of this with at least one token...
@@ -4662,6 +4662,7 @@ namespace twaincscert
                         // We found our terminator (don't copy it)...
                         if (a_szCmd[cc] == szQuote)
                         {
+                            szQuote = (char)0;
                             cc += 1;
                             break;
                         }
@@ -4702,6 +4703,13 @@ namespace twaincscert
                         aszTokens = asz;
                         tt += 1;
                     }
+                }
+
+                // Bail if we find an inline comment...
+                else if ((szQuote == (char)0) && (a_szCmd[cc] == ';'))
+                {
+                    Array.Resize<string>(ref aszTokens, aszTokens.Length - 1);
+                    break;
                 }
 
                 // Anything else is data in the current token...

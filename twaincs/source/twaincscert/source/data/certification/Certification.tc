@@ -25,16 +25,11 @@ set twidentity.productname '${arg:1}'
 ; Initialize our report...
 ;
 report initialize '${get:twidentity.productname}'
-echo '${get:title}'
-echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-echo 'operating system is ${platform:}'
-echo 'program is ${program:}'
-echo 'started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
-log info '#${get:title}'
-log info '#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-log info 'operating system is ${platform:} (${bits:}-bits)'
-log info '#program is ${program:}'
-log info '#started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+call ECHOANDLOG info '${get:title}'
+call ECHOANDLOG info '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+call ECHOANDLOG info 'operating system is ${platform:}'
+call ECHOANDLOG info 'program is ${program:}'
+call ECHOANDLOG info 'started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
 
 
 
@@ -54,35 +49,23 @@ call CERTIFY 'Closeds' '${get:twidentity.productname}'
 ; How did we do?
 ;
 if '${get:certifyresulttwain}' != 'pass' goto MAIN.FAIL
-echo
-echo
-echo 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
-echo.green '**************************************'
-echo.green 'The scanner passed TWAIN Certification'
-echo.green '**************************************'
-log info '#'
-log info '#'
-log info '#ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
-log info '#**************************************'
-log info '#The scanner passed TWAIN Certification'
-log info '#**************************************'
+call ECHOANDLOG info
+call ECHOANDLOG info
+call ECHOANDLOG info 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+call ECHOANDLOG info '**************************************'
+call ECHOANDLOG info 'The scanner passed TWAIN Certification'
+call ECHOANDLOG info '**************************************'
 report save
 echo 'report saved to ${report:}'
 return 'pass'
 ;
 :MAIN.FAIL
-echo
-echo
-echo 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
-echo.red '********************************************'
-echo.red 'The scanner did not pass TWAIN Certification'
-echo.red '********************************************'
-log info '#'
-log info '#'
-log info '#ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
-log error '#********************************************'
-log error '#The scanner did not pass TWAIN Certification'
-log error '#********************************************'
+call ECHOANDLOG error
+call ECHOANDLOG error
+call ECHOANDLOG error 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
+call ECHOANDLOG error '********************************************'
+call ECHOANDLOG error 'The scanner did not pass TWAIN Certification'
+call ECHOANDLOG error '********************************************'
 report save
 echo 'report saved to ${report:}'
 return 'fail'
@@ -104,3 +87,21 @@ return 'pass'
 :CERTIFY.FAIL
 set certifyresulttwain fail
 return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: EchoAndLog
+; arg:1 - severity (normal, info, error)
+; arg:2 - text
+;
+:ECHOANDLOG
+;
+if '${arg:1}' == 'info' goto ECHOANDLOG.INFO
+echo.red '${arg:2}'
+log error '#${arg:2}'
+:ECHOANDLOG.INFO
+echo.green '${arg:2}'
+log info '#${arg:2}'
+:ECHOANDLOG.ERROR
+return
