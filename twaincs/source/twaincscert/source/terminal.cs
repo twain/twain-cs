@@ -381,6 +381,18 @@ namespace twaincscert
                 }
             }
 
+            // If this is issued directly by the user or runv is being used, let's
+            // give more info...
+            if (!m_blRunningScript || !m_blSilent)
+            {
+                CSV csv = new CSV();
+                foreach (string szCmd in a_functionarguments.aszCmd)
+                {
+                    csv.Add(szCmd);
+                }
+                DisplayBlue("snd: " + csv.Get());
+            }
+
             // Send the command...
             switch (a_functionarguments.iDat)
             {
@@ -814,6 +826,14 @@ namespace twaincscert
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
                     break;
+            }
+
+            // If this is issued directly by the user or runv is being used, let's
+            // give more info...
+            if (!m_blRunningScript || !m_blSilent)
+            {
+                DisplayBlue("rcv: " + a_functionarguments.szReturnValue);
+                DisplayBlue("sts: " + a_functionarguments.sts);
             }
 
             // All done...
@@ -2126,6 +2146,7 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdCertify(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            bool blVerboseRestore = m_blVerbose;
             bool blTwainSuccess = false;
             string szSelection = "";
             Interpreter interpreter = new Interpreter("");
@@ -2133,7 +2154,17 @@ namespace twaincscert
             // If we have arguments, drop them in...
             if ((a_functionarguments.aszCmd != null) && (a_functionarguments.aszCmd.Length > 1) && (a_functionarguments.aszCmd[1] != null))
             {
-                szSelection = a_functionarguments.aszCmd[1];
+                for (int aa = 1; aa < a_functionarguments.aszCmd.Length; aa++)
+                {
+                    if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "verbose")
+                    {
+                        m_blVerbose = true;
+                    }
+                    else
+                    {
+                        szSelection = a_functionarguments.aszCmd[aa];
+                    }
+                }
             }
 
             // Tell the user the plan...
@@ -2159,6 +2190,7 @@ namespace twaincscert
                 {
                     Display("");
                     DisplayRed("dsmload error...");
+                    m_blVerbose = blVerboseRestore;
                     return (false);
                 }
 
@@ -2170,6 +2202,7 @@ namespace twaincscert
                 {
                     Display("");
                     DisplayRed("dsmopen error...");
+                    m_blVerbose = blVerboseRestore;
                     return (false);
                 }
 
@@ -2211,6 +2244,7 @@ namespace twaincscert
                 {
                     Display("");
                     DisplayRed("No drivers found...");
+                    m_blVerbose = blVerboseRestore;
                     return (false);
                 }
 
@@ -2238,6 +2272,7 @@ namespace twaincscert
                         || (szSelection.ToLowerInvariant() == "q"))
                     {
                         szSelection = "";
+                        m_blVerbose = blVerboseRestore;
                         return (false);
                     }
                     if (szSelection.Length > 0)
@@ -2262,6 +2297,7 @@ namespace twaincscert
             // We're bailing...
             if (string.IsNullOrEmpty(szSelection))
             {
+                m_blVerbose = blVerboseRestore;
                 return (false);
             }
 
@@ -2277,6 +2313,7 @@ namespace twaincscert
                 }
                 else if (szAnswer.ToLowerInvariant().StartsWith("n"))
                 {
+                    m_blVerbose = blVerboseRestore;
                     return (false);
                 }
             }
@@ -2297,6 +2334,7 @@ namespace twaincscert
                         Display("");
                         DisplayRed("Can't find our data/Certification folder, it should be in the");
                         DisplayRed("same folder as this application, or the current folder.");
+                        m_blVerbose = blVerboseRestore;
                         return (false);
                     }
                 }
@@ -2306,7 +2344,14 @@ namespace twaincscert
                 Directory.SetCurrentDirectory(szCertificationFolder);
                 Interpreter.FunctionArguments functionarguments = new Interpreter.FunctionArguments();
                 functionarguments = new Interpreter.FunctionArguments();
-                functionarguments.aszCmd = new string[3] { "run", "certification", szSelection };
+                if (m_blVerbose)
+                {
+                    functionarguments.aszCmd = new string[3] { "runv", "certification", szSelection };
+                }
+                else
+                {
+                    functionarguments.aszCmd = new string[3] { "run", "certification", szSelection };
+                }
                 CmdRun(ref functionarguments);
                 blTwainSuccess = (functionarguments.szReturnValue == "pass");
                 Directory.SetCurrentDirectory(szCurrentDirectory);
@@ -2337,6 +2382,7 @@ namespace twaincscert
             }
 
             // All done...
+            m_blVerbose = blVerboseRestore;
             return (false);
         }
 
@@ -2939,8 +2985,16 @@ namespace twaincscert
             bool blSuccess;
             bool blSilent = m_blSilent;
             bool blSilentEvents = m_blSilentEvents;
-            m_blSilent = true;
-            m_blSilentEvents = true;
+            if (m_blVerbose)
+            {
+                m_blSilent = false;
+                m_blSilentEvents = false;
+            }
+            else
+            {
+                m_blSilent = true;
+                m_blSilentEvents = true;
+            }
             blSuccess = CmdRunv(ref a_functionarguments);
             m_blSilent = blSilent;
             m_blSilentEvents = blSilentEvents;
@@ -3025,6 +3079,7 @@ namespace twaincscert
             bool blReturn = false;
             TWAIN.STS sts = TWAIN.STS.SUCCESS;
             string szReturnValue = "";
+            m_blRunningScript = true;
             while (iLine < aszScript.Length)
             {
                 bool blDone;
@@ -3127,6 +3182,7 @@ namespace twaincscert
             }
 
             // All done...
+            m_blRunningScript = false;
             return (false);
         }
 
@@ -4052,6 +4108,8 @@ namespace twaincscert
         /// </summary>
         private bool m_blSilent;
         private bool m_blSilentEvents;
+        private bool m_blRunningScript;
+        private bool m_blVerbose;
 
         /// <summary>
         /// The list of key/value pairs created by the SET command...

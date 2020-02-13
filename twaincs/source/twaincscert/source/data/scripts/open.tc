@@ -22,7 +22,6 @@ if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 ;
 dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-echo '${ret:}'
 
 
 

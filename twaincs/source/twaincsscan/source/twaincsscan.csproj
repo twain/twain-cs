@@ -116,21 +116,15 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FormScan.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="FormScan.cs" />
     <Compile Include="FormScan.Designer.cs">
       <DependentUpon>FormScan.cs</DependentUpon>
     </Compile>
-    <Compile Include="FormSetup.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="FormSetup.cs" />
     <Compile Include="FormSetup.Designer.cs">
       <DependentUpon>FormSetup.cs</DependentUpon>
     </Compile>
-    <Compile Include="FormSelect.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="FormSelect.cs" />
     <Compile Include="FormSelect.Designer.cs">
       <DependentUpon>FormSelect.cs</DependentUpon>
     </Compile>
