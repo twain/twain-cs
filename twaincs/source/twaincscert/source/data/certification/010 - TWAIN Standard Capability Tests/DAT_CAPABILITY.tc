@@ -1,0 +1,186 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_CAPABILITY
+; arg:1 - scanner to test
+; returns: pass or fail
+;
+; Exercise DAT_CAPABILITY fot the standard TWAIN capabilities
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+call INITIALIZE 'DAT_CAPABILITY v1.0 17-Feb-2020' '${arg:1}'
+set index.twcapability.cap '0'
+set index.twcapability.contype '1'
+set index.twcapability.hcontainer '2'
+set index.twonevalue.itemtype '2'
+set index.twonevalue.item '3'
+set twptlist 'TWPT_BW,TWPT_GRAY,TWPT_RGB'
+set itwpt '-1'
+set datcapabilityresult 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; MSG_RESETALL
+; If return code is not TWRC_SUCCESS, end with an error
+;
+set name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Repeat this section for each enumerated value found inside of ICAP_PIXELTYPE, 
+; (testing is done for each value of ICAP_PIXELTYPE, to provide the best chance
+; of exercising every available capability)
+;
+:NEXTTWPT
+increment itwpt '${get:itwpt}'
+set name '${getindex:twptlist.${get:itwpt}}'
+if '${get:name}' != '' goto MAIN.TWPTSET
+goto MAIN.PASS
+:MAIN.TWPTSET
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:name}'
+if '${sts:}' == 'SUCCESS' goto MAIN.TWPTCONTINUE
+echopassfail '${get:name}' 'skip'
+goto NEXTTWPT
+:MAIN.TWPTCONTINUE
+echopassfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Repeat this section for Standard TWAIN array values found inside of
+; CAP_SUPPORTEDCAPS (each Standard TWAIN capability ID is referred to as #CAP#
+; for the rest of this section)
+;
+set name 'CAP_SUPPORTEDCAPS MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+set cap_supportedcaps '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Grab a standard TWAIN capability from CAP_SUPPORTEDCAPS, we know it's
+; supported if we have a name for it (it's not a number).
+;
+set icap '5'
+:NEXTCAP
+increment icap '${get:icap}'
+set cap '${getindex:cap_supportedcaps.${get:icap}}'
+if '${get:cap}' == '' goto NEXTTWPT
+if '${get:cap}' ~contains '0x' goto NEXTCAP
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Perform these tests on each capability...
+;
+call MSGQUERYSUPPORT '${get:cap}' querysupport          datcapabilityresult
+;call MSGGET          '${get:cap}' '${get:querysupport}' datcapabilityresult
+;call MSGGETCURRENT   '${get:cap}' '${get:querysupport}' datcapabilityresult
+;call MSGGETDEFAULT   '${get:cap}' '${get:querysupport}' datcapabilityresult
+;call MSGSET          '${get:cap}' '${get:querysupport}' datcapabilityresult
+goto NEXTCAP
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+:MAIN.PASS
+if '${get:datcapabilityresult}' != 'pass' goto MAIN.ERROR
+echopassfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echopassfail '${get:name}' 'error'
+:MAIN.ERROR
+echopassfail 'SUMMARY' 'error'
+return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Initialize
+; arg:1 - name of this test suite
+; arg:2 - scanner to test
+; returns: true or false
+;
+:INITIALIZE
+;
+echo.yellow
+echo.yellow
+echo.yellow
+echo.yellow '********************************************************************************'
+echo.yellow '${arg:1}'
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: MSGQUERYSUPPORT
+; arg:1 - capability to check
+; arg:2 - value returned
+; arg:3 - pass/fail returned
+; returns: (none)
+;
+:MSGQUERYSUPPORT
+;
+; Send the command...
+set name 'Send MSG_QUERYSUPPORT ${arg:1}'
+dsmentry src ds dg_control dat_capability msg_querysupport '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+set twcapability '${ret:}'
+;
+; Verify the capability matches...
+set name '    Verify TW_CAPABILITY.Cap'
+if '${getindex:twcapability.${get:index.twcapability.cap}}' != '${arg:1}' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; Verify the container is TWON_ONEVALUE...
+set name '    Verify TW_CAPABILITY.ConType is TWON_ONEVALUE'
+if '${getindex:twcapability.${get:index.twcapability.contype}}' != 'TWON_ONEVALUE' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; Verify the item type is TWTY_INT32...
+; SPECNOTE: test says TWTY_INT32, test says TWTY_UINT32...spec wins...
+set name '    Verify TW_CAPABILITY.ItemType is TWTY_INT32'
+if '${getindex:twcapability.${get:index.twonevalue.itemtype}}' != 'TWTY_INT32' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; Verify GET(1), GETCURRENT(4), GETDEFAULT(8)...13 0xD
+set name '    Verify GET, GETCURRENT, GETDEFAULT'
+if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x000D' == '0' goto MSGQUERYSUPPORT.VERIFYSET
+if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x000D' != '0x000D' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; Verify GET(1), SET(2), GETCURRENT(4), GETDEFAULT(8), RESET(16)...31 0x1F
+:MSGQUERYSUPPORT.VERIFYSET
+set name '    Verify SET, RESET with GETs'
+if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x0012' == '0' goto MSGQUERYSUPPORT.PASS
+if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x001F' != '0x001F' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+goto MSGQUERYSUPPORT.PASS
+;
+; All done...
+:MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'error'
+:MSGQUERYSUPPORT.FAIL
+set '${arg:2}' '0'
+set '${arg:3}' 'fail'
+return
+:MSGQUERYSUPPORT.PASS
+set '${arg:2}' '${getindex:twcapability.${get:index.twonevalue.item}}'
+set '${arg:3}' 'pass'
+return

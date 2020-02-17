@@ -63,6 +63,24 @@ namespace twaincscert
         /// </summary>
         public Terminal(FormMain a_formmain)
         {
+            // Pick some colors...
+            if (TWAIN.GetProcessor() == TWAIN.Processor.MIPS64EL)
+            {
+                m_consolecolorDefault = ConsoleColor.Black;
+                m_consolecolorBlue = ConsoleColor.DarkBlue;
+                m_consolecolorGreen = ConsoleColor.DarkGreen;
+                m_consolecolorRed = ConsoleColor.Red;
+                m_consolecolorYellow = ConsoleColor.DarkYellow;
+            }
+            else
+            {
+                m_consolecolorDefault = ConsoleColor.Gray;
+                m_consolecolorBlue = ConsoleColor.Cyan;
+                m_consolecolorGreen = ConsoleColor.Green;
+                m_consolecolorRed = ConsoleColor.Red;
+                m_consolecolorYellow = ConsoleColor.Yellow;
+            }
+
             // Make sure we have a console...
             m_streamreaderConsole = Interpreter.CreateConsole();
 
@@ -137,7 +155,29 @@ namespace twaincscert
             AssemblyName assemblyname = assembly.GetName();
             Version version = assemblyname.Version;
             DateTime datetime = new DateTime(2000, 1, 1).AddDays(version.Build).AddSeconds(version.MinorRevision * 2);
-            m_szBanner = "TWAIN Certification v" + version.Major + "." + version.Minor + " " + datetime.Day + "-" + datetime.ToString("MMM") + "-" + datetime.Year + " " + ((IntPtr.Size == 4) ? "(32-bit)" : "(64-bit)");
+            string szSystem = "(";
+            switch (TWAIN.GetPlatform())
+            {
+                default: szSystem += "UNKNOWN-OS"; break;
+                case TWAIN.Platform.WINDOWS: szSystem += "Windows"; break;
+                case TWAIN.Platform.LINUX: szSystem += "Linux"; break;
+                case TWAIN.Platform.MACOSX: szSystem += "macOS"; break;
+            }
+            switch (TWAIN.GetProcessor())
+            {
+                default: szSystem += " UNKNOWN-PROCESSOR"; break;
+                case TWAIN.Processor.X86:
+                case TWAIN.Processor.X86_64: szSystem += " Intel"; break;
+                case TWAIN.Processor.MIPS64EL: szSystem += " MIPSEL"; break;
+            }
+            switch (TWAIN.GetMachineWordBitSize())
+            {
+                default: szSystem += " UNKNOWN-BITSIZE"; break;
+                case 32: szSystem += " 32-bit"; break;
+                case 64: szSystem += " 64-bit"; break;
+            }
+            szSystem += ")";
+            m_szBanner = "TWAIN Certification v" + version.Major + "." + version.Minor + " " + datetime.Day + "-" + datetime.ToString("MMM") + "-" + datetime.Year + " " + szSystem;
             Display(m_szBanner);
             Display("Enter \"certify\" to certify a scanner.");
             Display("Enter \"help\" for more info.");
@@ -166,7 +206,7 @@ namespace twaincscert
         public void Run()
         {
             string szPrompt = "tc";
-            Interpreter interpreter = new Interpreter(szPrompt + ">>> ");
+            Interpreter interpreter = new Interpreter(szPrompt + ">>> ", m_consolecolorDefault, m_consolecolorGreen);
 
             // If not windows we have to turn on echo...
             if (TWAINWorkingGroup.TWAIN.GetPlatform() != TWAIN.Platform.WINDOWS)
@@ -383,7 +423,7 @@ namespace twaincscert
 
             // If this is issued directly by the user or runv is being used, let's
             // give more info...
-            if (!m_blRunningScript || !m_blSilent)
+            if (!m_blRunningScript || m_blVerbose)
             {
                 CSV csv = new CSV();
                 foreach (string szCmd in a_functionarguments.aszCmd)
@@ -462,11 +502,12 @@ namespace twaincscert
                 // DAT_CAPABILITY...
                 case (int)TWAIN.DAT.CAPABILITY:
                     {
+                        // Skip symbols for msg_querysupport, otherwise 0 gets turned into false...
                         string szStatus = "";
                         TWAIN.TW_CAPABILITY twcapability = default(TWAIN.TW_CAPABILITY);
                         m_twain.CsvToCapability(ref twcapability, ref szStatus, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatCapability((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twcapability);
-                        a_functionarguments.szReturnValue = m_twain.CapabilityToCsv(twcapability, true);
+                        a_functionarguments.szReturnValue = m_twain.CapabilityToCsv(twcapability, ((TWAIN.MSG)a_functionarguments.iMsg != TWAIN.MSG.QUERYSUPPORT));
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -830,7 +871,7 @@ namespace twaincscert
 
             // If this is issued directly by the user or runv is being used, let's
             // give more info...
-            if (!m_blRunningScript || !m_blSilent)
+            if (!m_blRunningScript || m_blVerbose)
             {
                 DisplayBlue("rcv: " + a_functionarguments.szReturnValue);
                 DisplayBlue("sts: " + a_functionarguments.sts);
@@ -1670,10 +1711,11 @@ namespace twaincscert
                 Display("help scripting...............................general discussion of scripting");
                 Display("");
                 DisplayRed("Data Source Manager (DSM) commands");
-                Display("help [command]...............................this text or info about a command");
+                Display("certify [productname] [verbose]..............certify a TWAIN driver");
                 Display("dsmload [args]...............................load the DSM");
                 Display("dsmunload....................................unload the DSM");
                 Display("dsmentry.....................................send a command to the DSM");
+                Display("help [command]...............................this text or info about a command");
                 Display("wait [timeout]...............................wait for a DAT_NULL message");
                 Display("");
                 DisplayRed("Scripting");
@@ -1739,15 +1781,20 @@ namespace twaincscert
             {
                 /////////0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
                 DisplayRed("CERTIFYING A SCANNER");
-                Display("Certification is accomplished using scripts contained in the data/certification folder.  These");
-                Display("need to be run for both 32-bit and 64-bit systems on the processors supported by the driver.");
+                Display("Certification is accomplished using scripts contained in the data/Certification folder.  These");
+                Display("need to be run for both 32-bit and 64-bit systems on all platforms supported by the driver.");
                 Display("");
-                Display("The following script can be used to run certification:");
-                Display("  run certification \"scanner product name\"");
-                Display("    where protocol is one of the following:");
-                Display("      signin - for TWAIN Cloud");
-                Display("      local - for TWAIN Local");
-                Display("    read about DG_CONTROL / DAT_IDENTITY / MSG_* to learn how to enumerate scanners.");
+                Display("The following command runs certification:");
+                Display("  certify [\"driver\"] [verbose]");
+                Display("  Where,");
+                Display("      driver - the TW_IDENTITY.ProductName of a TWAIN driver");
+                Display("      verbose - if you want to see under the hood");
+                Display("");
+                Display("No arguments have to be given, in which case the command shows a list of the installed TWAIN");
+                Display("driver and prompts for the one to use.  Follow the commands to complete the process.");
+                Display("");
+                Display("If debugging a problem the various scripts can be run separately.  Manually run the Opends");
+                Display("script, and then the script you want to focus on.");
                 return (false);
             }
 
@@ -2146,10 +2193,14 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdCertify(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            bool blRunningScriptRestore = m_blRunningScript;
             bool blVerboseRestore = m_blVerbose;
             bool blTwainSuccess = false;
             string szSelection = "";
-            Interpreter interpreter = new Interpreter("");
+            Interpreter interpreter = new Interpreter("", m_consolecolorDefault, m_consolecolorGreen);
+
+            // Gotta pretend we're in a script...
+            m_blRunningScript = true;
 
             // If we have arguments, drop them in...
             if ((a_functionarguments.aszCmd != null) && (a_functionarguments.aszCmd.Length > 1) && (a_functionarguments.aszCmd[1] != null))
@@ -2190,6 +2241,7 @@ namespace twaincscert
                 {
                     Display("");
                     DisplayRed("dsmload error...");
+                    m_blRunningScript = blRunningScriptRestore;
                     m_blVerbose = blVerboseRestore;
                     return (false);
                 }
@@ -2202,6 +2254,7 @@ namespace twaincscert
                 {
                     Display("");
                     DisplayRed("dsmopen error...");
+                    m_blRunningScript = blRunningScriptRestore;
                     m_blVerbose = blVerboseRestore;
                     return (false);
                 }
@@ -2244,6 +2297,7 @@ namespace twaincscert
                 {
                     Display("");
                     DisplayRed("No drivers found...");
+                    m_blRunningScript = blRunningScriptRestore;
                     m_blVerbose = blVerboseRestore;
                     return (false);
                 }
@@ -2272,6 +2326,7 @@ namespace twaincscert
                         || (szSelection.ToLowerInvariant() == "q"))
                     {
                         szSelection = "";
+                        m_blRunningScript = blRunningScriptRestore;
                         m_blVerbose = blVerboseRestore;
                         return (false);
                     }
@@ -2297,6 +2352,7 @@ namespace twaincscert
             // We're bailing...
             if (string.IsNullOrEmpty(szSelection))
             {
+                m_blRunningScript = blRunningScriptRestore;
                 m_blVerbose = blVerboseRestore;
                 return (false);
             }
@@ -2313,6 +2369,7 @@ namespace twaincscert
                 }
                 else if (szAnswer.ToLowerInvariant().StartsWith("n"))
                 {
+                    m_blRunningScript = blRunningScriptRestore;
                     m_blVerbose = blVerboseRestore;
                     return (false);
                 }
@@ -2334,6 +2391,7 @@ namespace twaincscert
                         Display("");
                         DisplayRed("Can't find our data/Certification folder, it should be in the");
                         DisplayRed("same folder as this application, or the current folder.");
+                        m_blRunningScript = blRunningScriptRestore;
                         m_blVerbose = blVerboseRestore;
                         return (false);
                     }
@@ -2382,6 +2440,7 @@ namespace twaincscert
             }
 
             // All done...
+            m_blRunningScript = blRunningScriptRestore;
             m_blVerbose = blVerboseRestore;
             return (false);
         }
@@ -2393,24 +2452,43 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdIf(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            int iAction = 0;
             bool blDoAction = false;
-            string szItem1;
-            string szItem2;
-            string szOperator;
-            string szAction;
+            string szItem1 = "";
+            string szItem2 = "";
+            string szItem3 = "";
+            string szOperator = "";
+            string szOperator2 = "";
 
-            // Validate...
-            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 5) || (a_functionarguments.aszCmd[1] == null))
+            // Get all of the stuff (logical operators need more)...
+            if (   (a_functionarguments.aszCmd[2] == "&")
+                || (a_functionarguments.aszCmd[2] == "|"))
             {
-                DisplayError("badly formed if-statement...");
-                return (false);
+                if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 7) || (a_functionarguments.aszCmd[1] == null))
+                {
+                    DisplayError("badly formed if-statement...");
+                    return (false);
+                }
+                szItem1 = a_functionarguments.aszCmd[1];
+                szOperator = a_functionarguments.aszCmd[2];
+                szItem2 = a_functionarguments.aszCmd[3];
+                szOperator2 = a_functionarguments.aszCmd[4];
+                szItem3 = a_functionarguments.aszCmd[5];
+                iAction = 6;
             }
-
-            // Get all of the stuff...
-            szItem1 = a_functionarguments.aszCmd[1];
-            szOperator = a_functionarguments.aszCmd[2];
-            szItem2 = a_functionarguments.aszCmd[3];
-            szAction = a_functionarguments.aszCmd[4];
+            // Everybody else needs less stuff...
+            else
+            {
+                if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 5) || (a_functionarguments.aszCmd[1] == null))
+                {
+                    DisplayError("badly formed if-statement...");
+                    return (false);
+                }
+                szItem1 = a_functionarguments.aszCmd[1];
+                szOperator = a_functionarguments.aszCmd[2];
+                szItem2 = a_functionarguments.aszCmd[3];
+                iAction = 4;
+            }
 
             // Items must match (case sensitive)...
             if (szOperator == "==")
@@ -2548,6 +2626,114 @@ namespace twaincscert
                 }
             }
 
+            // Bit-wise AND, always compared to a target...
+            else if (szOperator == "&")
+            {
+                int iAnd = 0;
+                int iItem1 = 0;
+                int iItem2 = 0;
+                int iItem3 = 0;
+                bool blItem1 = false;
+                bool blItem2 = false;
+                bool blItem3 = false;
+                if (szItem1.ToLowerInvariant().StartsWith("0x"))
+                {
+                    blItem1 = int.TryParse(szItem1.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iItem1);
+                }
+                else
+                {
+                    blItem1 = int.TryParse(szItem1, out iItem1);
+                }
+                if (szItem2.ToLowerInvariant().StartsWith("0x"))
+                {
+                    blItem2 = int.TryParse(szItem2.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iItem2);
+                }
+                else
+                {
+                    blItem2 = int.TryParse(szItem2, out iItem2);
+                }
+                if (szItem3.ToLowerInvariant().StartsWith("0x"))
+                {
+                    blItem3 = int.TryParse(szItem3.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iItem3);
+                }
+                else
+                {
+                    blItem3 = int.TryParse(szItem3, out iItem3);
+                }
+                if (!blItem1 || !blItem2 || !blItem3)
+                {
+                    DisplayError("badly formed if-statement...");
+                    return (false);
+                }
+                iAnd = iItem1 & iItem2;
+                if ((szOperator2 == "==") && (iAnd == iItem3))
+                {
+                    blDoAction = true;
+                }
+                else if ((szOperator2 == "!=") && (iAnd != iItem3))
+                {
+                    blDoAction = true;
+                }
+                else
+                {
+                    blDoAction = false;
+                }
+            }
+
+            // Bit-wise OR, always compared to a target...
+            else if (szOperator == "|")
+            {
+                int iOr = 0;
+                int iItem1 = 0;
+                int iItem2 = 0;
+                int iItem3 = 0;
+                bool blItem1 = false;
+                bool blItem2 = false;
+                bool blItem3 = false;
+                if (szItem1.ToLowerInvariant().StartsWith("0x"))
+                {
+                    blItem1 = int.TryParse(szItem1.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iItem1);
+                }
+                else
+                {
+                    blItem1 = int.TryParse(szItem1, out iItem1);
+                }
+                if (szItem2.ToLowerInvariant().StartsWith("0x"))
+                {
+                    blItem2 = int.TryParse(szItem2.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iItem2);
+                }
+                else
+                {
+                    blItem2 = int.TryParse(szItem2, out iItem2);
+                }
+                if (szItem3.ToLowerInvariant().StartsWith("0x"))
+                {
+                    blItem3 = int.TryParse(szItem3.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iItem3);
+                }
+                else
+                {
+                    blItem3 = int.TryParse(szItem3, out iItem3);
+                }
+                if (!blItem1 || !blItem2 || !blItem3)
+                {
+                    DisplayError("badly formed if-statement...");
+                    return (false);
+                }
+                iOr = iItem1 | iItem2;
+                if ((szOperator2 == "==") && (iOr == iItem3))
+                {
+                    blDoAction = true;
+                }
+                else if ((szOperator2 == "!=") && (iOr != iItem3))
+                {
+                    blDoAction = true;
+                }
+                else
+                {
+                    blDoAction = false;
+                }
+            }
+
             // Item1 must contain items2 (case sensitive)...
             else if (szOperator == "contains")
             {
@@ -2595,20 +2781,20 @@ namespace twaincscert
             if (blDoAction)
             {
                 // We're doing a goto...
-                if (szAction.ToLowerInvariant() == "goto")
+                if (a_functionarguments.aszCmd[iAction].ToLowerInvariant() == "goto")
                 {
                     int iLine;
                     string szLabel;
 
                     // Validate...
-                    if ((a_functionarguments.aszCmd.Length < 5) || string.IsNullOrEmpty(a_functionarguments.aszCmd[4]))
+                    if ((a_functionarguments.aszCmd.Length < (iAction + 1)) || string.IsNullOrEmpty(a_functionarguments.aszCmd[iAction + 1]))
                     {
                         DisplayError("goto label is missing...");
                         return (false);
                     }
 
                     // Find the label...
-                    szLabel = ":" + a_functionarguments.aszCmd[5];
+                    szLabel = ":" + a_functionarguments.aszCmd[iAction + 1];
                     for (iLine = 0; iLine < a_functionarguments.aszScript.Length; iLine++)
                     {
                         if (a_functionarguments.aszScript[iLine].Trim() == szLabel)
@@ -2627,7 +2813,7 @@ namespace twaincscert
                 // We have no idea what we're doing...
                 else
                 {
-                    DisplayError("unrecognized action: <" + szAction + ">");
+                    DisplayError("unrecognized action: <" + a_functionarguments.aszCmd[iAction] + ">");
                     return (false);
                 }
             }
@@ -2718,7 +2904,7 @@ namespace twaincscert
             }
 
             // Loopy...
-            Interpreter interpreter = new Interpreter(szPrompt);
+            Interpreter interpreter = new Interpreter(szPrompt, m_consolecolorDefault, m_consolecolorGreen);
             while (true)
             {
                 // Get the command...
@@ -3061,7 +3247,7 @@ namespace twaincscert
             }
 
             // Give ourselves an interpreter...
-            interpreter = new Interpreter("");
+            interpreter = new Interpreter("", m_consolecolorDefault, m_consolecolorGreen);
 
             // Bump ourself up on the call stack, because we're really
             // working like a call.  At this point we'll be running with
@@ -3490,9 +3676,9 @@ namespace twaincscert
             {
                 if (Console.BackgroundColor == ConsoleColor.Black)
                 {
-                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.ForegroundColor = m_consolecolorBlue;
                     Console.Out.WriteLine(a_szText);
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.ForegroundColor = m_consolecolorDefault;
                 }
                 else
                 {
@@ -3515,9 +3701,9 @@ namespace twaincscert
             {
                 if (Console.BackgroundColor == ConsoleColor.Black)
                 {
-                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.ForegroundColor = m_consolecolorGreen;
                     Console.Out.WriteLine(a_szText);
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.ForegroundColor = m_consolecolorDefault;
                 }
                 else
                 {
@@ -3540,9 +3726,9 @@ namespace twaincscert
             {
                 if (Console.BackgroundColor == ConsoleColor.Black)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.ForegroundColor = m_consolecolorRed;
                     Console.Out.WriteLine(a_szText);
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.ForegroundColor = m_consolecolorDefault;
                 }
                 else
                 {
@@ -3565,9 +3751,9 @@ namespace twaincscert
             {
                 if (Console.BackgroundColor == ConsoleColor.Black)
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.ForegroundColor = m_consolecolorYellow;
                     Console.Out.WriteLine(a_szText);
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.ForegroundColor = m_consolecolorDefault;
                 }
                 else
                 {
@@ -4102,6 +4288,11 @@ namespace twaincscert
         /// Our console input...embiggened...
         /// </summary>
         private StreamReader m_streamreaderConsole;
+        private ConsoleColor m_consolecolorDefault;
+        private ConsoleColor m_consolecolorBlue;
+        private ConsoleColor m_consolecolorGreen;
+        private ConsoleColor m_consolecolorRed;
+        private ConsoleColor m_consolecolorYellow;
 
         /// <summary>
         /// No output when this is true...
@@ -4483,10 +4674,12 @@ namespace twaincscert
         /// Our constructor...
         /// </summary>
         /// <param name="a_szPrompt">initialize the prompt</param>
-        public Interpreter(string a_szPrompt)
+        public Interpreter(string a_szPrompt, ConsoleColor a_consolecolorDefault, ConsoleColor a_consolecolorPrompt)
         {
             // Our prompt...
             m_szPrompt = (string.IsNullOrEmpty(a_szPrompt) ? ">>>" : a_szPrompt);
+            m_consolecolorDefault = a_consolecolorDefault;
+            m_consolecolorPrompt = a_consolecolorPrompt;
         }
 
         /// <summary>
@@ -4566,9 +4759,9 @@ namespace twaincscert
                 // Write out the prompt...
                 if (Console.BackgroundColor == ConsoleColor.Black)
                 {
-                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.ForegroundColor = m_consolecolorPrompt;
                     Console.Out.Write(szPrompt);
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.ForegroundColor = m_consolecolorDefault;
                 }
                 else
                 {
@@ -4914,6 +5107,8 @@ namespace twaincscert
         /// Our prompt...
         /// </summary>
         private string m_szPrompt;
+        private ConsoleColor m_consolecolorDefault;
+        private ConsoleColor m_consolecolorPrompt;
 
         #endregion
     }
@@ -7132,9 +7327,9 @@ namespace twaincscert
         public static void Assert(string a_szMessage)
         {
             WriteEntry("A", a_szMessage, true);
-#if DEBUG
+            #if DEBUG
             throw new Exception(a_szMessage);
-#endif
+            #endif
         }
 
         /// <summary>
