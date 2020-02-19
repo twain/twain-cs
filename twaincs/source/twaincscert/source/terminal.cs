@@ -1535,7 +1535,7 @@ namespace twaincscert
             szLine += a_functionarguments.aszCmd[2];
 
             // Spit it out...
-            if (a_functionarguments.aszCmd[2].Contains("fail"))
+            if (a_functionarguments.aszCmd[2].Contains("fail") || a_functionarguments.aszCmd[2].Contains("error"))
             {
                 DisplayRed(szLine, true);
             }

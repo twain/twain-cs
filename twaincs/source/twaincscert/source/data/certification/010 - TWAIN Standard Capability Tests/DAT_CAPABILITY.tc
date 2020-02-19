@@ -3,7 +3,7 @@
 ; arg:1 - scanner to test
 ; returns: pass or fail
 ;
-; Exercise DAT_CAPABILITY fot the standard TWAIN capabilities
+; Exercise DAT_CAPABILITY for the standard TWAIN capabilities
 ;
 
 
@@ -12,6 +12,7 @@
 ; Initialize...
 ;
 call INITIALIZE 'DAT_CAPABILITY v1.0 17-Feb-2020' '${arg:1}'
+call LOADCAPABILITYTABLE
 set index.twcapability.cap '0'
 set index.twcapability.contype '1'
 set index.twcapability.hcontainer '2'
@@ -82,11 +83,14 @@ if '${get:cap}' ~contains '0x' goto NEXTCAP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Perform these tests on each capability...
+; SPECNOTE: because we're referencing the querysupport value we don't have to accept
+; TWCC_CAPSEQERROR as a valid value, so it'll be an error just like everything else...
 ;
 call MSGQUERYSUPPORT '${get:cap}' querysupport          datcapabilityresult
-;call MSGGET          '${get:cap}' '${get:querysupport}' datcapabilityresult
-;call MSGGETCURRENT   '${get:cap}' '${get:querysupport}' datcapabilityresult
-;call MSGGETDEFAULT   '${get:cap}' '${get:querysupport}' datcapabilityresult
+call MSGGET          '${get:cap}' '${get:querysupport}' datcapabilityresult
+call MSGGETCURRENT   '${get:cap}' '${get:querysupport}' datcapabilityresult
+call MSGGETDEFAULT   '${get:cap}' '${get:querysupport}' datcapabilityresult
+call MSGRESET        '${get:cap}' '${get:querysupport}' datcapabilityresult
 ;call MSGSET          '${get:cap}' '${get:querysupport}' datcapabilityresult
 goto NEXTCAP
 
@@ -95,7 +99,7 @@ goto NEXTCAP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass?
+; Did we pass? (do an extra check)
 :MAIN.PASS
 if '${get:datcapabilityresult}' != 'pass' goto MAIN.ERROR
 echopassfail 'SUMMARY' 'pass'
@@ -131,41 +135,46 @@ return
 ; Function: MSGQUERYSUPPORT
 ; arg:1 - capability to check
 ; arg:2 - value returned
-; arg:3 - pass/fail returned
+; arg:3 - only updated on fail
 ; returns: (none)
 ;
 :MSGQUERYSUPPORT
 ;
 ; Send the command...
-set name 'Send MSG_QUERYSUPPORT ${arg:1}'
+echo ' '
+echo '  ${arg:1}'
+set name 'Send MSG_QUERYSUPPORT'
 dsmentry src ds dg_control dat_capability msg_querysupport '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
 set twcapability '${ret:}'
 ;
-; Verify the capability matches...
-set name '    Verify TW_CAPABILITY.Cap'
+; If TW_CAPABILITY.Cap is not #CAP#, then end with error
+set name '    Verify Cap'
 if '${getindex:twcapability.${get:index.twcapability.cap}}' != '${arg:1}' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
 ;
-; Verify the container is TWON_ONEVALUE...
-set name '    Verify TW_CAPABILITY.ConType is TWON_ONEVALUE'
+; If TW_CAPABILITY.ConType is not TWON_ONEVALUE, then end with error.
+set name '    Verify ConType is TWON_ONEVALUE'
 if '${getindex:twcapability.${get:index.twcapability.contype}}' != 'TWON_ONEVALUE' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
 ;
-; Verify the item type is TWTY_INT32...
-; SPECNOTE: test says TWTY_INT32, test says TWTY_UINT32...spec wins...
-set name '    Verify TW_CAPABILITY.ItemType is TWTY_INT32'
+; If TW_ONEVALUE.ItemType is not TWTY_UINT32, then end with error
+; SPECNOTE: spec says TWTY_INT32, test says TWTY_UINT32...spec wins...
+set name '    Verify ItemType is TWTY_INT32'
 if '${getindex:twcapability.${get:index.twonevalue.itemtype}}' != 'TWTY_INT32' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
 ;
-; Verify GET(1), GETCURRENT(4), GETDEFAULT(8)...13 0xD
+; If TWQC_GET, TWQC_GETCURRENT or TWQC_GETDEFAULT is detected, then
+; all three must be present, if any are missing end with error
 set name '    Verify GET, GETCURRENT, GETDEFAULT'
 if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x000D' == '0' goto MSGQUERYSUPPORT.VERIFYSET
 if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x000D' != '0x000D' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
 ;
-; Verify GET(1), SET(2), GETCURRENT(4), GETDEFAULT(8), RESET(16)...31 0x1F
+; If TWQC_RESET or TWQC_SET is detected, then both must be present,
+; plus TWQC_GET, TWQC_GETCURRENT and TWQC_GETDEFAULT, if not true
+; then end with error
 :MSGQUERYSUPPORT.VERIFYSET
 set name '    Verify SET, RESET with GETs'
 if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x0012' == '0' goto MSGQUERYSUPPORT.PASS
@@ -182,5 +191,735 @@ set '${arg:3}' 'fail'
 return
 :MSGQUERYSUPPORT.PASS
 set '${arg:2}' '${getindex:twcapability.${get:index.twonevalue.item}}'
-set '${arg:3}' 'pass'
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: MSGGET
+; arg:1 - capability to check
+; arg:2 - querysupport value
+; arg:3 - only updated on fail
+; returns: (none)
+;
+:MSGGET
+;
+; Skip if not supported...
+if '${arg:2}' & '0x0001' == '0' goto MSGGET.SKIP
+;
+; Send the command...
+set name 'Send MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGGET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+set twcapability '${ret:}'
+;
+; If TW_CAPABILITY.Cap is not #CAP#, then end with error
+set name '    Verify Cap'
+if '${getindex:twcapability.${get:index.twcapability.cap}}' != '${arg:1}' goto MSGGET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; If the value of TW_CAPABILITY.ConType doesn’t match the Specification’s
+; MSG_GET container for this capability, then end with error
+set name '    Verify ConType contains ${get:${arg:1}.ConType}'
+if '${get:${arg:1}.ConType}' !~contains '${getindex:twcapability.${get:index.twcapability.contype}}' goto MSGGET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; If container’s ItemType doesn’t match the Specification’s ItemType for
+; this capability, then end with error
+set name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
+if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:index.twcapability.itemtype}}' goto MSGGET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+goto MSGGET.PASS
+;
+; All done...
+:MSGGET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'error'
+:MSGGET.FAIL
+set '${arg:3}' 'fail'
+return
+:MSGGET.SKIP
+return
+:MSGGET.PASS
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: MSGGETCURRENT
+; arg:1 - capability to check
+; arg:2 - querysupport value
+; arg:3 - only updated on fail
+; returns: (none)
+;
+:MSGGETCURRENT
+;
+; Skip if not supported...
+if '${arg:2}' & '0x0002' == '0' goto MSGGETCURRENT.SKIP
+;
+; Send the command...
+set name 'Send MSG_GETCURRENT'
+dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+set twcapability '${ret:}'
+;
+; If TW_CAPABILITY.Cap is not #CAP#, then end with error
+set name '    Verify Cap'
+if '${getindex:twcapability.${get:index.twcapability.cap}}' != '${arg:1}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
+; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETCURRENT must be
+; TWTY_ONEVALUE, if not then end with error
+; SPECNOTE: we're testing for array, which gives us the same result...
+if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGGETCURRENT.ARRAY
+set name '    Verify ConType contains TWON_ONEVALUE'
+if '${getindex:twcapability.${get:index.twcapability.contype}}' != 'TWON_ONEVALUE' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+goto MSGGETCURRENT.ITEMTYPE
+:MSGGETCURRENT.ARRAY
+set name '    Verify ConType contains TWON_ARRAY'
+if '${getindex:twcapability.${get:index.twcapability.contype}}' != 'TWON_ARRAY' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; If container’s ItemType doesn’t match the Specification’s ItemType for
+; this capability, then end with error
+:MSGGETCURRENT.ITEMTYPE
+set name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
+if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:index.twcapability.itemtype}}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+goto MSGGETCURRENT.PASS
+;
+; All done...
+:MSGGETCURRENT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'error'
+:MSGGETCURRENT.FAIL
+set '${arg:3}' 'fail'
+return
+:MSGGETCURRENT.SKIP
+return
+:MSGGETCURRENT.PASS
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: MSGGETDEFAULT
+; arg:1 - capability to check
+; arg:2 - querysupport value
+; arg:3 - only updated on fail
+; returns: (none)
+;
+:MSGGETDEFAULT
+;
+; Skip if not supported...
+if '${arg:2}' & '0x0002' == '0' goto MSGGETDEFAULT.SKIP
+;
+; Send the command...
+set name 'Send MSG_GETDEFAULT'
+dsmentry src ds dg_control dat_capability msg_getdefault '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+set twcapability '${ret:}'
+;
+; If TW_CAPABILITY.Cap is not #CAP#, then end with error
+set name '    Verify Cap'
+if '${getindex:twcapability.${get:index.twcapability.cap}}' != '${arg:1}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
+; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETDEFAULT must be
+; TWTY_ONEVALUE, if not then end with error
+; SPECNOTE: we're testing for array, which gives us the same result...
+if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGGETDEFAULT.ARRAY
+set name '    Verify ConType contains TWON_ONEVALUE'
+if '${getindex:twcapability.${get:index.twcapability.contype}}' != 'TWON_ONEVALUE' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+goto MSGGETDEFAULT.ITEMTYPE
+:MSGGETDEFAULT.ARRAY
+set name '    Verify ConType contains TWON_ARRAY'
+if '${getindex:twcapability.${get:index.twcapability.contype}}' != 'TWON_ARRAY' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; If container’s ItemType doesn’t match the Specification’s ItemType for
+; this capability, then end with error
+:MSGGETDEFAULT.ITEMTYPE
+set name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
+if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:index.twcapability.itemtype}}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+goto MSGGETDEFAULT.PASS
+;
+; All done...
+:MSGGETDEFAULT.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'error'
+:MSGGETDEFAULT.FAIL
+set '${arg:3}' 'fail'
+return
+:MSGGETDEFAULT.SKIP
+return
+:MSGGETDEFAULT.PASS
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: MSGRESET
+; arg:1 - capability to check
+; arg:2 - querysupport value
+; arg:3 - only updated on fail
+; returns: (none)
+;
+:MSGRESET
+;
+; Skip if not supported...
+if '${arg:2}' & '0x0002' == '0' goto MSGRESET.SKIP
+;
+; Send the command...
+set name 'Send MSG_RESET'
+dsmentry src ds dg_control dat_capability msg_reset '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGRESET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+set twcapability '${ret:}'
+;
+; If TW_CAPABILITY.Cap is not #CAP#, then end with error
+set name '    Verify Cap'
+if '${getindex:twcapability.${get:index.twcapability.cap}}' != '${arg:1}' goto MSGRESET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
+; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETDEFAULT must be
+; TWTY_ONEVALUE, if not then end with error
+; SPECNOTE: the test implies that the MSG_GET container should returned, this is wrong...
+; SPECNOTE: we're testing for array, which gives us the same result...
+if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGRESET.ARRAY
+set name '    Verify ConType contains TWON_ONEVALUE'
+if '${getindex:twcapability.${get:index.twcapability.contype}}' != 'TWON_ONEVALUE' goto MSGRESET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+goto MSGRESET.ITEMTYPE
+:MSGRESET.ARRAY
+set name '    Verify ConType contains TWON_ARRAY'
+if '${getindex:twcapability.${get:index.twcapability.contype}}' != 'TWON_ARRAY' goto MSGRESET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+;
+; If container’s ItemType doesn’t match the Specification’s ItemType for
+; this capability, then end with error
+:MSGRESET.ITEMTYPE
+set name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
+if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:index.twcapability.itemtype}}' goto MSGRESET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'pass'
+goto MSGRESET.PASS
+;
+; All done...
+:MSGRESET.ERROR.ECHOPASSFAIL
+echopassfail '  ${get:name}' 'error'
+:MSGRESET.FAIL
+set '${arg:3}' 'fail'
+return
+:MSGRESET.SKIP
+return
+:MSGRESET.PASS
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: LOADCAPABILITYTABLE
+; returns: (none)
+; Loads stuff we need to confirm about each known capability...
+;
+:LOADCAPABILITYTABLE
+;
+set ACAP_XFERMECH.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+set ACAP_XFERMECH.ItemType                             TWTY_UINT16
+;
+set CAP_ALARMS.ConType                                 TWON_ARRAY
+set CAP_ALARMS.ItemType                                TWTY_UINT16
+;
+set CAP_ALARMVOLUME.ConType                            TWON_RANGE,TWON_ONEVALUE
+set CAP_ALARMVOLUME.ItemType                           TWTY_INT32
+;
+set CAP_AUTHOR.ConType                                 TWON_ONEVALUE
+set CAP_AUTHOR.ItemType                                TWTY_STR128
+;
+set CAP_AUTOFEED.ConType                               TWON_ENUMERATION
+set CAP_AUTOFEED.ItemType                              TWTY_BOOL
+;
+set CAP_AUTOMATICCAPTURE.ConType                       TWON_RANGE,TWON_ONEVALUE
+set CAP_AUTOMATICCAPTURE.ItemType                      TWTY_INT32
+;
+set CAP_AUTOMATICSENSEMEDIUM.ConType                   TWON_ENUMERATION
+set CAP_AUTOMATICSENSEMEDIUM.ItemType                  TWTY_BOOL
+;
+set CAP_AUTOSCAN.ConType                               TWON_ENUMERATION
+set CAP_AUTOSCAN.ItemType                              TWTY_BOOL
+;
+set CAP_BATTERYMINUTES.ConType                         TWON_ONEVALUE
+set CAP_BATTERYMINUTES.ItemType                        TWTY_INT32
+;
+set CAP_BATTERYPERCENTAGE.ConType                      TWON_ONEVALUE
+set CAP_BATTERYPERCENTAGE.ItemType                     TWTY_INT16
+;
+set CAP_CAMERAENABLED.ConType                          TWON_ENUMERATION
+set CAP_CAMERAENABLED.ItemType                         TWTY_BOOL
+;
+set CAP_CAMERAORDER.ConType                            TWON_ARRAY
+set CAP_CAMERAORDER.ItemType                           TWTY_UINT16
+;
+set CAP_CAMERAPREVIEWUI.ConType                        TWON_ENUMERATION
+set CAP_CAMERAPREVIEWUI.ItemType                       TWTY_BOOL
+;
+set CAP_CAMERASIDE.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_CAMERASIDE.ItemType                            TWTY_UINT16
+;
+set CAP_CAPTION.ConType                                TWON_ONEVALUE
+set CAP_CAPTION.ItemType                               TWTY_STR255
+;
+set CAP_CLEARPAGE.ConType                              TWON_ENUMERATION
+set CAP_CLEARPAGE.ItemType                             TWTY_BOOL
+;
+set CAP_CUSTOMDSDATA.ConType                           TWON_ENUMERATION
+set CAP_CUSTOMDSDDATA.ItemType                         TWTY_BOOL
+;
+set CAP_CUSTOMINTERFACEGUID.ConType                    TWON_ONEVALUE
+set CAP_CUSTOMINTERFACEGUID.ItemType                   TWTY_STR255
+;
+set CAP_DEVICEEVENT.ConType                            TWON_ARRAY
+set CAP_DEVICEEVENT.ItemType                           TWTY_UINT16
+;
+set CAP_DEVICEONLINE.ConType                           TWON_ENUMERATION
+set CAP_DEVICEONLINE.ItemType                          TWTY_BOOL
+;
+set CAP_DEVICETIMEDATE.ConType                         TWON_ONEVALUE
+set CAP_DEVICETIMEDATE.ItemType                        TWTY_STR32
+;
+set CAP_DOUBLEFEEDDETECTION.ConType                    TWON_ARRAY
+set CAP_DOUBLEFEEDDETECTION.ItemType                   TWTY_UINT16
+;
+set CAP_AUTOMATICCAPTURE.ConType                       TWON_RANGE
+set CAP_AUTOMATICCAPTURE.ItemType                      TWTY_FIX32
+;
+set CAP_DOUBLEFEEDDETECTIONLENGTH.ConType              TWON_RANGE
+set CAP_DOUBLEFEEDDETECTIONLENGTH.ItemType             TWTY_FIX32
+;
+set CAP_DOUBLEFEEDDETECTIONRESPONSE.ConType            TWON_ARRAY
+set CAP_DOUBLEFEEDDETECTIONRESPONSE.ItemType           TWTY_UINT16
+;
+set CAP_DOUBLEFEEDDETECTIONSENSITIVITY.ConType         TWON_ENUMERATION
+set CAP_DOUBLEFEEDDETECTIONSENSITIVITY.ItemType        TWTY_UINT16
+;
+set CAP_DUPLEX.ConType                                 TWON_ONEVALUE
+set CAP_DUPLEX.ItemType                                TWTY_UINT16
+;
+set CAP_DUPLEXENABLED.ConType                          TWON_ENUMERATION
+set CAP_DUPLEXENABLED.ItemType                         TWTY_BOOL
+;
+set CAP_ENABLEDSUIONLY.ConType                         TWON_ENUMERATION
+set CAP_ENABLEDSUIONLY.ItemType                        TWTY_BOOL
+;
+set CAP_ENDORSER.ConType                               TWON_RANGE
+set CAP_ENDORSER.ItemType                              TWTY_UINT32
+;
+set CAP_EXTENDEDCAPS.ConType                           TWON_ARRAY
+set CAP_EXTENDEDCAPS.ItemType                          TWTY_UINT16
+;
+set CAP_FEEDERALIGNMENT.ConType                        TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_FEEDERALIGNMENT.ItemType                       TWTY_BOOL
+;
+set CAP_FEEDERENABLED.ConType                          TWON_ENUMERATION
+set CAP_FEEDERENABLED.ItemType                         TWTY_BOOL
+;
+set CAP_FEEDERLOADED.ConType                           TWON_ENUMERATION
+set CAP_FEEDERLOADED.ItemType                          TWTY_BOOL
+;
+set CAP_FEEDERORDER.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_FEEDERORDER.ItemType                           TWTY_UINT16
+;
+set CAP_FEEDERPOCKET.ConType                           TWON_ARRAY
+set CAP_FEEDERPOCKET.ItemType                          TWTY_UINT16
+;
+set CAP_FEEDERPREP.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_FEEDERPREP.ItemType                            TWTY_BOOL
+;
+set CAP_FEEDERPAGE.ConType                             TWON_ENUMERATION
+set CAP_FEEDERPAGE.ItemType                            TWTY_BOOL
+;
+set CAP_INDICATORS.ConType                             TWON_ENUMERATION
+set CAP_INDICATORS.ItemType                            TWTY_BOOL
+;
+set CAP_INDICATORSMODE.ConType                         TWON_ARRAY
+set CAP_INDICATORSMODE.ItemType                        TWTY_UINT16
+;
+set CAP_JOBCONTROL.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_JOBCONTROL.ItemType                            TWTY_UINT16
+;
+set CAP_LANGUAGE.ConType                               TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_LANGUAGE.ItemType                              TWTY_BOOL
+;
+set CAP_MAXBATCHBUFFERS.ConType                        TWON_RANGE,TWON_ONEVALUE
+set CAP_MAXBATCHBUFFERS.ItemType                       TWTY_INT32
+;
+set CAP_MICRENABLED.ConType                            TWON_ENUMERATION
+set CAP_MICRENABLED.ItemType                           TWTY_BOOL
+;
+set CAP_PAPERDETECTABLE.ConType                        TWON_ENUMERATION
+set CAP_PAPERDETECTABLE.ItemType                       TWTY_BOOL
+;
+set CAP_PAPERHANDLING.ConType                          TWON_ARRAY
+set CAP_PAPERHANDLING.ItemType                         TWTY_UINT16
+;
+set CAP_POWERSAVETIME.ConType                          TWON_RANGE
+set CAP_POWERSAVETIME.ItemType                         TWTY_INT32
+;
+set CAP_POWERSUPPLY.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_POWERSUPPLY.ItemType                           TWTY_UINT16
+;
+set CAP_PRINTER.ConType                                TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_PRINTER.ItemType                               TWTY_UINT16
+;
+set CAP_PRINTERENABLED.ConType                         TWON_ENUMERATION
+set CAP_PRINTERENABLED.ItemType                        TWTY_BOOL
+;
+set CAP_PRINTERCHARROTATION.ConType                    TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set CAP_PRINTERCHARROTATION.ItemType                   TWTY_UINT32
+;
+set CAP_PRINTERFONTSTYLE.ConType                       TWON_ARRAY
+set CAP_PRINTERFONTSTYLE.ItemType                      TWTY_UINT16
+;
+set CAP_PRINTERINDEX.ConType                           TWON_RANGE,TWON_ONEVALUE
+set CAP_PRINTERINDEX.ItemType                          TWTY_UINT32
+;
+set CAP_PRINTERINDEXLEADCHAR.ConType                   TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_PRINTERINDEXLEADCHAR.ItemType                  TWTY_STR32
+;
+set CAP_PRINTERINDEXMAXVALUE.ConType                   TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set CAP_PRINTERINDEXMAXVALUE.ItemType                  TWTY_UINT32
+;
+set CAP_PRINTERINDEXNUMDIGITS.ConType                  TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set CAP_PRINTERINDEXNUMDIGITS.ItemType                 TWTY_UINT32
+;
+set CAP_PRINTERINDEXSTEP.ConType                       TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set CAP_PRINTERINDEXSTEP.ItemType                      TWTY_UINT32
+;
+set CAP_PRINTERINDEXTRIGGER.ConType                    TWON_ARRAY
+set CAP_PRINTERINDEXTRIGGER.ItemType                   TWTY_UINT16
+;
+set CAP_PRINTERMODE.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_PRINTERMODE.ItemType                           TWTY_UINT16
+;
+set CAP_PRINTERSTRING.ConType                          TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_PRINTERSTRING.ItemType                         TWTY_STR255
+;
+set CAP_PRINTERSTRINGPREVIEW.ConType                   TWON_ARRAY
+set CAP_PRINTERSTRINGPREVIEW.ItemType                  TWTY_STR255
+;
+set CAP_PRINTERSUFFIX.ConType                          TWON_ONEVALUE
+set CAP_PRINTERSUFFIX.ItemType                         TWTY_STR255
+;
+set CAP_PRINTERVERTICALOFFSET.ConType                  TWON_RANGE,TWON_ONEVALUE
+set CAP_PRINTERVERTICALOFFSET.ItemType                 TWTY_FIX32
+;
+set CAP_REACQUIREALLOWED.ConType                       TWON_ENUMERATION
+set CAP_REACQUIREALLOWED.ItemType                      TWTY_BOOL
+;
+set CAP_REWINDPAGE.ConType                             TWON_ENUMERATION
+set CAP_REWINDPAGE.ItemType                            TWTY_BOOL
+;
+set CAP_SEGMENTED.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+set CAP_SEGMENTED.ItemType                             TWTY_UINT16
+;
+set CAP_SERIALNUMBER.ConType                           TWON_ONEVALUE
+set CAP_SERIALNUMBER.ItemType                          TWTY_STR255
+;
+set CAP_SHEETCOUNT.ConType                             TWON_RANGE,TWON_ONEVALUE
+set CAP_SHEETCOUNT.ItemType                            TWTY_UINT32
+;
+set CAP_SUPPORTEDCAPS.ConType                          TWON_ARRAY
+set CAP_SUPPORTEDCAPS.ItemType                         TWTY_UINT16
+;
+set CAP_SUPPORTEDCAPSSEGMENTUNIQUE.ConType             TWON_ARRAY
+set CAP_SUPPORTEDCAPSSEGMENTUNIQUE.ItemType            TWTY_UINT16
+;
+set CAP_SUPPORTEDDATS.ConType                          TWON_ARRAY
+set CAP_SUPPORTEDDATS.ItemType                         TWTY_UINT16
+;
+set CAP_TIMEBEFOREFIRSTCAPTURE.ConType                 TWON_RANGE,TWON_ONEVALUE
+set CAP_TIMEBEFOREFIRSTCAPTURE.ItemType                TWTY_INT32
+;
+set CAP_TIMEBETWEENCAPTURES.ConType                    TWON_RANGE,TWON_ONEVALUE
+set CAP_TIMEBETWEENCAPTURES.ItemType                   TWTY_INT32
+;
+set CAP_TIMEDATE.ConType                               TWON_ONEVALUE
+set CAP_TIMEDATE.ItemType                              TWTY_STR32
+;
+set CAP_THUMBNAILSENABLED.ConType                      TWON_ENUMERATION
+set CAP_THUMBNAILSENABLED.ItemType                     TWTY_BOOL
+;
+set CAP_UICONTROLLABLE.ConType                         TWON_ENUMERATION
+set CAP_UICONTROLLABLE.ItemType                        TWTY_BOOL
+;
+set CAP_XFERCOUNT.ConType                              TWON_RANGE
+set CAP_XFERCOUNT.ItemType                             TWTY_INT16
+;
+set ICAP_AUTOBRIGHT.ConType                            TWON_ENUMERATION
+set ICAP_AUTOBRIGHT.ItemType                           TWTY_BOOL
+;
+set ICAP_AUTODISCARDBLANKPAGES.ConType                 TWON_RANGE,TWON_ONEVALUE
+set ICAP_AUTODISCARDBLANKPAGES.ItemType                TWTY_INT32
+;
+set ICAP_AUTOMATICBORDERDETECTION.ConType              TWON_ENUMERATION
+set ICAP_AUTOMATICBORDERDETECTION.ItemType             TWTY_BOOL
+;
+set ICAP_AUTOMATICCOLORENABLED.ConType                 TWON_ENUMERATION
+set ICAP_AUTOMATICCOLORENABLED.ItemType                TWTY_BOOL
+;
+set ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE.ConType       TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE.ItemType      TWTY_UINT16
+;
+set ICAP_AUTOMATICCROPUSESFRAME.ConType                TWON_ENUMERATION
+set ICAP_AUTOMATICCROPUSESFRAME.ItemType               TWTY_BOOL
+;
+set ICAP_AUTOMATICDESKEW.ConType                       TWON_ENUMERATION
+set ICAP_AUTOMATICDESKEW.ItemType                      TWTY_BOOL
+;
+set ICAP_AUTOMATICLENGTHDETECTION.ConType              TWON_ENUMERATION
+set ICAP_AUTOMATICLENGTHDETECTION.ItemType             TWTY_BOOL
+;
+set ICAP_AUTOMATICROTATE.ConType                       TWON_ENUMERATION
+set ICAP_AUTOMATICROTATE.ItemType                      TWTY_BOOL
+;
+set ICAP_AUTOSIZE.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_AUTOSIZE.ItemType                             TWTY_UINT16
+;
+set ICAP_BARCODEDETECTIONENABLED.ConType               TWON_ENUMERATION
+set ICAP_BARCODEDETECTIONENABLED.ItemType              TWTY_BOOL
+;
+set ICAP_BARCODEMAXRETRIES.ConType                     TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_BARCODEMAXRETRIES.ItemType                    TWTY_UINT32
+;
+set ICAP_BARCODEMAXSEARCHPRIORITIES.ConType            TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_BARCODEMAXSEARCHPRIORITIES.ItemType           TWTY_UINT32
+;
+set ICAP_BARCODEMAXSEARCHMODE.ConType                  TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_BARCODEMAXSEARCHMODE.ItemType                 TWTY_UINT16
+;
+set ICAP_BARCODESEARCHPRIORITIES.ConType               TWON_ARRAY
+set ICAP_BARCODESEARCHPRIORITIES.ItemType              TWTY_UINT16
+;
+set ICAP_BARCODETIMEOUT.ConType                        TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_BARCODETIMEOUT.ItemType                       TWTY_UINT32
+;
+set ICAP_BITDEPTH.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_BITDEPTH.ItemType                             TWTY_UINT32
+;
+set ICAP_BITDEPTHREDUCTION.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_BITDEPTHREDUCTION.ItemType                    TWTY_UINT32
+;
+set ICAP_BITORDER.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_BITORDER.ItemType                             TWTY_UINT32
+;
+set ICAP_BITORDERCODES.ConType                         TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_BITORDERCODES.ItemType                        TWTY_UINT32
+;
+set ICAP_BRIGHTNESS.ConType                            TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_BRIGHTNESS.ItemType                           TWTY_FIX32
+;
+set ICAP_CCITTKFACTOR.ConType                          TWON_RANGE,TWON_ONEVALUE
+set ICAP_CCITTKFACTOR.ItemType                         TWTY_UINT16
+;
+set ICAP_COLORMANAGEMENTENABLED.ConType                TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_COLORMANAGEMENTENABLED.ItemType               TWTY_UINT16
+;
+set ICAP_COMPRESSION.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_COMPRESSION.ItemType                          TWTY_UINT16
+;
+set ICAP_CONTRAST.ConType                              TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_CONTRAST.ItemType                             TWTY_FIX32
+;
+set ICAP_CUSTHALFTONE.ConType                          TWON_ARRAY
+set ICAP_CUSTHALFTONE.ItemType                         TWTY_UINT8
+;
+set ICAP_EXPOSURETIME.ConType                          TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_EXPOSURETIME.ItemType                         TWTY_FIX32
+;
+set ICAP_EXTIMAGEINFO.ConType                          TWON_ENUMERATION
+set ICAP_EXTIMAGEINFO.ItemType                         TWTY_BOOL
+;
+set ICAP_FEEDERTYPE.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_FEEDERTYPE.ItemType                           TWTY_UINT16
+;
+set ICAP_FILMTYPE.ConType                              TWON_ENUMERATION
+set ICAP_FILMTYPE.ItemType                             TWTY_UINT16
+;
+set ICAP_FILTER.ConType                                TWON_ARRAY
+set ICAP_FILTER.ItemType                               TWTY_UINT16
+;
+set ICAP_FLASHUSED2.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_FLASHUSED2.ItemType                           TWTY_UINT16
+;
+set ICAP_FLIPROTATION.ConType                          TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_FLIPROTATION.ItemType                         TWTY_UINT16
+;
+set ICAP_FRAMES.ConType                                TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_FRAMES.ItemType                               TWTY_FRAME
+;
+set ICAP_GAMMA.ConType                                 TWON_RANGE,TWON_ONEVALUE
+set ICAP_GAMMA.ItemType                                TWTY_FIX32
+;
+set ICAP_HALFTONES.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_HALFTONES.ItemType                            TWTY_STR32
+;
+set ICAP_HIGHLIGHT.ConType                             TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_HIGHLIGHT.ItemType                            TWTY_FIX32
+;
+set ICAP_ICCPROFILE.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_ICCPROFILE.ItemType                           TWTY_UINT16
+;
+set ICAP_IMAGEDATASET.ConType                          TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_IMAGEDATASET.ItemType                         TWTY_UINT32
+;
+set ICAP_IMAGEFILEFORMAT.ConType                       TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_IMAGEFILEFORMAT.ItemType                      TWTY_UINT16
+;
+set ICAP_IMAGEFILTER.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_IMAGEFILTER.ItemType                          TWTY_UINT16
+;
+set ICAP_IMAGEMERGE.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_IMAGEMERGE.ItemType                           TWTY_UINT16
+;
+set ICAP_IMAGEMERGEHEIGHTTHRESHOLD.ConType             TWON_RANGE,TWON_ONEVALUE
+set ICAP_IMAGEMERGEHEIGHTTHRESHOLD.ItemType            TWTY_FIX32
+;
+set ICAP_JPEGPIXELTYPE.ConType                         TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_JPEGPIXELTYPE.ItemType                        TWTY_UINT16
+;
+set ICAP_JPEGQUALITY.ConType                           TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_JPEGQUALITY.ItemType                          TWTY_INT16
+;
+set ICAP_JPEGSUBSAMPLING.ConType                       TWON_ENUMERATION
+set ICAP_JPEGSUBSAMPLING.ItemType                      TWTY_UINT16
+;
+set ICAP_LAMPSTATE.ConType                             TWON_ENUMERATION
+set ICAP_LAMPSTATE.ItemType                            TWTY_BOOL
+;
+set ICAP_LIGHTPATH.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_LIGHTPATH.ItemType                            TWTY_UINT16
+;
+set ICAP_LIGHTSOURCE.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_LIGHTSOURCE.ItemType                          TWTY_UINT16
+;
+set ICAP_MAXFRAMES.ConType                             TWON_RANGE,TWON_ONEVALUE
+set ICAP_MAXFRAMES.ItemType                            TWTY_UINT16
+;
+set ICAP_MINIMUMHEIGHT.ConType                         TWON_ONEVALUE
+set ICAP_MINIMUMHEIGHT.ItemType                        TWTY_FIX32
+;
+set ICAP_MINIMUMWIDTH.ConType                          TWON_ONEVALUE
+set ICAP_MINIMUMWIDTH.ItemType                         TWTY_FIX32
+;
+set ICAP_MIRROR.ConType                                TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_MIRROR.ItemType                               TWTY_UINT16
+;
+set ICAP_NOISEFILTER.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_NOISEFILTER.ItemType                          TWTY_UINT16
+;
+set ICAP_ORIENTATION.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_ORIENTATION.ItemType                          TWTY_UINT16
+;
+set ICAP_OVERSCAN.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_OVERSCAN.ItemType                             TWTY_UINT16
+;
+set ICAP_PATCHCODEDETECTIONENABLED.ConType             TWON_ENUMERATION
+set ICAP_PATCHCODEDETECTIONENABLED.ItemType            TWTY_BOOL
+;
+set ICAP_PATCHCODEMAXRETRIES.ConType                   TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_PATCHCODEMAXRETRIES.ItemType                  TWTY_UINT32
+;
+set ICAP_PATCHCODEMAXSEARCHPRIORITIES.ConType          TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_PATCHCODEMAXSEARCHPRIORITIES.ItemType         TWTY_UINT32
+;
+set ICAP_PATCHCODESEARCHMODE.ConType                   TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_PATCHCODESEARCHMODE.ItemType                  TWTY_UINT16
+;
+set ICAP_PATCHCODESEARCHPRIORITIES.ConType             TWON_ARRAY
+set ICAP_PATCHCODESEARCHPRIORITIES.ItemType            TWTY_UINT16
+;
+set ICAP_PATCHCODETIMEOUT.ConType                      TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_PATCHCODETIMEOUT.ItemType                     TWTY_UINT32
+;
+set ICAP_PHYSICALHEIGHT.ConType                        TWON_ONEVALUE
+set ICAP_PHYSICALHEIGHT.ItemType                       TWTY_FIX32
+;
+set ICAP_PHYSICALWIDTH.ConType                         TWON_ONEVALUE
+set ICAP_PHYSICALWIDTH.ItemType                        TWTY_FIX32
+;
+set ICAP_PIXELFLAVOR.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_PIXELFLAVOR.ItemType                          TWTY_UINT16
+;
+set ICAP_PIXELFLAVORCODES.ConType                      TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_PIXELFLAVORCODES.ItemType                     TWTY_UINT16
+;
+set ICAP_PIXELTYPE.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_PIXELTYPE.ItemType                            TWTY_UINT16
+;
+set ICAP_PLANARCHUNKY.ConType                          TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_PLANARCHUNKY.ItemType                         TWTY_UINT16
+;
+set ICAP_ROTATION.ConType                              TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_ROTATION.ItemType                             TWTY_FIX32
+;
+set ICAP_SHADOW.ConType                                TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_SHADOW.ItemType                               TWTY_FIX32
+;
+set ICAP_SUPPORTEDBARCODETYPES.ConType                 TWON_ARRAY
+set ICAP_SUPPORTEDBARCODETYPES.ItemType                TWTY_UINT16
+;
+set ICAP_SUPPORTEDEXTIMAGEINFO.ConType                 TWON_ARRAY
+set ICAP_SUPPORTEDEXTIMAGEINFO.ItemType                TWTY_UINT16
+;
+set ICAP_SUPPORTEDPATCHCODETYPES.ConType               TWON_ARRAY
+set ICAP_SUPPORTEDPATCHCODETYPES.ItemType              TWTY_UINT16
+;
+set ICAP_SUPPORTEDSIZES.ConType                        TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_SUPPORTEDSIZES.ItemType                       TWTY_UINT16
+;
+set ICAP_THRESHOLD.ConType                             TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_THRESHOLD.ItemType                            TWTY_FIX32
+;
+set ICAP_TILES.ConType                                 TWON_ENUMERATION
+set ICAP_TILES.ItemType                                TWTY_BOOL
+;
+set ICAP_TIMEFILL.ConType                              TWON_RANGE,TWON_ONEVALUE
+set ICAP_TIMEFILL.ItemType                             TWTY_UINT16
+;
+set ICAP_UNDEFINEDIMAGESIZE.ConType                    TWON_ENUMERATION
+set ICAP_UNDEFINEDIMAGESIZE.ItemType                   TWTY_BOOL
+;
+set ICAP_UNITS.ConType                                 TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_UNITS.ItemType                                TWTY_UINT16
+;
+set ICAP_XFERMECH.ConType                              TWON_ENUMERATION
+set ICAP_XFERMECH.ItemType                             TWTY_UINT16
+;
+set ICAP_XNATIVERESOLUTION.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_XNATIVERESOLUTION.ItemType                    TWTY_FIX32
+;
+set ICAP_XRESOLUTION.ConType                           TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_XRESOLUTION.ItemType                          TWTY_FIX32
+;
+set ICAP_XSCALING.ConType                              TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_XSCALING.ItemType                             TWTY_FIX32
+;
+set ICAP_YNATIVERESOLUTION.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_YNATIVERESOLUTION.ItemType                    TWTY_FIX32
+;
+set ICAP_YRESOLUTION.ConType                           TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_YRESOLUTION.ItemType                          TWTY_FIX32
+;
+set ICAP_YSCALING.ConType                              TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_YSCALING.ItemType                             TWTY_FIX32
+;
+set ICAP_ZOOMFACTOR.ConType                            TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+set ICAP_ZOOMFACTOR.ItemType                           TWTY_INT16
+;
 return
