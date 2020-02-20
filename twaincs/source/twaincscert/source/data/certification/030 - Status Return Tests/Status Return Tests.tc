@@ -1,0 +1,106 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Status Return Tests
+; arg:1 - scanner to test
+; returns: pass or fail
+;
+; Confirm that the expected status return is reported by certain operations.
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+call INITIALIZE 'Status Return Tests v1.0 20-Feb-2020' '${arg:1}'
+set dsmentryresult 'pass' ; assume success
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_IMAGELAYOUT
+; Confirm that DAT_IMAGELAYOUT returns the correct status
+; in various error conditions.  We're doing tests in state 5
+; so we need the driver's user interface...
+;
+call SENDANDCHECK SUCCESS  dsmentryresult discard dg_control dat_userinterface msg_enableds '1,0'
+sleep 5000 ; give the ui time to come up
+call SENDANDCHECK SUCCESS  dsmentryresult value   dg_image dat_imagelayout msg_get '0,0,0,0,0,0,0'
+call SENDANDCHECK SEQERROR dsmentryresult discard dg_image dat_imagelayout msg_set '${get:value}'
+call SENDANDCHECK SEQERROR dsmentryresult discard dg_image dat_imagelayout msg_reset '0,0,0,0,0,0,0'
+call SENDANDCHECK SUCCESS  dsmentryresult discard dg_control dat_userinterface msg_disableds '0,0'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_IMAGEMEMXFER
+; Confirm that DAT_IMAGEMEMXFER returns the correct status
+; in various error conditions.
+;
+call SENDANDCHECK BADPROTOCOL dsmentryresult discard dg_image dat_imagememxfer msg_set '0,0,0,0,0,0,0,3,0,0'
+call SENDANDCHECK SEQERROR    dsmentryresult discard dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,0,0'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_IMAGENATIVEXFER
+; Confirm that DAT_IMAGENATIVEXFER returns the correct status
+; in various error conditions.
+;
+call SENDANDCHECK BADPROTOCOL dsmentryresult discard dg_image dat_imagenativexfer msg_set '0'
+call SENDANDCHECK SEQERROR    dsmentryresult discard dg_image dat_imagenativexfer msg_get '0'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+if '${get:dsmentryresult}' != 'pass' goto MAIN.ERROR
+echopassfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR
+echopassfail 'SUMMARY' 'error'
+return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Initialize
+; arg:1 - name of this test suite
+; arg:2 - scanner to test
+; returns: true or false
+;
+:INITIALIZE
+;
+echo.yellow
+echo.yellow
+echo.yellow
+echo.yellow '********************************************************************************'
+echo.yellow '${arg:1}'
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: SENDANDCHECK
+; arg:1 - expected status
+; arg:2 - dsmentryresult
+; arg:3 - dsmentrydata
+; arg:4 - DG to send
+; arg:5 - DAT to send 
+; arg:6 - MSG to send 
+; arg:7 - TW_MEMREF to send 
+; returns: (none)
+;
+:SENDANDCHECK
+dsmentry src ds '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}'
+if '${sts:}' != '${arg:1}' goto SENDANDCHECK.ERROR.ECHOPASSFAIL
+echopassfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'pass'
+set '${arg:3}' '${ret:}'
+return
+:SENDANDCHECK.ERROR.ECHOPASSFAIL
+echopassfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'error ${sts:}'
+set '${arg:2}' 'fail'
+return

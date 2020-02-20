@@ -38,10 +38,14 @@ call ECHOANDLOG info 'started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
 ;
 set certifyresulttwain 'pass'
 call CERTIFY 'Opends' '${get:twidentity.productname}'
+
 call CERTIFY '010 - TWAIN Standard Capability Tests/CAP_SUPPORTEDCAPS' '${get:twidentity.productname}'
 call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_PIXELTYPE' '${get:twidentity.productname}'
 call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_XFERMECH' '${get:twidentity.productname}'
 call CERTIFY '010 - TWAIN Standard Capability Tests/DAT_CAPABILITY' '${get:twidentity.productname}'
+
+call CERTIFY '030 - Status Return Tests/Status Return Tests' '${get:twidentity.productname}'
+
 call CERTIFY 'Closeds' '${get:twidentity.productname}'
 
 

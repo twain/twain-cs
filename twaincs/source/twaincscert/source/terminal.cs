@@ -3335,6 +3335,13 @@ namespace twaincscert
                 {
                     sts = functionarguments.sts;
                     szReturnValue = functionarguments.szReturnValue;
+                    if (m_lcallstack.Count > 0)
+                    {
+                        callstack = m_lcallstack[m_lcallstack.Count - 1];
+                        callstack.functionarguments.sts = sts;
+                        callstack.functionarguments.szReturnValue = szReturnValue;
+                        m_lcallstack[m_lcallstack.Count - 1] = callstack;
+                    }
                 }
 
                 // Handle gotos...

@@ -462,8 +462,9 @@ if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echopassfail '      ${get:name}' 'pass'
 set name 'Send MSG_GET to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
+set value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-if '${ret:}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echopassfail '      ${get:name}' 'pass'
 ;
 ; GETGURRENT -> SET, and check they match with a final GETCURRENT
@@ -478,8 +479,9 @@ if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echopassfail '      ${get:name}' 'pass'
 set name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
+set value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-if '${ret:}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echopassfail '      ${get:name}' 'pass'
 ;
 ; GETDEFAULT -> SET, and check they match with a final GETCURRENT
@@ -494,8 +496,9 @@ if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echopassfail '      ${get:name}' 'pass'
 set name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
+set value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-if '${ret:}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echopassfail '      ${get:name}' 'pass'
 ;
 ; RESET -> SET, and check they match with a final GETCURRENT
@@ -510,14 +513,15 @@ if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echopassfail '      ${get:name}' 'pass'
 set name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
+set value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-if '${ret:}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echopassfail '      ${get:name}' 'pass'
 ;
 ; All done...
 goto MSGSET.PASS
 :MSGSET.ERROR.ECHOPASSFAIL
-echopassfail '      ${get:name}' 'error ${sts:} ${get:twcapability}'
+echopassfail '      ${get:name}' 'error ${sts:} <${get:twcapability}> <${get:value}>'
 :MSGSET.FAIL
 call RESTORECAPABILITY '${arg:1}'
 set '${arg:3}' 'fail'
@@ -910,8 +914,8 @@ set ICAP_BARCODEMAXRETRIES.ItemType                    TWTY_UINT32
 set ICAP_BARCODEMAXSEARCHPRIORITIES.ConType            TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
 set ICAP_BARCODEMAXSEARCHPRIORITIES.ItemType           TWTY_UINT32
 ;
-set ICAP_BARCODEMAXSEARCHMODE.ConType                  TWON_ENUMERATION,TWON_ONEVALUE
-set ICAP_BARCODEMAXSEARCHMODE.ItemType                 TWTY_UINT16
+set ICAP_BARCODESEARCHMODE.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+set ICAP_BARCODESEARCHMODE.ItemType                    TWTY_UINT16
 ;
 set ICAP_BARCODESEARCHPRIORITIES.ConType               TWON_ARRAY
 set ICAP_BARCODESEARCHPRIORITIES.ItemType              TWTY_UINT16
