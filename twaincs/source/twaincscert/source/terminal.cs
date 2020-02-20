@@ -1786,12 +1786,12 @@ namespace twaincscert
             }
 
             // Scripting...
-            if ((szCommand == "certification"))
+            if ((szCommand == "certification") || (szCommand == "certify"))
             {
                 /////////0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
                 DisplayRed("CERTIFYING A SCANNER");
                 Display("Certification is accomplished using scripts contained in the data/Certification folder.  These");
-                Display("need to be run for both 32-bit and 64-bit systems on all platforms supported by the driver.");
+                Display("must be run, for both 32-bit and 64-bit systems, on all platforms supported by the driver.");
                 Display("");
                 Display("The following command runs certification:");
                 Display("  certify [\"driver\"] [verbose]");
@@ -1799,11 +1799,13 @@ namespace twaincscert
                 Display("      driver - the TW_IDENTITY.ProductName of a TWAIN driver");
                 Display("      verbose - if you want to see under the hood");
                 Display("");
-                Display("No arguments have to be given, in which case the command shows a list of the installed TWAIN");
-                Display("driver and prompts for the one to use.  Follow the commands to complete the process.");
+                Display("If no are given, the command shows a list of the installed TWAIN driver and prompts for the one");
+                Display("to use.  Follow the instructions to complete the process.");
                 Display("");
                 Display("If debugging a problem the various scripts can be run separately.  Manually run the Opends");
-                Display("script, and then the script you want to focus on.");
+                Display("script, and then the script you want to focus on.  Or write a script that includes the items");
+                Display("that need testing.  The output from verbose is included in the output file, so that can also");
+                Display("be a good place to start.");
                 return (false);
             }
 
