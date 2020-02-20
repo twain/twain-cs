@@ -38,20 +38,21 @@ echopassfail '${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Repeat this section for each enumerated value found inside of ICAP_PIXELTYPE, 
 ; (testing is done for each value of ICAP_PIXELTYPE, to provide the best chance
-; of exercising every available capability)
+; of exercising every available capability).  Remember teh icappixeltype setting,
+; because we have to restore it as part of the MSG_RESET and MSG_SET tests.
 ;
 :NEXTTWPT
 increment itwpt '${get:itwpt}'
-set name '${getindex:twptlist.${get:itwpt}}'
-if '${get:name}' != '' goto MAIN.TWPTSET
+set icap_pixeltypevalue '${getindex:twptlist.${get:itwpt}}'
+if '${get:icap_pixeltypevalue}' != '' goto MAIN.TWPTSET
 goto MAIN.PASS
 :MAIN.TWPTSET
-dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:name}'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:icap_pixeltypevalue}'
 if '${sts:}' == 'SUCCESS' goto MAIN.TWPTCONTINUE
-echopassfail '${get:name}' 'skip'
+echopassfail '${get:icap_pixeltypevalue}' 'skip'
 goto NEXTTWPT
 :MAIN.TWPTCONTINUE
-echopassfail '${get:name}' 'pass'
+echopassfail '${get:icap_pixeltypevalue}' 'pass'
 
 
 
@@ -65,6 +66,14 @@ dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
 set cap_supportedcaps '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Turn on capabilities that enable the use of other capabilities
+; SPECNOTE: this isn't described in the tests, but it seems like a good idea
+;
+call ENABLECAPABILITIES '${get:cap_supportedcaps}'
 
 
 
@@ -91,7 +100,7 @@ call MSGGET          '${get:cap}' '${get:querysupport}' datcapabilityresult
 call MSGGETCURRENT   '${get:cap}' '${get:querysupport}' datcapabilityresult
 call MSGGETDEFAULT   '${get:cap}' '${get:querysupport}' datcapabilityresult
 call MSGRESET        '${get:cap}' '${get:querysupport}' datcapabilityresult
-;call MSGSET          '${get:cap}' '${get:querysupport}' datcapabilityresult
+call MSGSET          '${get:cap}' '${get:querysupport}' datcapabilityresult
 goto NEXTCAP
 
 
@@ -180,9 +189,9 @@ set name '    Verify SET, RESET with GETs'
 if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x0012' == '0' goto MSGQUERYSUPPORT.PASS
 if '${getindex:twcapability.${get:index.twonevalue.item}}' & '0x001F' != '0x001F' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
-goto MSGQUERYSUPPORT.PASS
 ;
 ; All done...
+goto MSGQUERYSUPPORT.PASS
 :MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'error'
 :MSGQUERYSUPPORT.FAIL
@@ -204,7 +213,7 @@ return
 ;
 :MSGGET
 ;
-; Skip if not supported...
+; Skip if not supported (TWQC_GET)...
 if '${arg:2}' & '0x0001' == '0' goto MSGGET.SKIP
 ;
 ; Send the command...
@@ -230,9 +239,9 @@ echopassfail '  ${get:name}' 'pass'
 set name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
 if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:index.twcapability.itemtype}}' goto MSGGET.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
-goto MSGGET.PASS
 ;
 ; All done...
+goto MSGGET.PASS
 :MSGGET.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'error'
 :MSGGET.FAIL
@@ -254,8 +263,8 @@ return
 ;
 :MSGGETCURRENT
 ;
-; Skip if not supported...
-if '${arg:2}' & '0x0002' == '0' goto MSGGETCURRENT.SKIP
+; Skip if not supported (TWQC_GETCURRENT)...
+if '${arg:2}' & '0x0008' == '0' goto MSGGETCURRENT.SKIP
 ;
 ; Send the command...
 set name 'Send MSG_GETCURRENT'
@@ -289,9 +298,9 @@ echopassfail '  ${get:name}' 'pass'
 set name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
 if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:index.twcapability.itemtype}}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
-goto MSGGETCURRENT.PASS
 ;
 ; All done...
+goto MSGGETCURRENT.PASS
 :MSGGETCURRENT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'error'
 :MSGGETCURRENT.FAIL
@@ -313,8 +322,8 @@ return
 ;
 :MSGGETDEFAULT
 ;
-; Skip if not supported...
-if '${arg:2}' & '0x0002' == '0' goto MSGGETDEFAULT.SKIP
+; Skip if not supported (TWQC_GETDEFAULT)...
+if '${arg:2}' & '0x0004' == '0' goto MSGGETDEFAULT.SKIP
 ;
 ; Send the command...
 set name 'Send MSG_GETDEFAULT'
@@ -348,9 +357,9 @@ echopassfail '  ${get:name}' 'pass'
 set name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
 if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:index.twcapability.itemtype}}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
-goto MSGGETDEFAULT.PASS
 ;
 ; All done...
+goto MSGGETDEFAULT.PASS
 :MSGGETDEFAULT.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'error'
 :MSGGETDEFAULT.FAIL
@@ -372,8 +381,8 @@ return
 ;
 :MSGRESET
 ;
-; Skip if not supported...
-if '${arg:2}' & '0x0002' == '0' goto MSGRESET.SKIP
+; Skip if not supported (TWQC_RESET)...
+if '${arg:2}' & '0x0010' == '0' goto MSGRESET.SKIP
 ;
 ; Send the command...
 set name 'Send MSG_RESET'
@@ -408,17 +417,218 @@ echopassfail '  ${get:name}' 'pass'
 set name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
 if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:index.twcapability.itemtype}}' goto MSGRESET.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'pass'
-goto MSGRESET.PASS
 ;
 ; All done...
+goto MSGRESET.PASS
 :MSGRESET.ERROR.ECHOPASSFAIL
 echopassfail '  ${get:name}' 'error'
 :MSGRESET.FAIL
+call RESTORECAPABILITY '${arg:1}'
 set '${arg:3}' 'fail'
 return
 :MSGRESET.SKIP
 return
 :MSGRESET.PASS
+call RESTORECAPABILITY '${arg:1}'
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: MSGSET
+; arg:1 - capability to check
+; arg:2 - querysupport value
+; arg:3 - only updated on fail
+; returns: (none)
+;
+:MSGSET
+;
+; Skip if not supported (TWQC_SET)...
+if '${arg:2}' & '0x0002' == '0' goto MSGSET.SKIP
+;
+; Explain what's going on...
+set name 'Test MSG_SET'
+echopassfail '  ${get:name}' 'pass'
+;
+; GET -> SET, and check they match with a final GET
+set name 'Send MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+set twcapability '${ret:}'
+set name 'Send MSG_SET with that GET'
+dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+set name 'Send MSG_GET to confirm MSG_SET'
+dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${ret:}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+;
+; GETGURRENT -> SET, and check they match with a final GETCURRENT
+set name 'Send MSG_GETCURRENT'
+dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+set twcapability '${ret:}'
+set name 'Send MSG_SET with that GETCURRENT'
+dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+set name 'Send MSG_GETCURRENT to confirm MSG_SET'
+dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${ret:}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+;
+; GETDEFAULT -> SET, and check they match with a final GETCURRENT
+set name 'Send MSG_GETDEFAULT'
+dsmentry src ds dg_control dat_capability msg_getdefault '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+set twcapability '${ret:}'
+set name 'Send MSG_SET with that GETDEFAULT'
+dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+set name 'Send MSG_GETCURRENT to confirm MSG_SET'
+dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${ret:}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+;
+; RESET -> SET, and check they match with a final GETCURRENT
+set name 'Send MSG_RESET'
+dsmentry src ds dg_control dat_capability msg_reset '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+set twcapability '${ret:}'
+set name 'Send MSG_SET with that RESET'
+dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+set name 'Send MSG_GETCURRENT to confirm MSG_SET'
+dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
+if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${ret:}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'pass'
+;
+; All done...
+goto MSGSET.PASS
+:MSGSET.ERROR.ECHOPASSFAIL
+echopassfail '      ${get:name}' 'error ${sts:} ${get:twcapability}'
+:MSGSET.FAIL
+call RESTORECAPABILITY '${arg:1}'
+set '${arg:3}' 'fail'
+return
+:MSGSET.SKIP
+return
+:MSGSET.PASS
+call RESTORECAPABILITY '${arg:1}'
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: ENABLECAPABILITIES
+; arg:1 - cap_supportedcaps
+; returns: (none)
+; Turn on stuff that we find in the list, we don't care if it fails,
+; we'll keep on going...
+;
+:ENABLECAPABILITIES
+;
+; CAP_PRINTERENABLED
+:ENABLECAPABILITIES.CAP_PRINTERENABLED
+if '${arg:1}' !~contains 'CAP_PRINTERENABLED' goto ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto ENABLECAPABILITIES.CAP_PRINTERENABLED.ECHOPASSFAIL
+echopassfail '  Enable CAP_PRINTERENABLED' 'pass'
+goto ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED
+:ENABLECAPABILITIES.CAP_PRINTERENABLED.ECHOPASSFAIL
+echopassfail '  Enable CAP_PRINTERENABLED' 'error'
+;
+; ICAP_BARCODEDETECTIONENABLED
+:ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED
+if '${arg:1}' !~contains 'ICAP_BARCODEDETECTIONENABLED' goto ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
+echopassfail '  Enable ICAP_BARCODEDETECTIONENABLED' 'pass'
+goto ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED
+:ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
+echopassfail '  Enable ICAP_BARCODEDETECTIONENABLED' 'error'
+;
+; ICAP_PATCHCODEDETECTIONENABLED
+:ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED
+if '${arg:1}' !~contains 'CAP_PATCHCODEDETECTIONENABLED' goto ENABLECAPABILITIES.DONE
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
+echopassfail '  Enable CAP_PATCHCODEDETECTIONENABLED' 'pass'
+goto ENABLECAPABILITIES.DONE
+:ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
+echopassfail '  Enable CAP_PATCHCODEDETECTIONENABLED' 'error'
+;
+; All done...
+:ENABLECAPABILITIES.DONE
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: RESTORECAPABILITY 
+; arg:1 - the current capability
+; returns: (none)
+; If we recognize it and need to maintain it, restore it.  Note that to
+; get into this function we're assuming the capability exists, so it's
+; okay to set it.
+; SPECNOTE: the concept of restoring isn't described in the tests
+;
+:RESTORECAPABILITY
+if '${arg:1}' == 'CAP_PRINTERENABLED' goto RESTORECAPABILITY.CAP_PRINTERENABLED
+if '${arg:1}' == 'ICAP_BARCODEDETECTIONENABLED' goto RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED
+if '${arg:1}' == 'ICAP_PATCHCODEDETECTIONENABLED' goto RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED
+if '${arg:1}' == 'ICAP_PIXELTYPE' goto RESTORECAPABILITY.ICAP_PIXELTYPE
+return
+;
+; CAP_PRINTERENABLED
+:RESTORECAPABILITY.CAP_PRINTERENABLED
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.CAP_PRINTERENABLED.ECHOPASSFAIL
+echopassfail '      Restore CAP_PRINTERENABLED value to TRUE' 'pass'
+return
+:RESTORECAPABILITY.CAP_PRINTERENABLED.FAIL
+echopassfail '      Restore CAP_PRINTERENABLED value to TRUE' 'fail'
+return
+;
+; ICAP_BARCODEDETECTIONENABLED
+:RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_UINT16,TRUE'
+if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
+echopassfail '      Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'pass'
+return
+:RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.FAIL
+echopassfail '      Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'fail'
+return
+;
+; ICAP_PATCHCODEDETECTIONENABLED
+:RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_UINT16,TRUE'
+if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
+echopassfail '      Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'pass'
+return
+:RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.FAIL
+echopassfail '      Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'fail'
+return
+;
+; ICAP_PIXELTYPE
+:RESTORECAPABILITY.ICAP_PIXELTYPE
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:icap_pixeltypevalue}'
+if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_PIXELTYPE.ECHOPASSFAIL
+echopassfail '      Restore ICAP_PIXELTYPE value to ${get:icap_pixeltypevalue}' 'pass'
+return
+:RESTORECAPABILITY.ICAP_PIXELTYPE.FAIL
+echopassfail '      Restore ICAP_PIXELTYPE value to ${get:icap_pixeltypevalue}' 'fail'
 return
 
 

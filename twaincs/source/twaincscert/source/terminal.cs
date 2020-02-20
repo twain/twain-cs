@@ -502,12 +502,21 @@ namespace twaincscert
                 // DAT_CAPABILITY...
                 case (int)TWAIN.DAT.CAPABILITY:
                     {
-                        // Skip symbols for msg_querysupport, otherwise 0 gets turned into false...
+                        // Skip symbols for msg_querysupport, otherwise 0 gets turned into false, also
+                        // if the command fails the return value is whatever was sent into us, which
+                        // matches the experience one should get with C/C++...
                         string szStatus = "";
                         TWAIN.TW_CAPABILITY twcapability = default(TWAIN.TW_CAPABILITY);
                         m_twain.CsvToCapability(ref twcapability, ref szStatus, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatCapability((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twcapability);
-                        a_functionarguments.szReturnValue = m_twain.CapabilityToCsv(twcapability, ((TWAIN.MSG)a_functionarguments.iMsg != TWAIN.MSG.QUERYSUPPORT));
+                        if ((a_functionarguments.sts == TWAIN.STS.SUCCESS) || (a_functionarguments.sts == TWAIN.STS.CHECKSTATUS))
+                        {
+                            a_functionarguments.szReturnValue = m_twain.CapabilityToCsv(twcapability, ((TWAIN.MSG)a_functionarguments.iMsg != TWAIN.MSG.QUERYSUPPORT));
+                        }
+                        else
+                        {
+                            a_functionarguments.szReturnValue = a_functionarguments.aszCmd[6];
+                        }
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }

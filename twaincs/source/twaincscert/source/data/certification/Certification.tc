@@ -101,6 +101,7 @@ return 'fail'
 if '${arg:1}' == 'info' goto ECHOANDLOG.INFO
 echo.red '${arg:2}'
 log error '#${arg:2}'
+return
 :ECHOANDLOG.INFO
 echo.green '${arg:2}'
 log info '#${arg:2}'

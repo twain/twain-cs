@@ -1131,7 +1131,7 @@ namespace TWAINWorkingGroup
                             csvEnum.Add(twenumerationmacosx.DefaultIndex.ToString());
                         }
                         // Windows or the 2.4+ Linux DSM...
-                        else if ((ms_platform == Platform.WINDOWS) || ((m_blFoundLatestDsm || m_blFoundLatestDsm) && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
+                        else if ((ms_platform == Platform.WINDOWS) || ((m_blFoundLatestDsm || m_blFoundLatestDsm64) && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
                         {
                             // Crack the container...
                             TW_ENUMERATION twenumeration = default(TW_ENUMERATION);
@@ -1563,7 +1563,7 @@ namespace TWAINWorkingGroup
                                 intptr = (IntPtr)((UInt64)intptr + (UInt64)Marshal.SizeOf(twenumerationmacosx));
                             }
                             // Windows or the 2.4+ Linux DSM...
-                            else if ((m_linuxdsm == LinuxDsm.IsLatestDsm) || ((m_blFoundLatestDsm || m_blFoundLatestDsm64) && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
+                            else if ((ms_platform == Platform.WINDOWS) || ((m_linuxdsm == LinuxDsm.IsLatestDsm) || ((m_blFoundLatestDsm || m_blFoundLatestDsm64) && (m_linuxdsm == LinuxDsm.IsLatestDsm))))
                             {
                                 // Allocate...
                                 a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_ENUMERATION)) + (((int)u32NumItems + 1) * Marshal.SizeOf(default(TW_STR255)))));
@@ -1678,7 +1678,7 @@ namespace TWAINWorkingGroup
                                 intptr = DsmMemLock(a_twcapability.hContainer);
                             }
                             // Windows or the 2.4+ Linux DSM...
-                            else if ((m_linuxdsm == LinuxDsm.IsLatestDsm) || ((m_blFoundLatestDsm || m_blFoundLatestDsm64) && (m_linuxdsm == LinuxDsm.IsLatestDsm)))
+                            else if ((ms_platform == Platform.WINDOWS) || ((m_linuxdsm == LinuxDsm.IsLatestDsm) || ((m_blFoundLatestDsm || m_blFoundLatestDsm64) && (m_linuxdsm == LinuxDsm.IsLatestDsm))))
                             {
                                 // Allocate...
                                 a_twcapability.hContainer = DsmMemAlloc((uint)(Marshal.SizeOf(default(TW_RANGE))));
@@ -2832,9 +2832,9 @@ namespace TWAINWorkingGroup
                 {
                     if ((a_szValue == "1") || (a_szValue.ToLowerInvariant() == "true"))
                     {
-                        return ("true");
+                        return ("TRUE");
                     }
-                    return ("false");
+                    return ("FALSE");
                 }
                 else if (typeof(T) == typeof(DAT))
                 {
@@ -2871,17 +2871,26 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
-        /// This mess is what tries to turn readble stuff into numeric constants...
+        /// This mess is what tries to turn readable stuff into numeric constants...
         /// </summary>
         /// <typeparam name="T">type for the conversion</typeparam>
         /// <param name="a_szValue">value to convert</param>
         /// <returns></returns>
         private string CvtCapValueFromEnumHelper<T>(string a_szValue)
         {
+            // We can figure this one out on our own...
+            if ((typeof(T).Name == "bool") || (typeof(T).Name == "Boolean"))
+            {
+                return (((a_szValue.ToLowerInvariant() == "true") || (a_szValue == "1")) ? "1" : "0");
+            }
+
+            // Look for the enum prefix...
             if (a_szValue.StartsWith(typeof(T).Name + "_"))
             {
                 return (a_szValue.Substring((typeof(T).Name + "_").Length));
             }
+
+            // Er...
             return (a_szValue);
         }
 
@@ -3073,10 +3082,10 @@ namespace TWAINWorkingGroup
         {
             int ii;
 
-            // Skip hex...
+            // Turn hex into a decimal...
             if (a_szValue.ToLowerInvariant().StartsWith("0x"))
             {
-                return (a_szValue);
+                return (int.Parse(a_szValue.Substring(2), NumberStyles.HexNumber).ToString());
             }
 
             // Skip numbers...
@@ -3093,52 +3102,52 @@ namespace TWAINWorkingGroup
                 case CAP.CAP_ALARMS: { TWAL twal; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWAL>(a_szValue), out twal) ? ((int)twal).ToString() : a_szValue); };
                 case CAP.CAP_ALARMVOLUME: return (a_szValue);
                 case CAP.CAP_AUTHOR: return (a_szValue);
-                case CAP.CAP_AUTOFEED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_AUTOMATICCAPTURE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_AUTOMATICSENSEMEDIUM: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_AUTOSCAN: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_AUTOFEED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_AUTOMATICCAPTURE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_AUTOMATICSENSEMEDIUM: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_AUTOSCAN: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_BATTERYMINUTES: return (a_szValue);
                 case CAP.CAP_BATTERYPERCENTAGE: return (a_szValue);
-                case CAP.CAP_CAMERAENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_CAMERAENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_CAMERAORDER: { TWPT twpt; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWPT>(a_szValue), out twpt) ? ((int)twpt).ToString() : a_szValue); };
-                case CAP.CAP_CAMERAPREVIEWUI: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_CAMERAPREVIEWUI: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_CAMERASIDE: { TWCS twcs; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWCS>(a_szValue), out twcs) ? ((int)twcs).ToString() : a_szValue); };
                 case CAP.CAP_CAPTION: return (a_szValue);
-                case CAP.CAP_CLEARPAGE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_CUSTOMDSDATA: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_CLEARPAGE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_CUSTOMDSDATA: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_CUSTOMINTERFACEGUID: return (a_szValue);
                 case CAP.CAP_DEVICEEVENT: { TWDE twde; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWDE>(a_szValue), out twde) ? ((int)twde).ToString() : a_szValue); };
-                case CAP.CAP_DEVICEONLINE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_DEVICEONLINE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_DEVICETIMEDATE: return (a_szValue);
                 case CAP.CAP_DOUBLEFEEDDETECTION: { TWDF twdf; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWDF>(a_szValue), out twdf) ? ((int)twdf).ToString() : a_szValue); };
                 case CAP.CAP_DOUBLEFEEDDETECTIONLENGTH: return (a_szValue);
                 case CAP.CAP_DOUBLEFEEDDETECTIONRESPONSE: { TWDP twdp; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWDP>(a_szValue), out twdp) ? ((int)twdp).ToString() : a_szValue); };
                 case CAP.CAP_DOUBLEFEEDDETECTIONSENSITIVITY: { TWUS twus; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWUS>(a_szValue), out twus) ? ((int)twus).ToString() : a_szValue); };
                 case CAP.CAP_DUPLEX: { TWDX twdx; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWDX>(a_szValue), out twdx) ? ((int)twdx).ToString() : a_szValue); };
-                case CAP.CAP_DUPLEXENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_ENABLEDSUIONLY: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_DUPLEXENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_ENABLEDSUIONLY: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_ENDORSER: return (a_szValue);
                 case CAP.CAP_EXTENDEDCAPS: { CAP cap; return (Enum.TryParse(CvtCapValueFromEnumHelper<CAP>(a_szValue), out cap) ? ((int)cap).ToString() : a_szValue); };
                 case CAP.CAP_FEEDERALIGNMENT: { TWFA twfa; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWFA>(a_szValue), out twfa) ? ((int)twfa).ToString() : a_szValue); };
-                case CAP.CAP_FEEDERENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_FEEDERLOADED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_FEEDERENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_FEEDERLOADED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_FEEDERORDER: { TWFO twfo; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWFO>(a_szValue), out twfo) ? ((int)twfo).ToString() : a_szValue); };
                 case CAP.CAP_FEEDERPOCKET: { TWFP twfp; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWFP>(a_szValue), out twfp) ? ((int)twfp).ToString() : a_szValue); };
-                case CAP.CAP_FEEDERPREP: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_FEEDPAGE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_INDICATORS: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_FEEDERPREP: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_FEEDPAGE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_INDICATORS: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_INDICATORSMODE: { TWCI twci; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWCI>(a_szValue), out twci) ? ((int)twci).ToString() : a_szValue); };
                 case CAP.CAP_JOBCONTROL: { TWJC twjc; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWJC>(a_szValue), out twjc) ? ((int)twjc).ToString() : a_szValue); };
                 case CAP.CAP_LANGUAGE: { TWLG twlg; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWLG>(a_szValue), out twlg) ? ((int)twlg).ToString() : a_szValue); };
                 case CAP.CAP_MAXBATCHBUFFERS: return (a_szValue);
-                case CAP.CAP_MICRENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_PAPERDETECTABLE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_MICRENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_PAPERDETECTABLE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_PAPERHANDLING: { TWPH twph; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWPH>(a_szValue), out twph) ? ((int)twph).ToString() : a_szValue); };
                 case CAP.CAP_POWERSAVETIME: return (a_szValue);
                 case CAP.CAP_POWERSUPPLY: { TWPS twps; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWPS>(a_szValue), out twps) ? ((int)twps).ToString() : a_szValue); };
                 case CAP.CAP_PRINTER: { TWPR twpr; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWPR>(a_szValue), out twpr) ? ((int)twpr).ToString() : a_szValue); };
                 case CAP.CAP_PRINTERCHARROTATION: return (a_szValue);
-                case CAP.CAP_PRINTERENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_PRINTERENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_PRINTERFONTSTYLE: { TWPF twpf; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWPF>(a_szValue), out twpf) ? ((int)twpf).ToString() : a_szValue); };
                 case CAP.CAP_PRINTERINDEX: return (a_szValue);
                 case CAP.CAP_PRINTERINDEXLEADCHAR: return (a_szValue);
@@ -3151,31 +3160,31 @@ namespace TWAINWorkingGroup
                 case CAP.CAP_PRINTERSTRINGPREVIEW: return (a_szValue);
                 case CAP.CAP_PRINTERSUFFIX: return (a_szValue);
                 case CAP.CAP_PRINTERVERTICALOFFSET: return (a_szValue);
-                case CAP.CAP_REACQUIREALLOWED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.CAP_REWINDPAGE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_REACQUIREALLOWED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.CAP_REWINDPAGE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_SEGMENTED: { TWSG twsg; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWSG>(a_szValue), out twsg) ? ((int)twsg).ToString() : a_szValue); };
                 case CAP.CAP_SERIALNUMBER: return (a_szValue);
                 case CAP.CAP_SHEETCOUNT: return (a_szValue);
                 case CAP.CAP_SUPPORTEDCAPS: { CAP cap; return (Enum.TryParse(CvtCapValueFromEnumHelper<CAP>(a_szValue), out cap) ? ((int)cap).ToString() : a_szValue); };
                 case CAP.CAP_SUPPORTEDCAPSSEGMENTUNIQUE: { CAP cap; return (Enum.TryParse(CvtCapValueFromEnumHelper<CAP>(a_szValue), out cap) ? ((int)cap).ToString() : a_szValue); };
                 case CAP.CAP_SUPPORTEDDATS: { DAT dat; return (Enum.TryParse(CvtCapValueFromEnumHelper<DAT>(a_szValue), out dat) ? ((int)dat).ToString() : a_szValue); };
-                case CAP.CAP_THUMBNAILSENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_THUMBNAILSENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_TIMEBEFOREFIRSTCAPTURE: return (a_szValue);
                 case CAP.CAP_TIMEBETWEENCAPTURES: return (a_szValue);
                 case CAP.CAP_TIMEDATE: return (a_szValue);
-                case CAP.CAP_UICONTROLLABLE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.CAP_UICONTROLLABLE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.CAP_XFERCOUNT: return (a_szValue);
-                case CAP.ICAP_AUTOBRIGHT: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_AUTOBRIGHT: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_AUTODISCARDBLANKPAGES: { TWBP twbp; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWBP>(a_szValue), out twbp) ? ((int)twbp).ToString() : a_szValue); };
-                case CAP.ICAP_AUTOMATICBORDERDETECTION: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.ICAP_AUTOMATICCOLORENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE: return (CvtCapValueFromEnumHelper<TWPT>(a_szValue));
-                case CAP.ICAP_AUTOMATICCROPUSESFRAME: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.ICAP_AUTOMATICDESKEW: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.ICAP_AUTOMATICLENGTHDETECTION: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
-                case CAP.ICAP_AUTOMATICROTATE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_AUTOMATICBORDERDETECTION: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.ICAP_AUTOMATICCOLORENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE: { TWPT twpt; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWPT>(a_szValue), out twpt) ? ((int)twpt).ToString() : a_szValue); };
+                case CAP.ICAP_AUTOMATICCROPUSESFRAME: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.ICAP_AUTOMATICDESKEW: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.ICAP_AUTOMATICLENGTHDETECTION: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
+                case CAP.ICAP_AUTOMATICROTATE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_AUTOSIZE: { TWAS twas; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWAS>(a_szValue), out twas) ? ((int)twas).ToString() : a_szValue); };
-                case CAP.ICAP_BARCODEDETECTIONENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_BARCODEDETECTIONENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_BARCODEMAXRETRIES: return (a_szValue);
                 case CAP.ICAP_BARCODEMAXSEARCHPRIORITIES: return (a_szValue);
                 case CAP.ICAP_BARCODESEARCHMODE: { TWBD twbd; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWBD>(a_szValue), out twbd) ? ((int)twbd).ToString() : a_szValue); };
@@ -3187,16 +3196,16 @@ namespace TWAINWorkingGroup
                 case CAP.ICAP_BITORDERCODES: { TWBO twbo; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWBO>(a_szValue), out twbo) ? ((int)twbo).ToString() : a_szValue); };
                 case CAP.ICAP_BRIGHTNESS: return (a_szValue);
                 case CAP.ICAP_CCITTKFACTOR: return (a_szValue);
-                case CAP.ICAP_COLORMANAGEMENTENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_COLORMANAGEMENTENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_COMPRESSION: { TWCP twcp; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWCP>(a_szValue), out twcp) ? ((int)twcp).ToString() : a_szValue); };
                 case CAP.ICAP_CONTRAST: return (a_szValue);
                 case CAP.ICAP_CUSTHALFTONE: return (a_szValue);
                 case CAP.ICAP_EXPOSURETIME: return (a_szValue);
-                case CAP.ICAP_EXTIMAGEINFO: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_EXTIMAGEINFO: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_FEEDERTYPE: { TWFE twfe; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWFE>(a_szValue), out twfe) ? ((int)twfe).ToString() : a_szValue); };
                 case CAP.ICAP_FILMTYPE: { TWFM twfm; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWFM>(a_szValue), out twfm) ? ((int)twfm).ToString() : a_szValue); };
                 case CAP.ICAP_FILTER: { TWFT twft; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWFT>(a_szValue), out twft) ? ((int)twft).ToString() : a_szValue); };
-                case CAP.ICAP_FLASHUSED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_FLASHUSED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_FLASHUSED2: { TWFL twfl; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWFL>(a_szValue), out twfl) ? ((int)twfl).ToString() : a_szValue); };
                 case CAP.ICAP_FLIPROTATION: { TWFR twfr; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWFR>(a_szValue), out twfr) ? ((int)twfr).ToString() : a_szValue); };
                 case CAP.ICAP_FRAMES: return (a_szValue);
@@ -3212,7 +3221,7 @@ namespace TWAINWorkingGroup
                 case CAP.ICAP_JPEGPIXELTYPE: { TWPT twpt; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWPT>(a_szValue), out twpt) ? ((int)twpt).ToString() : a_szValue); };
                 case CAP.ICAP_JPEGQUALITY: { TWJQ twjq; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWJQ>(a_szValue), out twjq) ? ((int)twjq).ToString() : a_szValue); };
                 case CAP.ICAP_JPEGSUBSAMPLING: { TWJS twjs; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWJS>(a_szValue), out twjs) ? ((int)twjs).ToString() : a_szValue); };
-                case CAP.ICAP_LAMPSTATE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_LAMPSTATE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_LIGHTPATH: { TWLP twlp; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWLP>(a_szValue), out twlp) ? ((int)twlp).ToString() : a_szValue); };
                 case CAP.ICAP_LIGHTSOURCE: { TWLS twls; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWLS>(a_szValue), out twls) ? ((int)twls).ToString() : a_szValue); };
                 case CAP.ICAP_MAXFRAMES: return (a_szValue);
@@ -3222,7 +3231,7 @@ namespace TWAINWorkingGroup
                 case CAP.ICAP_NOISEFILTER: { TWNF twnf; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWNF>(a_szValue), out twnf) ? ((int)twnf).ToString() : a_szValue); };
                 case CAP.ICAP_ORIENTATION: { TWOR twor; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWOR>(a_szValue), out twor) ? ((int)twor).ToString() : a_szValue); };
                 case CAP.ICAP_OVERSCAN: { TWOV twov; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWOV>(a_szValue), out twov) ? ((int)twov).ToString() : a_szValue); };
-                case CAP.ICAP_PATCHCODEDETECTIONENABLED: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_PATCHCODEDETECTIONENABLED: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_PATCHCODEMAXRETRIES: return (a_szValue);
                 case CAP.ICAP_PATCHCODEMAXSEARCHPRIORITIES: return (a_szValue);
                 case CAP.ICAP_PATCHCODESEARCHMODE: { TWBD twbd; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWBD>(a_szValue), out twbd) ? ((int)twbd).ToString() : a_szValue); };
@@ -3241,9 +3250,9 @@ namespace TWAINWorkingGroup
                 case CAP.ICAP_SUPPORTEDPATCHCODETYPES: { TWPCH twpch; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWPCH>(a_szValue), out twpch) ? ((int)twpch).ToString() : a_szValue); };
                 case CAP.ICAP_SUPPORTEDSIZES: { TWSS twss; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWSS>(a_szValue), out twss) ? ((int)twss).ToString() : a_szValue); };
                 case CAP.ICAP_THRESHOLD: return (a_szValue);
-                case CAP.ICAP_TILES: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_TILES: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_TIMEFILL: return (a_szValue);
-                case CAP.ICAP_UNDEFINEDIMAGESIZE: { bool bl; return (Enum.TryParse(CvtCapValueFromEnumHelper<bool>(a_szValue), out bl) ? (bl ? "1" : "0") : a_szValue); };
+                case CAP.ICAP_UNDEFINEDIMAGESIZE: return (CvtCapValueFromEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_UNITS: { TWUN twun; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWUN>(a_szValue), out twun) ? ((int)twun).ToString() : a_szValue); };
                 case CAP.ICAP_XFERMECH: { TWSX twsx; return (Enum.TryParse(CvtCapValueFromEnumHelper<TWSX>(a_szValue), out twsx) ? ((int)twsx).ToString() : a_szValue); };
                 case CAP.ICAP_XNATIVERESOLUTION: return (a_szValue);
@@ -11187,17 +11196,17 @@ namespace TWAINWorkingGroup
 
                 case TWTY.INT16:
                     {
-                        // We do this to make sure the entire Item value is overwritten...
+                        // We use i32Value to make sure the entire Item value is overwritten...
                         if (a_twcapability.ConType == TWON.ONEVALUE)
                         {
-                            int i32Value = short.Parse(a_szValue);
+                            int i32Value = short.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                             Marshal.StructureToPtr(i32Value, a_intptr, true);
                             return ("");
                         }
                         // These items have to be packed on the type sizes...
                         else
                         {
-                            short i16Value = short.Parse(a_szValue);
+                            short i16Value = short.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                             intptr = (IntPtr)((ulong)a_intptr + (ulong)(2 * a_iIndex));
                             Marshal.StructureToPtr(i16Value, intptr, true);
                             return ("");
@@ -11214,7 +11223,7 @@ namespace TWAINWorkingGroup
 
                 case TWTY.UINT8:
                     {
-                        // We do this to make sure the entire Item value is overwritten...
+                        // We use u32Value to make sure the entire Item value is overwritten...
                         if (a_twcapability.ConType == TWON.ONEVALUE)
                         {
                             uint u32Value = byte.Parse(a_szValue);
@@ -11235,16 +11244,16 @@ namespace TWAINWorkingGroup
                 case TWTY.UINT16:
                     {
                         string szNumber = CvtCapValueFromEnum(a_twcapability.Cap, a_szValue);
-                        // We do this to make sure the entire Item value is overwritten...
+                        // We use u32Value to make sure the entire Item value is overwritten...
                         if (a_twcapability.ConType == TWON.ONEVALUE)
                         {
-                            uint u32Value = ushort.Parse(szNumber);
+                            uint u32Value = ushort.Parse(CvtCapValueFromEnum(a_twcapability.Cap, szNumber));
                             Marshal.StructureToPtr(u32Value, a_intptr, true);
                             return ("");
                         }
                         else
                         {
-                            ushort u16Value = ushort.Parse(szNumber);
+                            ushort u16Value = ushort.Parse(CvtCapValueFromEnum(a_twcapability.Cap, szNumber));
                             intptr = (IntPtr)((ulong)a_intptr + (ulong)(2 * a_iIndex));
                             Marshal.StructureToPtr(u16Value, intptr, true);
                             return ("");
