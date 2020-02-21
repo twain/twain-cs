@@ -40,39 +40,32 @@ call ECHOANDLOG info 'started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Load our tables...
+; Load our global tables...
 ;
 run LoadTables
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Open the driver...
+; Run all the tests...
 ;
-call CERTIFY 'Opends' '${get:twidentity.productname}' g_certifyresult
+call RUNCERTIFICATION '010 - TWAIN Standard Capability Tests' '${get:twidentity.productname}' g_certifyresult
+call RUNCERTIFICATION '030 - Status Return Tests'             '${get:twidentity.productname}' g_certifyresult
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; TWAIN Standard Capability Tests...
+; Stress Tests...
 ;
-call CERTIFY '010 - TWAIN Standard Capability Tests/CAP_SUPPORTEDCAPS' '${get:twidentity.productname}' g_certifyresult
-call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_PIXELTYPE'    '${get:twidentity.productname}' g_certifyresult
-call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_XFERMECH'     '${get:twidentity.productname}' g_certifyresult
-call CERTIFY '010 - TWAIN Standard Capability Tests/DAT_CAPABILITY'    '${get:twidentity.productname}' g_certifyresult
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Status Return Tests...
-;
-call CERTIFY '030 - Status Return Tests/Status Return Tests' '${get:twidentity.productname}' g_certifyresult
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Close the driver...
-;
+call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
+call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
+call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
+call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
+call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
+call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
+call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
+call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
+call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
 call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
 
 
@@ -103,6 +96,22 @@ call ECHOANDLOG error '********************************************'
 report save
 echo 'report saved to ${report:}'
 return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: RunCertification
+; arg:1 - folder to run in
+; arg:2 - TW_IDENTITY.ProductName of scanner to test
+; arg:3 - global value to update on fail
+; returns: (none)
+;
+:RUNCERTIFICATION
+;
+cd '${folder:certification}/${arg:1}'
+run Certification '${arg:2}' '${arg:3}'
+cd '${folder:certification}'
+return 'pass'
 
 
 

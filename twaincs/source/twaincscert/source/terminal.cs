@@ -1842,7 +1842,8 @@ namespace twaincscert
                 Display("  Complete TW_IDENTITY of the current scanner driver.");
                 Display("");
                 Display("  '${folder:target}'");
-                Display("  Resolves to the full path for targeted special folder: desktop, local, pictures, roaming");
+                Display("  Resolves to the full path for targeted special folder: certification, data, desktop, local,");
+                Display("  pictures, roaming");
                 Display("");
                 Display("  '${get:target}'");
                 Display("  The value last assigned to the target using the set command.");
@@ -2406,7 +2407,7 @@ namespace twaincscert
                 Display("");
 
                 // Try our binary path first, if that fails use the current folder...
-                string szCertificationFolder = Path.Combine(Application.ExecutablePath, Path.Combine("data", "Certification"));
+                string szCertificationFolder = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
                 if (!Directory.Exists(szCertificationFolder))
                 {
                     szCertificationFolder = Path.Combine(Directory.GetCurrentDirectory(), Path.Combine("data", "Certification"));
@@ -4275,7 +4276,15 @@ namespace twaincscert
                     // Special folders
                     else if (szSymbol.StartsWith("${folder:"))
                     {
-                        if (szSymbol == "${folder:desktop}")
+                        if (szSymbol == "${folder:certification}")
+                        {
+                            szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
+                        }
+                        else if (szSymbol == "${folder:data}")
+                        {
+                            szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "data");
+                        }
+                        else if (szSymbol == "${folder:desktop}")
                         {
                             szValue = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                         }

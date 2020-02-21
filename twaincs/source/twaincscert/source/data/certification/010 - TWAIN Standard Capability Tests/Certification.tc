@@ -1,0 +1,59 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TWAIN Standard Capability Tests
+;   Test for capabilties described in the specification.
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global to set on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   twidentity.productname - product name of scanner to test
+;   certifyresult - global to set on fail
+;
+; Returns
+;   (none)
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize stuff...
+;
+setlocal twidentity.productname '${arg:1}'
+setlocal certifyresult '${arg:2}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TWAIN Standard Capability Tests...
+;
+
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'
+call CERTIFY 'CAP_SUPPORTEDCAPS'               '${get:twidentity.productname}' '${get:certifyresult}'
+call CERTIFY 'ICAP_PIXELTYPE'                  '${get:twidentity.productname}' '${get:certifyresult}'
+call CERTIFY 'ICAP_XFERMECH'                   '${get:twidentity.productname}' '${get:certifyresult}'
+call CERTIFY 'DAT_CAPABILITY'                  '${get:twidentity.productname}' '${get:certifyresult}'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}'
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Certify
+; arg:1 - script to run
+; arg:2 - TW_IDENTITY.ProductName of scanner to test
+; arg:3 - global value to update on fail
+; returns: (none)
+;
+:CERTIFY
+;
+run '${arg:1}' '${arg:2}'
+if '${ret:}' != 'pass' goto CERTIFY.FAIL
+return 'pass'
+;
+:CERTIFY.FAIL
+setglobal '${arg:3}' 'fail'
+return 'fail'
