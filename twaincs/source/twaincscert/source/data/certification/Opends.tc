@@ -1,9 +1,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Opends
-; arg:1 - scanner to open
-; returns: pass or fail
+;   Open the requested TWAIN driver...
 ;
-; Open the requested TWAIN driver...
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   (none)
+;
+; Locals
+;   (none)
+;
+; Returns
+;   pass or fail
 ;
 
 
@@ -35,12 +44,14 @@ if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-echopassfail 'Opends' 'pass'
+echopassfail 'dg_control/dat_identity/msg_opends' 'pass'
+echopassfail 'SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR
-echopassfail 'Opends' 'error'
+echopassfail 'dg_control/dat_identity/msg_opends' 'fail'
+echopassfail 'SUMMARY' 'fail'
 return 'fail'
 
 

@@ -1,9 +1,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; ICAP_XFERMECH
-; arg:1 - scanner to test
-; returns: pass or fail
+;   Confirm Basic Negotiation with ICAP_XFERMECH
 ;
-; Confirm Basic Negotiation with ICAP_XFERMECH
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - current test being done
+;   icap_xfermech - data from MSG_GET for ICAP_XFERMECH
+;
+; Returns
+;   pass or fail
 ;
 
 
@@ -11,12 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-call INITIALIZE 'ICAP_XFERMECH v1.0 12-Feb-2020' '${arg:1}'
-set index.twcapability.cap '0'
-set index.twcapability.contype '1'
-set index.twcapability.hcontainer '2'
-set index.twenumeration.itemtype '2'
-set index.twenumeration.numitems '3'
+call INITIALIZE 'ICAP_XFERMECH v1.0 21-Feb-2020' '${arg:1}'
 
 
 
@@ -24,19 +29,19 @@ set index.twenumeration.numitems '3'
 ; MSG_GET ICAP_XFERMECH
 ; If result is not TWRC_SUCCESS, then end with error
 ;
-set name 'MSG_GET'
+setlocal name 'MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
-set icap_xfermech '${ret:}'
+setlocal icap_xfermech '${ret:}'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; If TW_CAPABILITY.Cap is not ICAP_XFERMECH, then end with error
 ;
-set name 'TW_CAPABILITY.Cap is ICAP_XFERMECH'
-if '${getindex:icap_xfermech.${get:index.twcapability.cap}}' != 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_CAPABILITY.Cap is ICAP_XFERMECH'
+if '${getindex:icap_xfermech.${get:TW_CAPABILITY.Cap}}' != 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
@@ -44,18 +49,8 @@ echopassfail '${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; If TW_CAPABILITY.ConType is not TWON_ENUMERATION, then end with error
 ;
-set name 'TW_CAPABILITY.ConType is TWON_ENUMERATION'
-if '${getindex:icap_xfermech.${get:index.twcapability.contype}}' != 'TWON_ENUMERATION' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If TW_CAPABILITY.hContainer is not a valid TW_HANDLE value, then end with error
-; (just see if we have more data, that'll satisfy the test)
-;
-set name 'TW_CAPABILITY.hContainer is TW_HANDLE'
-if '${getindex:icap_xfermech.${get:index.twcapability.hcontainer}}' == '' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_CAPABILITY.ConType is TWON_ENUMERATION'
+if '${getindex:icap_xfermech.${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
@@ -63,8 +58,8 @@ echopassfail '${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; If TW_ENUMERATION.ItemType is not TWTY_UINT16, then end with error
 ;
-set name 'TW_ENUMERATION.ItemType is TWTY_UINT16'
-if '${getindex:icap_xfermech.${get:index.twarray.itemtype}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_ENUMERATION.ItemType is TWTY_UINT16'
+if '${getindex:icap_xfermech.${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
 
 
@@ -72,7 +67,7 @@ echopassfail '${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; If TW_ENUMERATION contains TWSX_NATIVE (0)...
 ;
-set name 'TW_ENUMERATION contains TWSX_NATIVE'
+setlocal name 'TW_ENUMERATION contains TWSX_NATIVE'
 call CHECKENUMERATION '${get:icap_xfermech}' '0'
 if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
@@ -82,7 +77,7 @@ echopassfail '${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; If TW_ENUMERATION contains TWSX_MEMORY (2)...
 ;
-set name 'TW_ENUMERATION contains TWSX_MEMORY'
+setlocal name 'TW_ENUMERATION contains TWSX_MEMORY'
 call CHECKENUMERATION '${get:icap_xfermech}' '2'
 if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
 echopassfail '${get:name}' 'pass'
@@ -99,9 +94,9 @@ return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'error'
+echopassfail '${get:name}' 'fail'
 :MAIN.ERROR
-echopassfail 'SUMMARY' 'error'
+echopassfail 'SUMMARY' 'fail'
 return 'fail'
 
 
@@ -131,12 +126,12 @@ return
 ;
 :CHECKENUMERATION
 ;
-set enum '${arg:1}'
-set ee '5'
+setlocal enum '${arg:1}'
+setlocal ee '5'
 :NEXTENUM
 increment ee '${get:ee}'
 if '${getindex:enum.${get:ee}}' == '' goto CHECKENUMERATION.FAIL
-set aa '2'
+setlocal aa '2'
 :NEXTARG
 if '${arg:${get:aa}}' == '' goto NEXTENUM
 if '${arg:${get:aa}}' == '${getindex:enum.${get:ee}}' goto CHECKENUMERATION.PASS

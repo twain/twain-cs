@@ -1,9 +1,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Closeds
-; arg:1 - scanner to close
-; returns: pass
+;   Open the requested TWAIN driver...
 ;
-; Close the requested TWAIN driver...
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   (none)
+;
+; Locals
+;   closedsresult - pass/fail for the close
+;
+; Returns
+;   pass or fail
 ;
 
 
@@ -12,6 +21,7 @@
 ; Initialize...
 ;
 call INITIALIZE 'Closeds v1.0 12-Feb-2020' '${arg:1}'
+setlocal closedsresult 'pass'
 
 
 
@@ -20,21 +30,57 @@ call INITIALIZE 'Closeds v1.0 12-Feb-2020' '${arg:1}'
 ;
 if '${state:}' < '7' goto REWIND.6
 dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
+if '${sts:}' == 'SUCCESS' goto REWIND.7.SUCCESS
+echopassfail 'dg_control/dat_pendingxfers/msg_endxfer' 'fail'
+setlocal closedsresult 'fail'
+goto REWIND.6
+:REWIND.7.SUCCESS
+echopassfail 'dg_control/dat_pendingxfers/msg_endxfer' 'pass'
+;
 :REWIND.6
 if '${state:}' < '6' goto REWIND.5
 dsmentry src ds dg_control dat_pendingxfers msg_reset '0,0'
+if '${sts:}' == 'SUCCESS' goto REWIND.6.SUCCESS
+echopassfail 'dg_control/dat_pendingxfers/msg_reset' 'fail'
+setlocal closedsresult 'fail'
+goto REWIND.5
+:REWIND.6.SUCCESS
+echopassfail 'dg_control/dat_pendingxfers/msg_reset' 'pass'
+;
 :REWIND.5
 if '${state:}' < '5' goto REWIND.4
 dsmentry src null dg_control dat_userinterface msg_disableds '0,0'
+if '${sts:}' == 'SUCCESS' goto REWIND.5.SUCCESS
+echopassfail 'dg_control/dat_userinterface/msg_disableds' 'fail'
+setlocal closedsresult 'fail'
+goto REWIND.4
+:REWIND.5.SUCCESS
+echopassfail 'dg_control/dat_userinterface/msg_disableds' 'pass'
+;
 :REWIND.4
 if '${state:}' < '4' goto REWIND.3
 dsmentry src null dg_control dat_identity msg_closeds '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
+if '${sts:}' == 'SUCCESS' goto REWIND.4.SUCCESS
+echopassfail 'dg_control/dat_identity/msg_closeds' 'fail'
+setlocal closedsresult 'fail'
+goto REWIND.3
+:REWIND.4.SUCCESS
+echopassfail 'dg_control/dat_identity/msg_closeds' 'pass'
+;
 :REWIND.3
 if '${state:}' < '3' goto REWIND.2
 dsmentry src null dg_control dat_parent msg_closedsm hwnd
+if '${sts:}' == 'SUCCESS' goto REWIND.3.SUCCESS
+echopassfail 'dg_control/dat_parent/msg_closedsm' 'fail'
+setlocal closedsresult 'fail'
+goto REWIND.2
+:REWIND.3.SUCCESS
+echopassfail 'dg_control/dat_parent/msg_closedsm' 'pass'
+;
 :REWIND.2
 if '${state:}' < '2' goto REWIND.1
 dsmunload
+;
 :REWIND.1
 
 
@@ -42,7 +88,11 @@ dsmunload
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-echopassfail 'Closeds' 'pass'
+if '${get:closedsresult}' == 'pass' goto MAIN.PASS
+echopassfail 'SUMMARY' 'fail'
+return 'fail'
+:MAIN.PASS
+echopassfail 'SUMMARY' 'pass'
 return 'pass'
 
 

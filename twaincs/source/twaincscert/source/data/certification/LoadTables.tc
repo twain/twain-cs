@@ -1,0 +1,543 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Tables
+;   Load common values used globally
+;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Stuff to load...
+;
+call LOADCAPABILITYTABLE
+call LOADTWSTRUCTTABLE
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: LOADTWSTRUCTTABLE
+; Loads indecies we use to look into TW_* structures...
+;
+:LOADTWSTRUCTTABLE
+;
+; These index off TW_CAPABILITY, which is why they don't start at 0...
+setglobal TW_ARRAY.ItemType                  2
+setglobal TW_ARRAY.NumItems                  3
+;
+setglobal TW_CAPABILITY.Cap                  0
+setglobal TW_CAPABILITY.ConType              1
+;
+; These index off TW_CAPABILITY, which is why they don't start at 0...
+setglobal TW_ENUMERATION.ItemType            2
+setglobal TW_ENUMERATION.NumItems            3
+;
+; These index off TW_CAPABILITY, which is why they don't start at 0...
+setglobal TW_ONEVALUE.ItemType               2
+setglobal TW_ONEVALUE.Item                   3
+;
+; These index off TW_CAPABILITY, which is why they don't start at 0...
+setglobal TW_RANGE.ItemType                  2
+;
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: LOADCAPABILITYTABLE
+; Loads stuff we need to confirm about each known capability, we'll skip the
+; g_ prefix for these items...
+;
+:LOADCAPABILITYTABLE
+;
+setglobal ACAP_XFERMECH.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ACAP_XFERMECH.ItemType                             TWTY_UINT16
+;
+setglobal CAP_ALARMS.ConType                                 TWON_ARRAY
+setglobal CAP_ALARMS.ItemType                                TWTY_UINT16
+;
+setglobal CAP_ALARMVOLUME.ConType                            TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_ALARMVOLUME.ItemType                           TWTY_INT32
+;
+setglobal CAP_AUTHOR.ConType                                 TWON_ONEVALUE
+setglobal CAP_AUTHOR.ItemType                                TWTY_STR128
+;
+setglobal CAP_AUTOFEED.ConType                               TWON_ENUMERATION
+setglobal CAP_AUTOFEED.ItemType                              TWTY_BOOL
+;
+setglobal CAP_AUTOMATICCAPTURE.ConType                       TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_AUTOMATICCAPTURE.ItemType                      TWTY_INT32
+;
+setglobal CAP_AUTOMATICSENSEMEDIUM.ConType                   TWON_ENUMERATION
+setglobal CAP_AUTOMATICSENSEMEDIUM.ItemType                  TWTY_BOOL
+;
+setglobal CAP_AUTOSCAN.ConType                               TWON_ENUMERATION
+setglobal CAP_AUTOSCAN.ItemType                              TWTY_BOOL
+;
+setglobal CAP_BATTERYMINUTES.ConType                         TWON_ONEVALUE
+setglobal CAP_BATTERYMINUTES.ItemType                        TWTY_INT32
+;
+setglobal CAP_BATTERYPERCENTAGE.ConType                      TWON_ONEVALUE
+setglobal CAP_BATTERYPERCENTAGE.ItemType                     TWTY_INT16
+;
+setglobal CAP_CAMERAENABLED.ConType                          TWON_ENUMERATION
+setglobal CAP_CAMERAENABLED.ItemType                         TWTY_BOOL
+;
+setglobal CAP_CAMERAORDER.ConType                            TWON_ARRAY
+setglobal CAP_CAMERAORDER.ItemType                           TWTY_UINT16
+;
+setglobal CAP_CAMERAPREVIEWUI.ConType                        TWON_ENUMERATION
+setglobal CAP_CAMERAPREVIEWUI.ItemType                       TWTY_BOOL
+;
+setglobal CAP_CAMERASIDE.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_CAMERASIDE.ItemType                            TWTY_UINT16
+;
+setglobal CAP_CAPTION.ConType                                TWON_ONEVALUE
+setglobal CAP_CAPTION.ItemType                               TWTY_STR255
+;
+setglobal CAP_CLEARPAGE.ConType                              TWON_ENUMERATION
+setglobal CAP_CLEARPAGE.ItemType                             TWTY_BOOL
+;
+setglobal CAP_CUSTOMDSDATA.ConType                           TWON_ENUMERATION
+setglobal CAP_CUSTOMDSDATA.ItemType                          TWTY_BOOL
+;
+setglobal CAP_CUSTOMINTERFACEGUID.ConType                    TWON_ONEVALUE
+setglobal CAP_CUSTOMINTERFACEGUID.ItemType                   TWTY_STR255
+;
+setglobal CAP_DEVICEEVENT.ConType                            TWON_ARRAY
+setglobal CAP_DEVICEEVENT.ItemType                           TWTY_UINT16
+;
+setglobal CAP_DEVICEONLINE.ConType                           TWON_ENUMERATION
+setglobal CAP_DEVICEONLINE.ItemType                          TWTY_BOOL
+;
+setglobal CAP_DEVICETIMEDATE.ConType                         TWON_ONEVALUE
+setglobal CAP_DEVICETIMEDATE.ItemType                        TWTY_STR32
+;
+setglobal CAP_DOUBLEFEEDDETECTION.ConType                    TWON_ARRAY
+setglobal CAP_DOUBLEFEEDDETECTION.ItemType                   TWTY_UINT16
+;
+setglobal CAP_AUTOMATICCAPTURE.ConType                       TWON_RANGE
+setglobal CAP_AUTOMATICCAPTURE.ItemType                      TWTY_FIX32
+;
+setglobal CAP_DOUBLEFEEDDETECTIONLENGTH.ConType              TWON_RANGE
+setglobal CAP_DOUBLEFEEDDETECTIONLENGTH.ItemType             TWTY_FIX32
+;
+setglobal CAP_DOUBLEFEEDDETECTIONRESPONSE.ConType            TWON_ARRAY
+setglobal CAP_DOUBLEFEEDDETECTIONRESPONSE.ItemType           TWTY_UINT16
+;
+setglobal CAP_DOUBLEFEEDDETECTIONSENSITIVITY.ConType         TWON_ENUMERATION
+setglobal CAP_DOUBLEFEEDDETECTIONSENSITIVITY.ItemType        TWTY_UINT16
+;
+setglobal CAP_DUPLEX.ConType                                 TWON_ONEVALUE
+setglobal CAP_DUPLEX.ItemType                                TWTY_UINT16
+;
+setglobal CAP_DUPLEXENABLED.ConType                          TWON_ENUMERATION
+setglobal CAP_DUPLEXENABLED.ItemType                         TWTY_BOOL
+;
+setglobal CAP_ENABLEDSUIONLY.ConType                         TWON_ENUMERATION
+setglobal CAP_ENABLEDSUIONLY.ItemType                        TWTY_BOOL
+;
+setglobal CAP_ENDORSER.ConType                               TWON_RANGE
+setglobal CAP_ENDORSER.ItemType                              TWTY_UINT32
+;
+setglobal CAP_EXTENDEDCAPS.ConType                           TWON_ARRAY
+setglobal CAP_EXTENDEDCAPS.ItemType                          TWTY_UINT16
+;
+setglobal CAP_FEEDERALIGNMENT.ConType                        TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_FEEDERALIGNMENT.ItemType                       TWTY_UINT16
+;
+setglobal CAP_FEEDERENABLED.ConType                          TWON_ENUMERATION
+setglobal CAP_FEEDERENABLED.ItemType                         TWTY_BOOL
+;
+setglobal CAP_FEEDERLOADED.ConType                           TWON_ENUMERATION
+setglobal CAP_FEEDERLOADED.ItemType                          TWTY_BOOL
+;
+setglobal CAP_FEEDERORDER.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_FEEDERORDER.ItemType                           TWTY_UINT16
+;
+setglobal CAP_FEEDERPOCKET.ConType                           TWON_ARRAY
+setglobal CAP_FEEDERPOCKET.ItemType                          TWTY_UINT16
+;
+setglobal CAP_FEEDERPREP.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_FEEDERPREP.ItemType                            TWTY_BOOL
+;
+setglobal CAP_FEEDERPAGE.ConType                             TWON_ENUMERATION
+setglobal CAP_FEEDERPAGE.ItemType                            TWTY_BOOL
+;
+setglobal CAP_INDICATORS.ConType                             TWON_ENUMERATION
+setglobal CAP_INDICATORS.ItemType                            TWTY_BOOL
+;
+setglobal CAP_INDICATORSMODE.ConType                         TWON_ARRAY
+setglobal CAP_INDICATORSMODE.ItemType                        TWTY_UINT16
+;
+setglobal CAP_JOBCONTROL.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_JOBCONTROL.ItemType                            TWTY_UINT16
+;
+setglobal CAP_LANGUAGE.ConType                               TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_LANGUAGE.ItemType                              TWTY_UINT16
+;
+setglobal CAP_MAXBATCHBUFFERS.ConType                        TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_MAXBATCHBUFFERS.ItemType                       TWTY_INT32
+;
+setglobal CAP_MICRENABLED.ConType                            TWON_ENUMERATION
+setglobal CAP_MICRENABLED.ItemType                           TWTY_BOOL
+;
+setglobal CAP_PAPERDETECTABLE.ConType                        TWON_ENUMERATION
+setglobal CAP_PAPERDETECTABLE.ItemType                       TWTY_BOOL
+;
+setglobal CAP_PAPERHANDLING.ConType                          TWON_ARRAY
+setglobal CAP_PAPERHANDLING.ItemType                         TWTY_UINT16
+;
+setglobal CAP_POWERSAVETIME.ConType                          TWON_RANGE
+setglobal CAP_POWERSAVETIME.ItemType                         TWTY_INT32
+;
+setglobal CAP_POWERSUPPLY.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_POWERSUPPLY.ItemType                           TWTY_UINT16
+;
+setglobal CAP_PRINTER.ConType                                TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_PRINTER.ItemType                               TWTY_UINT16
+;
+setglobal CAP_PRINTERENABLED.ConType                         TWON_ENUMERATION
+setglobal CAP_PRINTERENABLED.ItemType                        TWTY_BOOL
+;
+setglobal CAP_PRINTERCHARROTATION.ConType                    TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_PRINTERCHARROTATION.ItemType                   TWTY_UINT32
+;
+setglobal CAP_PRINTERFONTSTYLE.ConType                       TWON_ARRAY
+setglobal CAP_PRINTERFONTSTYLE.ItemType                      TWTY_UINT16
+;
+setglobal CAP_PRINTERINDEX.ConType                           TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_PRINTERINDEX.ItemType                          TWTY_UINT32
+;
+setglobal CAP_PRINTERINDEXLEADCHAR.ConType                   TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_PRINTERINDEXLEADCHAR.ItemType                  TWTY_STR32
+;
+setglobal CAP_PRINTERINDEXMAXVALUE.ConType                   TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_PRINTERINDEXMAXVALUE.ItemType                  TWTY_UINT32
+;
+setglobal CAP_PRINTERINDEXNUMDIGITS.ConType                  TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_PRINTERINDEXNUMDIGITS.ItemType                 TWTY_UINT32
+;
+setglobal CAP_PRINTERINDEXSTEP.ConType                       TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_PRINTERINDEXSTEP.ItemType                      TWTY_UINT32
+;
+setglobal CAP_PRINTERINDEXTRIGGER.ConType                    TWON_ARRAY
+setglobal CAP_PRINTERINDEXTRIGGER.ItemType                   TWTY_UINT16
+;
+setglobal CAP_PRINTERMODE.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_PRINTERMODE.ItemType                           TWTY_UINT16
+;
+setglobal CAP_PRINTERSTRING.ConType                          TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_PRINTERSTRING.ItemType                         TWTY_STR255
+;
+setglobal CAP_PRINTERSTRINGPREVIEW.ConType                   TWON_ARRAY
+setglobal CAP_PRINTERSTRINGPREVIEW.ItemType                  TWTY_STR255
+;
+setglobal CAP_PRINTERSUFFIX.ConType                          TWON_ONEVALUE
+setglobal CAP_PRINTERSUFFIX.ItemType                         TWTY_STR255
+;
+setglobal CAP_PRINTERVERTICALOFFSET.ConType                  TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_PRINTERVERTICALOFFSET.ItemType                 TWTY_FIX32
+;
+setglobal CAP_REACQUIREALLOWED.ConType                       TWON_ENUMERATION
+setglobal CAP_REACQUIREALLOWED.ItemType                      TWTY_BOOL
+;
+setglobal CAP_REWINDPAGE.ConType                             TWON_ENUMERATION
+setglobal CAP_REWINDPAGE.ItemType                            TWTY_BOOL
+;
+setglobal CAP_SEGMENTED.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_SEGMENTED.ItemType                             TWTY_UINT16
+;
+setglobal CAP_SERIALNUMBER.ConType                           TWON_ONEVALUE
+setglobal CAP_SERIALNUMBER.ItemType                          TWTY_STR255
+;
+setglobal CAP_SHEETCOUNT.ConType                             TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_SHEETCOUNT.ItemType                            TWTY_UINT32
+;
+setglobal CAP_SUPPORTEDCAPS.ConType                          TWON_ARRAY
+setglobal CAP_SUPPORTEDCAPS.ItemType                         TWTY_UINT16
+;
+setglobal CAP_SUPPORTEDCAPSSEGMENTUNIQUE.ConType             TWON_ARRAY
+setglobal CAP_SUPPORTEDCAPSSEGMENTUNIQUE.ItemType            TWTY_UINT16
+;
+setglobal CAP_SUPPORTEDDATS.ConType                          TWON_ARRAY
+setglobal CAP_SUPPORTEDDATS.ItemType                         TWTY_UINT32
+;
+setglobal CAP_TIMEBEFOREFIRSTCAPTURE.ConType                 TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_TIMEBEFOREFIRSTCAPTURE.ItemType                TWTY_INT32
+;
+setglobal CAP_TIMEBETWEENCAPTURES.ConType                    TWON_RANGE,TWON_ONEVALUE
+setglobal CAP_TIMEBETWEENCAPTURES.ItemType                   TWTY_INT32
+;
+setglobal CAP_TIMEDATE.ConType                               TWON_ONEVALUE
+setglobal CAP_TIMEDATE.ItemType                              TWTY_STR32
+;
+setglobal CAP_THUMBNAILSENABLED.ConType                      TWON_ENUMERATION
+setglobal CAP_THUMBNAILSENABLED.ItemType                     TWTY_BOOL
+;
+setglobal CAP_UICONTROLLABLE.ConType                         TWON_ENUMERATION
+setglobal CAP_UICONTROLLABLE.ItemType                        TWTY_BOOL
+;
+setglobal CAP_XFERCOUNT.ConType                              TWON_RANGE
+setglobal CAP_XFERCOUNT.ItemType                             TWTY_INT16
+;
+setglobal ICAP_AUTOBRIGHT.ConType                            TWON_ENUMERATION
+setglobal ICAP_AUTOBRIGHT.ItemType                           TWTY_BOOL
+;
+setglobal ICAP_AUTODISCARDBLANKPAGES.ConType                 TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_AUTODISCARDBLANKPAGES.ItemType                TWTY_INT32
+;
+setglobal ICAP_AUTOMATICBORDERDETECTION.ConType              TWON_ENUMERATION
+setglobal ICAP_AUTOMATICBORDERDETECTION.ItemType             TWTY_BOOL
+;
+setglobal ICAP_AUTOMATICCOLORENABLED.ConType                 TWON_ENUMERATION
+setglobal ICAP_AUTOMATICCOLORENABLED.ItemType                TWTY_BOOL
+;
+setglobal ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE.ConType       TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE.ItemType      TWTY_UINT16
+;
+setglobal ICAP_AUTOMATICCROPUSESFRAME.ConType                TWON_ENUMERATION
+setglobal ICAP_AUTOMATICCROPUSESFRAME.ItemType               TWTY_BOOL
+;
+setglobal ICAP_AUTOMATICDESKEW.ConType                       TWON_ENUMERATION
+setglobal ICAP_AUTOMATICDESKEW.ItemType                      TWTY_BOOL
+;
+setglobal ICAP_AUTOMATICLENGTHDETECTION.ConType              TWON_ENUMERATION
+setglobal ICAP_AUTOMATICLENGTHDETECTION.ItemType             TWTY_BOOL
+;
+setglobal ICAP_AUTOMATICROTATE.ConType                       TWON_ENUMERATION
+setglobal ICAP_AUTOMATICROTATE.ItemType                      TWTY_BOOL
+;
+setglobal ICAP_AUTOSIZE.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_AUTOSIZE.ItemType                             TWTY_UINT16
+;
+setglobal ICAP_BARCODEDETECTIONENABLED.ConType               TWON_ENUMERATION
+setglobal ICAP_BARCODEDETECTIONENABLED.ItemType              TWTY_BOOL
+;
+setglobal ICAP_BARCODEMAXRETRIES.ConType                     TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_BARCODEMAXRETRIES.ItemType                    TWTY_UINT32
+;
+setglobal ICAP_BARCODEMAXSEARCHPRIORITIES.ConType            TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_BARCODEMAXSEARCHPRIORITIES.ItemType           TWTY_UINT32
+;
+setglobal ICAP_BARCODESEARCHMODE.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_BARCODESEARCHMODE.ItemType                    TWTY_UINT16
+;
+setglobal ICAP_BARCODESEARCHPRIORITIES.ConType               TWON_ARRAY
+setglobal ICAP_BARCODESEARCHPRIORITIES.ItemType              TWTY_UINT16
+;
+setglobal ICAP_BARCODETIMEOUT.ConType                        TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_BARCODETIMEOUT.ItemType                       TWTY_UINT32
+;
+setglobal ICAP_BITDEPTH.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_BITDEPTH.ItemType                             TWTY_UINT16
+;
+setglobal ICAP_BITDEPTHREDUCTION.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_BITDEPTHREDUCTION.ItemType                    TWTY_UINT16
+;
+setglobal ICAP_BITORDER.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_BITORDER.ItemType                             TWTY_UINT16
+;
+setglobal ICAP_BITORDERCODES.ConType                         TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_BITORDERCODES.ItemType                        TWTY_UINT16
+;
+setglobal ICAP_BRIGHTNESS.ConType                            TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_BRIGHTNESS.ItemType                           TWTY_FIX32
+;
+setglobal ICAP_CCITTKFACTOR.ConType                          TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_CCITTKFACTOR.ItemType                         TWTY_UINT16
+;
+setglobal ICAP_COLORMANAGEMENTENABLED.ConType                TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_COLORMANAGEMENTENABLED.ItemType               TWTY_UINT16
+;
+setglobal ICAP_COMPRESSION.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_COMPRESSION.ItemType                          TWTY_UINT16
+;
+setglobal ICAP_CONTRAST.ConType                              TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_CONTRAST.ItemType                             TWTY_FIX32
+;
+setglobal ICAP_CUSTHALFTONE.ConType                          TWON_ARRAY
+setglobal ICAP_CUSTHALFTONE.ItemType                         TWTY_UINT8
+;
+setglobal ICAP_EXPOSURETIME.ConType                          TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_EXPOSURETIME.ItemType                         TWTY_FIX32
+;
+setglobal ICAP_EXTIMAGEINFO.ConType                          TWON_ENUMERATION
+setglobal ICAP_EXTIMAGEINFO.ItemType                         TWTY_BOOL
+;
+setglobal ICAP_FEEDERTYPE.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_FEEDERTYPE.ItemType                           TWTY_UINT16
+;
+setglobal ICAP_FILMTYPE.ConType                              TWON_ENUMERATION
+setglobal ICAP_FILMTYPE.ItemType                             TWTY_UINT16
+;
+setglobal ICAP_FILTER.ConType                                TWON_ARRAY
+setglobal ICAP_FILTER.ItemType                               TWTY_UINT16
+;
+setglobal ICAP_FLASHUSED2.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_FLASHUSED2.ItemType                           TWTY_UINT16
+;
+setglobal ICAP_FLIPROTATION.ConType                          TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_FLIPROTATION.ItemType                         TWTY_UINT16
+;
+setglobal ICAP_FRAMES.ConType                                TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_FRAMES.ItemType                               TWTY_FRAME
+;
+setglobal ICAP_GAMMA.ConType                                 TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_GAMMA.ItemType                                TWTY_FIX32
+;
+setglobal ICAP_HALFTONES.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_HALFTONES.ItemType                            TWTY_STR32
+;
+setglobal ICAP_HIGHLIGHT.ConType                             TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_HIGHLIGHT.ItemType                            TWTY_FIX32
+;
+setglobal ICAP_ICCPROFILE.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_ICCPROFILE.ItemType                           TWTY_UINT16
+;
+setglobal ICAP_IMAGEDATASET.ConType                          TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_IMAGEDATASET.ItemType                         TWTY_UINT32
+;
+setglobal ICAP_IMAGEFILEFORMAT.ConType                       TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_IMAGEFILEFORMAT.ItemType                      TWTY_UINT16
+;
+setglobal ICAP_IMAGEFILTER.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_IMAGEFILTER.ItemType                          TWTY_UINT16
+;
+setglobal ICAP_IMAGEMERGE.ConType                            TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_IMAGEMERGE.ItemType                           TWTY_UINT16
+;
+setglobal ICAP_IMAGEMERGEHEIGHTTHRESHOLD.ConType             TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_IMAGEMERGEHEIGHTTHRESHOLD.ItemType            TWTY_FIX32
+;
+setglobal ICAP_JPEGPIXELTYPE.ConType                         TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_JPEGPIXELTYPE.ItemType                        TWTY_UINT16
+;
+setglobal ICAP_JPEGQUALITY.ConType                           TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_JPEGQUALITY.ItemType                          TWTY_INT16
+;
+setglobal ICAP_JPEGSUBSAMPLING.ConType                       TWON_ENUMERATION
+setglobal ICAP_JPEGSUBSAMPLING.ItemType                      TWTY_UINT16
+;
+setglobal ICAP_LAMPSTATE.ConType                             TWON_ENUMERATION
+setglobal ICAP_LAMPSTATE.ItemType                            TWTY_BOOL
+;
+setglobal ICAP_LIGHTPATH.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_LIGHTPATH.ItemType                            TWTY_UINT16
+;
+setglobal ICAP_LIGHTSOURCE.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_LIGHTSOURCE.ItemType                          TWTY_UINT16
+;
+setglobal ICAP_MAXFRAMES.ConType                             TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_MAXFRAMES.ItemType                            TWTY_UINT16
+;
+setglobal ICAP_MINIMUMHEIGHT.ConType                         TWON_ONEVALUE
+setglobal ICAP_MINIMUMHEIGHT.ItemType                        TWTY_FIX32
+;
+setglobal ICAP_MINIMUMWIDTH.ConType                          TWON_ONEVALUE
+setglobal ICAP_MINIMUMWIDTH.ItemType                         TWTY_FIX32
+;
+setglobal ICAP_MIRROR.ConType                                TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_MIRROR.ItemType                               TWTY_UINT16
+;
+setglobal ICAP_NOISEFILTER.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_NOISEFILTER.ItemType                          TWTY_UINT16
+;
+setglobal ICAP_ORIENTATION.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_ORIENTATION.ItemType                          TWTY_UINT16
+;
+setglobal ICAP_OVERSCAN.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_OVERSCAN.ItemType                             TWTY_UINT16
+;
+setglobal ICAP_PATCHCODEDETECTIONENABLED.ConType             TWON_ENUMERATION
+setglobal ICAP_PATCHCODEDETECTIONENABLED.ItemType            TWTY_BOOL
+;
+setglobal ICAP_PATCHCODEMAXRETRIES.ConType                   TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_PATCHCODEMAXRETRIES.ItemType                  TWTY_UINT32
+;
+setglobal ICAP_PATCHCODEMAXSEARCHPRIORITIES.ConType          TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_PATCHCODEMAXSEARCHPRIORITIES.ItemType         TWTY_UINT32
+;
+setglobal ICAP_PATCHCODESEARCHMODE.ConType                   TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_PATCHCODESEARCHMODE.ItemType                  TWTY_UINT16
+;
+setglobal ICAP_PATCHCODESEARCHPRIORITIES.ConType             TWON_ARRAY
+setglobal ICAP_PATCHCODESEARCHPRIORITIES.ItemType            TWTY_UINT16
+;
+setglobal ICAP_PATCHCODETIMEOUT.ConType                      TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_PATCHCODETIMEOUT.ItemType                     TWTY_UINT32
+;
+setglobal ICAP_PHYSICALHEIGHT.ConType                        TWON_ONEVALUE
+setglobal ICAP_PHYSICALHEIGHT.ItemType                       TWTY_FIX32
+;
+setglobal ICAP_PHYSICALWIDTH.ConType                         TWON_ONEVALUE
+setglobal ICAP_PHYSICALWIDTH.ItemType                        TWTY_FIX32
+;
+setglobal ICAP_PIXELFLAVOR.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_PIXELFLAVOR.ItemType                          TWTY_UINT16
+;
+setglobal ICAP_PIXELFLAVORCODES.ConType                      TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_PIXELFLAVORCODES.ItemType                     TWTY_UINT16
+;
+setglobal ICAP_PIXELTYPE.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_PIXELTYPE.ItemType                            TWTY_UINT16
+;
+setglobal ICAP_PLANARCHUNKY.ConType                          TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_PLANARCHUNKY.ItemType                         TWTY_UINT16
+;
+setglobal ICAP_ROTATION.ConType                              TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_ROTATION.ItemType                             TWTY_FIX32
+;
+setglobal ICAP_SHADOW.ConType                                TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_SHADOW.ItemType                               TWTY_FIX32
+;
+setglobal ICAP_SUPPORTEDBARCODETYPES.ConType                 TWON_ARRAY
+setglobal ICAP_SUPPORTEDBARCODETYPES.ItemType                TWTY_UINT16
+;
+setglobal ICAP_SUPPORTEDEXTIMAGEINFO.ConType                 TWON_ARRAY
+setglobal ICAP_SUPPORTEDEXTIMAGEINFO.ItemType                TWTY_UINT16
+;
+setglobal ICAP_SUPPORTEDPATCHCODETYPES.ConType               TWON_ARRAY
+setglobal ICAP_SUPPORTEDPATCHCODETYPES.ItemType              TWTY_UINT16
+;
+setglobal ICAP_SUPPORTEDSIZES.ConType                        TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_SUPPORTEDSIZES.ItemType                       TWTY_UINT16
+;
+setglobal ICAP_THRESHOLD.ConType                             TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_THRESHOLD.ItemType                            TWTY_FIX32
+;
+setglobal ICAP_TILES.ConType                                 TWON_ENUMERATION
+setglobal ICAP_TILES.ItemType                                TWTY_BOOL
+;
+setglobal ICAP_TIMEFILL.ConType                              TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_TIMEFILL.ItemType                             TWTY_UINT16
+;
+setglobal ICAP_UNDEFINEDIMAGESIZE.ConType                    TWON_ENUMERATION
+setglobal ICAP_UNDEFINEDIMAGESIZE.ItemType                   TWTY_BOOL
+;
+setglobal ICAP_UNITS.ConType                                 TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_UNITS.ItemType                                TWTY_UINT16
+;
+setglobal ICAP_XFERMECH.ConType                              TWON_ENUMERATION
+setglobal ICAP_XFERMECH.ItemType                             TWTY_UINT16
+;
+setglobal ICAP_XNATIVERESOLUTION.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_XNATIVERESOLUTION.ItemType                    TWTY_FIX32
+;
+setglobal ICAP_XRESOLUTION.ConType                           TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_XRESOLUTION.ItemType                          TWTY_FIX32
+;
+setglobal ICAP_XSCALING.ConType                              TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_XSCALING.ItemType                             TWTY_FIX32
+;
+setglobal ICAP_YNATIVERESOLUTION.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+setglobal ICAP_YNATIVERESOLUTION.ItemType                    TWTY_FIX32
+;
+setglobal ICAP_YRESOLUTION.ConType                           TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_YRESOLUTION.ItemType                          TWTY_FIX32
+;
+setglobal ICAP_YSCALING.ConType                              TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_YSCALING.ItemType                             TWTY_FIX32
+;
+setglobal ICAP_ZOOMFACTOR.ConType                            TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
+setglobal ICAP_ZOOMFACTOR.ItemType                           TWTY_INT16
+;
+return

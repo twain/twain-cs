@@ -1,14 +1,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TWAIN Certification Script
-; This runs all of the tests needed to pass certification for TWAIN.
+;   Run all tests needed to pass TWAIN self-certification.
 ;
 ; Arguments
-; arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   g_certifyresult - pass/fail result of all tests
 ;
 ; Locals
-; (none)
+;   title - script info
+;   twidentity.productname - product name of scanner to test
 ;
-; returns: pass or fail
+; Returns
+;   pass or fail
 ;
 
 
@@ -16,8 +21,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff...
 ;
-set title 'TWAIN Certification Script v1.0 12-Feb-2020'
-set twidentity.productname '${arg:1}'
+setlocal title 'TWAIN Certification Script v1.0 21-Feb-2020'
+setlocal twidentity.productname '${arg:1}'
+setglobal g_certifyresult 'pass'
 
 
 
@@ -34,26 +40,48 @@ call ECHOANDLOG info 'started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Run all of our tests, start by assuming success...
+; Load our tables...
 ;
-set certifyresulttwain 'pass'
-call CERTIFY 'Opends' '${get:twidentity.productname}'
+run LoadTables
 
-call CERTIFY '010 - TWAIN Standard Capability Tests/CAP_SUPPORTEDCAPS' '${get:twidentity.productname}'
-call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_PIXELTYPE' '${get:twidentity.productname}'
-call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_XFERMECH' '${get:twidentity.productname}'
-call CERTIFY '010 - TWAIN Standard Capability Tests/DAT_CAPABILITY' '${get:twidentity.productname}'
 
-call CERTIFY '030 - Status Return Tests/Status Return Tests' '${get:twidentity.productname}'
 
-call CERTIFY 'Closeds' '${get:twidentity.productname}'
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Open the driver...
+;
+call CERTIFY 'Opends' '${get:twidentity.productname}' g_certifyresult
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TWAIN Standard Capability Tests...
+;
+call CERTIFY '010 - TWAIN Standard Capability Tests/CAP_SUPPORTEDCAPS' '${get:twidentity.productname}' g_certifyresult
+call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_PIXELTYPE'    '${get:twidentity.productname}' g_certifyresult
+call CERTIFY '010 - TWAIN Standard Capability Tests/ICAP_XFERMECH'     '${get:twidentity.productname}' g_certifyresult
+call CERTIFY '010 - TWAIN Standard Capability Tests/DAT_CAPABILITY'    '${get:twidentity.productname}' g_certifyresult
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Status Return Tests...
+;
+call CERTIFY '030 - Status Return Tests/Status Return Tests' '${get:twidentity.productname}' g_certifyresult
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Close the driver...
+;
+call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; How did we do?
 ;
-if '${get:certifyresulttwain}' != 'pass' goto MAIN.FAIL
+if '${get:g_certifyresult}' != 'pass' goto MAIN.FAIL
+call ECHOANDLOG info
 call ECHOANDLOG info
 call ECHOANDLOG info
 call ECHOANDLOG info 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
@@ -65,6 +93,7 @@ echo 'report saved to ${report:}'
 return 'pass'
 ;
 :MAIN.FAIL
+call ECHOANDLOG error
 call ECHOANDLOG error
 call ECHOANDLOG error
 call ECHOANDLOG error 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
@@ -80,8 +109,9 @@ return 'fail'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: Certify
 ; arg:1 - script to run
-; arg:2 - scanner to test
-; returns: pass or fail
+; arg:2 - TW_IDENTITY.ProductName of scanner to test
+; arg:3 - global value to update on fail
+; returns: (none)
 ;
 :CERTIFY
 ;
@@ -90,7 +120,7 @@ if '${ret:}' != 'pass' goto CERTIFY.FAIL
 return 'pass'
 ;
 :CERTIFY.FAIL
-set certifyresulttwain fail
+setglobal '${arg:3}' 'fail'
 return 'fail'
 
 
@@ -99,6 +129,7 @@ return 'fail'
 ; Function: EchoAndLog
 ; arg:1 - severity (normal, info, error)
 ; arg:2 - text
+; returns: (none)
 ;
 :ECHOANDLOG
 ;

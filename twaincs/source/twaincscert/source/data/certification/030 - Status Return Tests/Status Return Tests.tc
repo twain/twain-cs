@@ -1,9 +1,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Status Return Tests
-; arg:1 - scanner to test
-; returns: pass or fail
+;   Confirm that the expected status return is reported by certain operations.
 ;
-; Confirm that the expected status return is reported by certain operations.
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   g_statusreturnresult - pass/fail on dsmentry calls
+;   g_value - data return from dsmentry call
+;
+; Locals
+;   name - current test being done
+;   icap_bitdepth - data from MSG_GET for ICAP_BITDEPTH
+;   index.twcapability.cap - index to capability
+;   index.twcapability.contype - index to container type
+;   index.twenumeration.itemtype - index to array item type
+;   index.twenumeration.numitems - index to array number of items
+;
+; Returns
+;   pass or fail
 ;
 
 
@@ -12,7 +27,7 @@
 ; Initialize...
 ;
 call INITIALIZE 'Status Return Tests v1.0 20-Feb-2020' '${arg:1}'
-set dsmentryresult 'pass' ; assume success
+setglobal g_statusreturnresult 'pass' ; assume success
 
 
 
@@ -22,12 +37,12 @@ set dsmentryresult 'pass' ; assume success
 ; in various error conditions.  We're doing tests in state 5
 ; so we need the driver's user interface...
 ;
-call SENDANDCHECK SUCCESS  dsmentryresult discard dg_control dat_userinterface msg_enableds '1,0'
+call SENDANDCHECK SUCCESS  g_statusreturnresult discard dg_control dat_userinterface msg_enableds   1,0'
 sleep 5000 ; give the ui time to come up
-call SENDANDCHECK SUCCESS  dsmentryresult value   dg_image dat_imagelayout msg_get '0,0,0,0,0,0,0'
-call SENDANDCHECK SEQERROR dsmentryresult discard dg_image dat_imagelayout msg_set '${get:value}'
-call SENDANDCHECK SEQERROR dsmentryresult discard dg_image dat_imagelayout msg_reset '0,0,0,0,0,0,0'
-call SENDANDCHECK SUCCESS  dsmentryresult discard dg_control dat_userinterface msg_disableds '0,0'
+call SENDANDCHECK SUCCESS  g_statusreturnresult g_value dg_image   dat_imagelayout   msg_get        '0,0,0,0,0,0,0'
+call SENDANDCHECK SEQERROR g_statusreturnresult discard dg_image   dat_imagelayout   msg_set        '${get:g_value}'
+call SENDANDCHECK SEQERROR g_statusreturnresult discard dg_image   dat_imagelayout   msg_reset      '0,0,0,0,0,0,0'
+call SENDANDCHECK SUCCESS  g_statusreturnresult discard dg_control dat_userinterface msg_disableds  '0,0'
 
 
 
@@ -36,8 +51,8 @@ call SENDANDCHECK SUCCESS  dsmentryresult discard dg_control dat_userinterface m
 ; Confirm that DAT_IMAGEMEMXFER returns the correct status
 ; in various error conditions.
 ;
-call SENDANDCHECK BADPROTOCOL dsmentryresult discard dg_image dat_imagememxfer msg_set '0,0,0,0,0,0,0,3,0,0'
-call SENDANDCHECK SEQERROR    dsmentryresult discard dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,0,0'
+call SENDANDCHECK BADPROTOCOL g_statusreturnresult discard dg_image dat_imagememxfer msg_set '0,0,0,0,0,0,0,3,0,0'
+call SENDANDCHECK SEQERROR    g_statusreturnresult discard dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,0,0'
 
 
 
@@ -46,8 +61,8 @@ call SENDANDCHECK SEQERROR    dsmentryresult discard dg_image dat_imagememxfer m
 ; Confirm that DAT_IMAGENATIVEXFER returns the correct status
 ; in various error conditions.
 ;
-call SENDANDCHECK BADPROTOCOL dsmentryresult discard dg_image dat_imagenativexfer msg_set '0'
-call SENDANDCHECK SEQERROR    dsmentryresult discard dg_image dat_imagenativexfer msg_get '0'
+call SENDANDCHECK BADPROTOCOL g_statusreturnresult discard dg_image dat_imagenativexfer msg_set '0'
+call SENDANDCHECK SEQERROR    g_statusreturnresult discard dg_image dat_imagenativexfer msg_get '0'
 
 
 
@@ -55,13 +70,13 @@ call SENDANDCHECK SEQERROR    dsmentryresult discard dg_image dat_imagenativexfe
 ; Summary and cleanup...
 ;
 ; Did we pass?
-if '${get:dsmentryresult}' != 'pass' goto MAIN.ERROR
+if '${get:g_statusreturnresult}' != 'pass' goto MAIN.ERROR
 echopassfail 'SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR
-echopassfail 'SUMMARY' 'error'
+echopassfail 'SUMMARY' 'fail'
 return 'fail'
 
 
@@ -86,8 +101,8 @@ return
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: SENDANDCHECK
 ; arg:1 - expected status
-; arg:2 - dsmentryresult
-; arg:3 - dsmentrydata
+; arg:2 - status to return
+; arg:3 - data to return
 ; arg:4 - DG to send
 ; arg:5 - DAT to send 
 ; arg:6 - MSG to send 
@@ -98,9 +113,9 @@ return
 dsmentry src ds '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}'
 if '${sts:}' != '${arg:1}' goto SENDANDCHECK.ERROR.ECHOPASSFAIL
 echopassfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'pass'
-set '${arg:3}' '${ret:}'
+setglobal '${arg:3}' '${ret:}'
 return
 :SENDANDCHECK.ERROR.ECHOPASSFAIL
-echopassfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'error ${sts:}'
-set '${arg:2}' 'fail'
+echopassfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'fail ${sts:}'
+setglobal '${arg:2}' 'fail'
 return

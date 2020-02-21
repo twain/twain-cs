@@ -146,7 +146,8 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReturn,                       new string[] { "return" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRun,                          new string[] { "run" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRunv,                         new string[] { "runv" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSet,                          new string[] { "set" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetGlobal,                    new string[] { "setglobal" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetLocal,                     new string[] { "setlocal" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSleep,                        new string[] { "sleep" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdWait,                         new string[] { "wait" }));
 
@@ -1743,7 +1744,8 @@ namespace twaincscert
                 Display("return [status]..............................return from call function");
                 Display("run [script].................................run a script");
                 Display("runv [script]................................run a script verbosely");
-                Display("set [key [value]]............................show, set, or delete keys");
+                Display("setglobal [key [value]]......................show, set, or delete global keys");
+                Display("setlocal [key [value]].......................show, set, or delete local keys");
                 Display("sleep {milliseconds}.........................pause the current thread");
                 return (false);
             }
@@ -1992,7 +1994,7 @@ namespace twaincscert
             {
                 DisplayRed("CALL {FUNCTION [argument1 [argument2 [...]]}");
                 Display("Call a function with optional arguments.  Check '${ret:} to see what the");
-                Display("function send back with its RETURN command.  The function must be prefixed");
+                Display("function sent back with its RETURN command.  The function must be prefixed");
                 Display("with a colon.  For example...");
                 Display("  call XYZ");
                 Display("  ; the script will return here");
@@ -2020,18 +2022,6 @@ namespace twaincscert
             {
                 DisplayRed("CD [PATH]");
                 Display("Show the current directory.  If a path is specified, change to that path.");
-                return (false);
-            }
-
-            // Checkpdfraster...
-            if ((szCommand == "checkpdfraster"))
-            {
-                DisplayRed("CHECKPDFRASTER");
-                Display("Validates that all of the PDF/raster files in the images folder are in");
-                Display("compliance with the specification.  It also requires at least one digital");
-                Display("signature.  All digital signatures are tested for validity.  The XMP data");
-                Display("for the page is extracted, converted from base64, and compared to the");
-                Display("metadata; it must match.  The valueof ${return:} is 'pass' on success.");
                 return (false);
             }
 
@@ -2073,6 +2063,8 @@ namespace twaincscert
                 DisplayRed("GOTO {LABEL}");
                 Display("Jump to the specified label in the script.  The label must be");
                 Display("prefixed with a colon.  For example...");
+                Display("");
+                Display("Examples");
                 Display("  goto XYZ");
                 Display("  :XYZ");
                 return (false);
@@ -2081,10 +2073,14 @@ namespace twaincscert
             // If...
             if ((szCommand == "if"))
             {
-                DisplayRed("IF {ITEM1} {OPERATOR} {ITEM2} GOTO {LABEL}");
+                DisplayRed("IF {ITEM1} {OPERATOR} {ITEM2} [OPERATOR2 ITEM3] GOTO {LABEL}");
                 Display("If the operator for ITEM1 and ITEM2 is true, then goto the");
                 Display("label.  For the best experience get in the habit of putting");
                 Display("either single or double quotes around the items.");
+                Display("");
+                Display("The & and | operators require the addition of a second operator");
+                Display("(== or !=)and a third item for comparison with the result of the");
+                Display("boolean operation.");
                 Display("");
                 Display("Operators");
                 Display("==...........values are equal (case sensitive)");
@@ -2092,6 +2088,8 @@ namespace twaincscert
                 Display("<=...........item1 is numerically less than or equal to item2");
                 Display(">............item1 is numerically greater than item2");
                 Display(">=...........item1 is numerically greater than or equal to item2");
+                Display("&............item1 AND item2 compared to item3");
+                Display("|............item1 OR item2 compared to item3");
                 Display("~~...........values are equal (case insensitive)");
                 Display("contains.....item2 is contained in item1 (case sensitive)");
                 Display("~contains....item2 is contained in item1 (case insensitive)");
@@ -2101,14 +2099,12 @@ namespace twaincscert
                 Display("!~contains...item2 is not contained in item1 (case sensitive)");
                 Display("");
                 Display("Items");
-                Display("Items prefixed with 'rj:' indicate that the item is a JSON");
-                Display("key in the last command's response payload.  For instance:");
-                Display("  if '${rj:results.success}' != 'true' goto FAIL");
-                Display("Items prefixed with 'get:' indicate that the item is the");
-                Display("result of a prior set command.");
-                Display("  if '${get:value}' != 'true' goto FAIL");
+                Display("See 'help scripting' for a list of the items that can be compared");
+                Display("in addition to literals.");
                 Display("");
-                Display("Enter HELP SCRIPTING for the complete list of symbols.");
+                Display("Examples");
+                Display("  if '${sts:}' != 'SUCCESS' goto FAIL");
+                Display("  if '${get:value}' & '1' == '1' goto BITSET");
                 return (false);
             }
 
@@ -2139,9 +2135,9 @@ namespace twaincscert
             // Return...
             if ((szCommand == "return"))
             {
-                DisplayRed("RETURN [STATUS]");
-                Display("Return from a call function or a script invoked with RUN or RUNV.");
-                Display("The caller can examine this value with the '${ret:}' symbol.");
+                DisplayRed("RETURN [DATA]");
+                Display("Return data from a call function or a script invoked with RUN or");
+                Display("RUNV.  The caller examines this value with the '${ret:}' symbol.");
                 return (false);
             }
 
@@ -2166,17 +2162,34 @@ namespace twaincscert
             }
 
             // Set...
-            if ((szCommand == "set"))
+            if ((szCommand == "setglobal"))
             {
-                DisplayRed("SET {KEY} {VALUE}");
+                DisplayRed("SETGLOBAL {KEY} {VALUE}");
                 Display("Set a key to the specified value.  If a KEY is not specified");
-                Display("all of the current keys are listed with their values.");
+                Display("all of the current keys are listed with their values.  These");
+                Display("are global to all scripts.  Use SETLOCAL when possible to");
+                Display("prevent names from colliding.");
                 Display("");
                 Display("Values");
-                Display("Values prefixed with 'rj:' indicate that the item is a JSON");
-                Display("key in the last command's response payload.  For instance");
-                Display("to set the key success to true or false, based on the JSON:");
-                Display("  set success '${rj:results.success}'");
+                Display("See 'help scripting' for information about the kinds of values");
+                Display("that can be accessed in addition to simple literals.");
+                return (false);
+            }
+
+            // Setlocal...
+            if ((szCommand == "setlocal"))
+            {
+                DisplayRed("SETLOCAL {KEY} {VALUE}");
+                Display("Set a key to the specified value.  If a KEY is not specified");
+                Display("all of the current keys are listed with their values.  This");
+                Display("key only exists in the context of the current function.  So");
+                Display("it's safe to use the same value across invokations of 'call'");
+                Display("or run, they won't interfere with each other.  Use SETGLOBAL");
+                Display("command for values global to all scripts.");
+                Display("");
+                Display("Values");
+                Display("See 'help scripting' for information about the kinds of values");
+                Display("that can be accessed in addition to simple literals.");
                 return (false);
             }
 
@@ -2871,13 +2884,34 @@ namespace twaincscert
             // Increment the value...
             iDst = iSrc + iStep;
 
+            // Gotta know if the value is local or global, local wins so we'll search there...
+            bool blGlobal = true;
+            if ((m_lcallstack.Count > 0) && (m_lcallstack[m_lcallstack.Count - 1].lkeyvalue != null))
+            {
+                foreach (KeyValue keyvalue in m_lcallstack[m_lcallstack.Count - 1].lkeyvalue)
+                {
+                    if (keyvalue.szKey == a_functionarguments.aszCmd[1])
+                    {
+                        blGlobal = false;
+                        break;
+                    }
+                }
+            }
+
             // Store the value...
             Interpreter.FunctionArguments functionarguments = default(Interpreter.FunctionArguments);
             functionarguments.aszCmd = new string[3];
-            functionarguments.aszCmd[0] = "set";
+            functionarguments.aszCmd[0] = blGlobal ? "setglobal" : "setlocal";
             functionarguments.aszCmd[1] = a_functionarguments.aszCmd[1];
             functionarguments.aszCmd[2] = iDst.ToString();
-            CmdSet(ref functionarguments);
+            if (blGlobal)
+            {
+                CmdSetGlobal(ref functionarguments);
+            }
+            else
+            {
+                CmdSetLocal(ref functionarguments);
+            }
 
             // All done...
             return (false);
@@ -3303,7 +3337,8 @@ namespace twaincscert
                     && (aszCmd[0] != "if")
                     && (aszCmd[0] != "increment")
                     && (aszCmd[0] != "log")
-                    && (aszCmd[0] != "set")
+                    && (aszCmd[0] != "setglobal")
+                    && (aszCmd[0] != "setlocal")
                     && (aszCmd[0] != "sleep"))
                 {
                     callstack = m_lcallstack[m_lcallstack.Count - 1];
@@ -3408,7 +3443,7 @@ namespace twaincscert
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
         /// <returns>true to quit</returns>
-        private bool CmdSet(ref Interpreter.FunctionArguments a_functionarguments)
+        private bool CmdSetGlobal(ref Interpreter.FunctionArguments a_functionarguments)
         {
             int iKey;
 
@@ -3427,7 +3462,7 @@ namespace twaincscert
                     Display("KEY/VALUE PAIRS");
                     foreach (KeyValue keyvalue in m_lkeyvalue)
                     {
-                        Display(keyvalue.szKey + "=" + keyvalue.szValue);
+                        Display(keyvalue.szKey + "=<" + keyvalue.szValue + ">");
                     }
                 }
 
@@ -3473,6 +3508,108 @@ namespace twaincscert
                 m_lkeyvalue.Add(keyvalueNew);
                 m_lkeyvalue.Sort(SortByKeyAscending);
             }
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
+        /// With no arguments, list the keys with their values.  With an argument,
+        /// set the specified value.  All done in the context of the topmost item
+        /// on the stack...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdSetLocal(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            int iKey;
+            CallStack callstack;
+
+            // If we don't have a stack, add this to the global list...
+            if (m_lcallstack.Count == 0)
+            {
+                CmdSetGlobal(ref a_functionarguments);
+                return (false);
+            }
+
+            // This is what we'll be referencing...
+            callstack = m_lcallstack[m_lcallstack.Count - 1];
+            if (callstack.lkeyvalue == null)
+            {
+                callstack.lkeyvalue = new List<KeyValue>();
+            }
+
+            // If we don't have any arguments, list what we have for the whole stack...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[1] == null))
+            {
+                int ii;
+
+                // We got nothing...
+                if (callstack.lkeyvalue.Count == 0)
+                {
+                    DisplayError("no local keys to list...");
+                    return (false);
+                }
+
+                // Loopy...
+                Display("LOCAL KEY/VALUE PAIRS");
+                for (ii = m_lcallstack.Count - 1; ii >= 0; ii--)
+                {
+                    Display("  STACK #" + ii);
+                    if ((m_lcallstack[ii].lkeyvalue == null) || (m_lcallstack[ii].lkeyvalue.Count == 0))
+                    {
+                        Display("    (no local variables)" + ii);
+                    }
+                    else
+                    {
+                        foreach (KeyValue keyvalue in m_lcallstack[ii].lkeyvalue)
+                        {
+                            Display("    " + keyvalue.szKey + "=<" + keyvalue.szValue + ">");
+                        }
+                    }
+                }
+
+                // All done...
+                return (false);
+            }
+
+            // Find the value for this key...
+            for (iKey = 0; iKey < callstack.lkeyvalue.Count; iKey++)
+            {
+                if (callstack.lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[1])
+                {
+                    break;
+                }
+            }
+
+            // If we have no value to set, then delete this item...
+            if ((a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null))
+            {
+                if (iKey < callstack.lkeyvalue.Count)
+                {
+                    callstack.lkeyvalue.Remove(callstack.lkeyvalue[iKey]);
+                    m_lcallstack[m_lcallstack.Count - 1] = callstack;
+                }
+                return (false);
+            }
+
+            // Create a new keyvalue...
+            KeyValue keyvalueNew = new KeyValue();
+            keyvalueNew.szKey = a_functionarguments.aszCmd[1];
+            keyvalueNew.szValue = a_functionarguments.aszCmd[2];
+
+            // If the key already exists, update its value...
+            if (iKey < callstack.lkeyvalue.Count)
+            {
+                callstack.lkeyvalue[iKey] = keyvalueNew;
+                m_lcallstack[m_lcallstack.Count - 1] = callstack;
+                return (false);
+            }
+
+            // Otherwise, add it, and sort...
+            callstack.lkeyvalue.Add(keyvalueNew);
+            callstack.lkeyvalue.Sort(SortByKeyAscending);
+            m_lcallstack[m_lcallstack.Count - 1] = callstack;
 
             // All done...
             return (false);
@@ -4024,21 +4161,43 @@ namespace twaincscert
                     }
 
                     // Use value as a GET key to get a value, we don't allow a null in this
-                    // case, it has to be an empty string...
+                    // case, it has to be an empty string.  We search the local list first,
+                    // and if that fails go to the global list...
                     else if (szSymbol.StartsWith("${get:"))
                     {
-                        lock (m_objectKeyValue)
+                        bool blGetFound = false;
+
+                        // Strip off ${...}
+                        string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(6);
+
+                        // Local check...
+                        if ((m_lcallstack.Count > 0) && (m_lcallstack[m_lcallstack.Count - 1].lkeyvalue != null))
                         {
-                            if (m_lkeyvalue.Count >= 0)
+                            foreach (KeyValue keyvalue in m_lcallstack[m_lcallstack.Count - 1].lkeyvalue)
                             {
-                                // Strip off ${...}
-                                string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(6);
-                                foreach (KeyValue keyvalue in m_lkeyvalue)
+                                if (keyvalue.szKey == szGet)
                                 {
-                                    if (keyvalue.szKey == szGet)
+                                    szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                    blGetFound = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Global check...
+                        if (!blGetFound)
+                        {
+                            lock (m_objectKeyValue)
+                            {
+                                if (m_lkeyvalue.Count >= 0)
+                                {
+                                    foreach (KeyValue keyvalue in m_lkeyvalue)
                                     {
-                                        szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
-                                        break;
+                                        if (keyvalue.szKey == szGet)
+                                        {
+                                            szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -4047,33 +4206,66 @@ namespace twaincscert
 
                     // Use value as a GET key to get a value, we don't allow a null in this
                     // case, it has to be an empty string.  CSV the value we get, and return
-                    // just the item indicated by the index...
+                    // just the item indicated by the index.    We search the local list
+                    // first, and if that fails go to the global list...
                     if (szSymbol.StartsWith("${getindex:"))
                     {
-                        lock (m_objectKeyValue)
+                        bool blGetFound = false;
+
+                        // Strip off ${...}, split name and index...
+                        string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(11);
+                        string[] aszGet = szGet.Split('.');
+
+                        // Local check...
+                        if ((m_lcallstack.Count > 0) && (m_lcallstack[m_lcallstack.Count - 1].lkeyvalue != null))
                         {
-                            if (m_lkeyvalue.Count >= 0)
+                            // Split name and index...
+                            foreach (KeyValue keyvalue in m_lcallstack[m_lcallstack.Count - 1].lkeyvalue)
                             {
-                                // Strip off ${...}
-                                string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(11);
-                                // Split name and index...
-                                string[] aszGet = szGet.Split('.');
-                                foreach (KeyValue keyvalue in m_lkeyvalue)
+                                if (keyvalue.szKey == aszGet[0])
                                 {
-                                    if (keyvalue.szKey == aszGet[0])
+                                    int iIndex = 0;
+                                    szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                    string[] aszValue = CSV.Parse(szValue);
+                                    szValue = ""; // make sure we're empty before processing...
+                                    if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
                                     {
-                                        int iIndex = 0;
-                                        szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
-                                        string[] aszValue = CSV.Parse(szValue);
-                                        szValue = ""; // make sure we're empty before processing...
-                                        if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
+                                        if ((iIndex >= 0) && (iIndex < aszValue.Length))
                                         {
-                                            if ((iIndex >= 0) && (iIndex < aszValue.Length))
-                                            {
-                                                szValue = aszValue[iIndex];
-                                            }
+                                            szValue = aszValue[iIndex];
                                         }
-                                        break;
+                                    }
+                                    blGetFound = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Global check...
+                        if (!blGetFound)
+                        {
+                            lock (m_objectKeyValue)
+                            {
+                                if (m_lkeyvalue.Count >= 0)
+                                {
+                                    // Split name and index...
+                                    foreach (KeyValue keyvalue in m_lkeyvalue)
+                                    {
+                                        if (keyvalue.szKey == aszGet[0])
+                                        {
+                                            int iIndex = 0;
+                                            szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                            string[] aszValue = CSV.Parse(szValue);
+                                            szValue = ""; // make sure we're empty before processing...
+                                            if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
+                                            {
+                                                if ((iIndex >= 0) && (iIndex < aszValue.Length))
+                                                {
+                                                    szValue = aszValue[iIndex];
+                                                }
+                                            }
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -4280,6 +4472,7 @@ namespace twaincscert
             /// The arguments to this call...
             /// </summary>
             public Interpreter.FunctionArguments functionarguments;
+            public List<KeyValue> lkeyvalue;
         }
 
     #endregion
