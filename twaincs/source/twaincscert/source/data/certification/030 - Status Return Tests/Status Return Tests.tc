@@ -4,18 +4,13 @@
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global to set on fail
 ;
 ; Globals
-;   g_statusreturnresult - pass/fail on dsmentry calls
 ;   g_value - data return from dsmentry call
 ;
 ; Locals
-;   name - current test being done
-;   icap_bitdepth - data from MSG_GET for ICAP_BITDEPTH
-;   index.twcapability.cap - index to capability
-;   index.twcapability.contype - index to container type
-;   index.twenumeration.itemtype - index to array item type
-;   index.twenumeration.numitems - index to array number of items
+;   certifyresult - global to report back on fail
 ;
 ; Returns
 ;   pass or fail
@@ -26,8 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-call INITIALIZE 'Status Return Tests v1.0 20-Feb-2020' '${arg:1}'
-setglobal g_statusreturnresult 'pass' ; assume success
+setlocal certifyresult '${arg:2}'
 
 
 
@@ -37,12 +31,12 @@ setglobal g_statusreturnresult 'pass' ; assume success
 ; in various error conditions.  We're doing tests in state 5
 ; so we need the driver's user interface...
 ;
-call SENDANDCHECK SUCCESS  g_statusreturnresult discard dg_control dat_userinterface msg_enableds   1,0'
+call SENDANDCHECK SUCCESS  '${get:certifyresult}' discard dg_control dat_userinterface msg_enableds   1,0'
 sleep 5000 ; give the ui time to come up
-call SENDANDCHECK SUCCESS  g_statusreturnresult g_value dg_image   dat_imagelayout   msg_get        '0,0,0,0,0,0,0'
-call SENDANDCHECK SEQERROR g_statusreturnresult discard dg_image   dat_imagelayout   msg_set        '${get:g_value}'
-call SENDANDCHECK SEQERROR g_statusreturnresult discard dg_image   dat_imagelayout   msg_reset      '0,0,0,0,0,0,0'
-call SENDANDCHECK SUCCESS  g_statusreturnresult discard dg_control dat_userinterface msg_disableds  '0,0'
+call SENDANDCHECK SUCCESS  '${get:certifyresult}' g_value dg_image   dat_imagelayout   msg_get        '0,0,0,0,0,0,0'
+call SENDANDCHECK SEQERROR '${get:certifyresult}' discard dg_image   dat_imagelayout   msg_set        '${get:g_value}'
+call SENDANDCHECK SEQERROR '${get:certifyresult}' discard dg_image   dat_imagelayout   msg_reset      '0,0,0,0,0,0,0'
+call SENDANDCHECK SUCCESS  '${get:certifyresult}' discard dg_control dat_userinterface msg_disableds  '0,0'
 
 
 
@@ -51,8 +45,8 @@ call SENDANDCHECK SUCCESS  g_statusreturnresult discard dg_control dat_userinter
 ; Confirm that DAT_IMAGEMEMXFER returns the correct status
 ; in various error conditions.
 ;
-call SENDANDCHECK BADPROTOCOL g_statusreturnresult discard dg_image dat_imagememxfer msg_set '0,0,0,0,0,0,0,3,0,0'
-call SENDANDCHECK SEQERROR    g_statusreturnresult discard dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,0,0'
+call SENDANDCHECK BADPROTOCOL '${get:certifyresult}' discard dg_image dat_imagememxfer msg_set '0,0,0,0,0,0,0,3,0,0'
+call SENDANDCHECK SEQERROR    '${get:certifyresult}' discard dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,0,0'
 
 
 
@@ -61,40 +55,15 @@ call SENDANDCHECK SEQERROR    g_statusreturnresult discard dg_image dat_imagemem
 ; Confirm that DAT_IMAGENATIVEXFER returns the correct status
 ; in various error conditions.
 ;
-call SENDANDCHECK BADPROTOCOL g_statusreturnresult discard dg_image dat_imagenativexfer msg_set '0'
-call SENDANDCHECK SEQERROR    g_statusreturnresult discard dg_image dat_imagenativexfer msg_get '0'
+call SENDANDCHECK BADPROTOCOL '${get:certifyresult}' discard dg_image dat_imagenativexfer msg_set '0'
+call SENDANDCHECK SEQERROR    '${get:certifyresult}' discard dg_image dat_imagenativexfer msg_get '0'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Summary and cleanup...
+; All done...
 ;
-; Did we pass?
-if '${get:g_statusreturnresult}' != 'pass' goto MAIN.ERROR
-echopassfail 'SUMMARY' 'pass'
-return 'pass'
-;
-; Ruh-roh...
-:MAIN.ERROR
-echopassfail 'SUMMARY' 'fail'
-return 'fail'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Function: Initialize
-; arg:1 - name of this test suite
-; arg:2 - scanner to test
-; returns: true or false
-;
-:INITIALIZE
-;
-echo.yellow
-echo.yellow
-echo.yellow
-echo.yellow '********************************************************************************'
-echo.yellow '${arg:1}'
-return
+return 'pass' ; caller figures out what really happened based on certifyresult...
 
 
 
@@ -112,10 +81,10 @@ return
 :SENDANDCHECK
 dsmentry src ds '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}'
 if '${sts:}' != '${arg:1}' goto SENDANDCHECK.ERROR.ECHOPASSFAIL
-echopassfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'pass'
+echo.passfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'pass'
 setglobal '${arg:3}' '${ret:}'
 return
 :SENDANDCHECK.ERROR.ECHOPASSFAIL
-echopassfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'fail ${sts:}'
+echo.passfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'fail ${sts:}'
 setglobal '${arg:2}' 'fail'
 return

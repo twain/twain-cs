@@ -42,7 +42,7 @@ call ECHOANDLOG info 'started at ${localtime:yyyy-MM-dd/hh:mm:ss}'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Load our global tables...
 ;
-run LoadTables
+run '${folder:certification}/LoadTables'
 
 
 
@@ -50,23 +50,9 @@ run LoadTables
 ; Run all the tests...
 ;
 call RUNCERTIFICATION '010 - TWAIN Standard Capability Tests' '${get:twidentity.productname}' g_certifyresult
+call RUNCERTIFICATION '020 - Vendor Custom Capability Tests'  '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '030 - Status Return Tests'             '${get:twidentity.productname}' g_certifyresult
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Stress Tests...
-;
-call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Opends'  '${get:twidentity.productname}' g_certifyresult
-call CERTIFY 'Closeds' '${get:twidentity.productname}' g_certifyresult
+call RUNCERTIFICATION '040 - Stress Tests'                    '${get:twidentity.productname}' g_certifyresult
 
 
 

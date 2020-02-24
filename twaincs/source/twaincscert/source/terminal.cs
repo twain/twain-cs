@@ -131,9 +131,11 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEcho,                         new string[] { "echo" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoBlue,                     new string[] { "echo.blue" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoGreen,                    new string[] { "echo.green" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoPassfail,                 new string[] { "echo.passfail" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoRed,                      new string[] { "echo.red" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitlesuite,               new string[] { "echo.titlesuite" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitletest,                new string[] { "echo.titletest" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoYellow,                   new string[] { "echo.yellow" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchopassfail,                 new string[] { "echopassfail" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFreehandle,                   new string[] { "freehandle" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFreepointer,                  new string[] { "freepointer" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGc,                           new string[] { "gc" }));
@@ -1304,7 +1306,7 @@ namespace twaincscert
             }
 
             // Ugh...
-            DisplayError("function label not found: <" + szLabel + ">");
+            DisplayError("function label not found: <" + szLabel + ">", a_functionarguments);
             return (false);
         }
 
@@ -1325,7 +1327,7 @@ namespace twaincscert
             // Ruh-roh...
             if (!Directory.Exists(a_functionarguments.aszCmd[1]))
             {
-                DisplayError("cd failed - path not found");
+                DisplayError("cd failed - path not found", a_functionarguments);
                 return (false);
             }
 
@@ -1336,7 +1338,7 @@ namespace twaincscert
             }
             catch (Exception exception)
             {
-                DisplayError("cd failed - " + exception.Message);
+                DisplayError("cd failed - " + exception.Message, a_functionarguments);
             }
 
             // All done...
@@ -1364,7 +1366,7 @@ namespace twaincscert
                 }
                 catch (Exception exception)
                 {
-                    DisplayError("couldn't delete <" + szImagesFolder + "> - " + exception.Message);
+                    DisplayError("couldn't delete <" + szImagesFolder + "> - " + exception.Message, a_functionarguments);
                     return (false);
                 }
             }
@@ -1520,7 +1522,7 @@ namespace twaincscert
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
         /// <returns>true to quit</returns>
-        private bool CmdEchopassfail(ref Interpreter.FunctionArguments a_functionarguments)
+        private bool CmdEchoPassfail(ref Interpreter.FunctionArguments a_functionarguments)
         {
             string szLine;
             string szDots = "..........................................................................................................";
@@ -1528,7 +1530,7 @@ namespace twaincscert
             // No data...
             if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[0] == null))
             {
-                DisplayError("echopassfail needs two arguments...");
+                DisplayError("echo.passfail needs two arguments", a_functionarguments);
                 return (false);
             }
 
@@ -1557,6 +1559,57 @@ namespace twaincscert
             {
                 Display(szLine, true);
             }
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
+        /// Display a title suite message...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdEchoTitlesuite(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            string szStars = "**************************************************************************************************************";
+
+            // No data...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[0] == null))
+            {
+                DisplayError("echo.titlesuite needs one argument", a_functionarguments);
+                return (false);
+            }
+
+            // Display it...
+            DisplayYellow("", true);
+            DisplayYellow("", true);
+            DisplayYellow("", true);
+            DisplayYellow(szStars, true);
+            DisplayYellow(a_functionarguments.aszCmd[1], true);
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
+        /// Display a title test message...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdEchoTitletest(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            // No data...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[0] == null))
+            {
+                DisplayError("echo.titletest needs one argument", a_functionarguments);
+                return (false);
+            }
+
+            // Display it...
+            DisplayYellow("", true);
+            DisplayYellow("", true);
+            DisplayYellow("", true);
+            DisplayYellow(a_functionarguments.aszCmd[1], true);
 
             // All done...
             return (false);
@@ -1697,7 +1750,7 @@ namespace twaincscert
             }
 
             // Ugh...
-            DisplayError("goto label not found: <" + szLabel + ">");
+            DisplayError("goto label not found: <" + szLabel + ">", a_functionarguments);
             return (false);
         }
 
@@ -1733,8 +1786,10 @@ namespace twaincscert
                 Display("cd [path]....................................shows or sets the current directory");
                 Display("clean........................................clean the images folder");
                 Display("dir..........................................lists files and folders in the current directory");
-                Display("echo [text]..................................echo text");
-                Display("echopassfail {title} {result}................echo text in a tabular form");
+                Display("echo[.color] [text]..........................echo text");
+                Display("echo.passfail {title} {result}...............echo test result in a tabular form");
+                Display("echo.titlesuite {title}......................echo test suite");
+                Display("echo.titletest {title}.......................echo test title");
                 Display("goto {label}.................................jump to the :label in the script");
                 Display("if {item1} {operator} {item2} goto {label}...if statement");
                 Display("increment {dst} {src} [step].................increment src by step and store in dst");
@@ -2205,7 +2260,7 @@ namespace twaincscert
             #endregion
 
             // Well, this ain't good...
-            DisplayError("unrecognized command: " + a_functionarguments.aszCmd[1]);
+            DisplayError("unrecognized command: " + a_functionarguments.aszCmd[1], a_functionarguments);
 
             // All done...
             return (false);
@@ -2491,7 +2546,7 @@ namespace twaincscert
             {
                 if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 7) || (a_functionarguments.aszCmd[1] == null))
                 {
-                    DisplayError("badly formed if-statement...");
+                    DisplayError("badly formed if-statement", a_functionarguments);
                     return (false);
                 }
                 szItem1 = a_functionarguments.aszCmd[1];
@@ -2506,7 +2561,7 @@ namespace twaincscert
             {
                 if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 5) || (a_functionarguments.aszCmd[1] == null))
                 {
-                    DisplayError("badly formed if-statement...");
+                    DisplayError("badly formed if-statement", a_functionarguments);
                     return (false);
                 }
                 szItem1 = a_functionarguments.aszCmd[1];
@@ -2558,13 +2613,13 @@ namespace twaincscert
                 int iItem2;
                 if (!int.TryParse(szItem1, out iItem1))
                 {
-                    DisplayError("<" + szItem1 + "> > <" + szItem2 + "> is invalid");
+                    DisplayError("<" + szItem1 + "> > <" + szItem2 + "> is invalid", a_functionarguments);
                 }
                 else
                 {
                     if (!int.TryParse(szItem2, out iItem2))
                     {
-                        DisplayError("<" + szItem1 + "> > <" + szItem2 + "> is invalid");
+                        DisplayError("<" + szItem1 + "> > <" + szItem2 + "> is invalid", a_functionarguments);
                     }
                     else
                     {
@@ -2583,13 +2638,13 @@ namespace twaincscert
                 int iItem2;
                 if (!int.TryParse(szItem1, out iItem1))
                 {
-                    DisplayError("<" + szItem1 + "> >= <" + szItem2 + "> is invalid");
+                    DisplayError("<" + szItem1 + "> >= <" + szItem2 + "> is invalid", a_functionarguments);
                 }
                 else
                 {
                     if (!int.TryParse(szItem2, out iItem2))
                     {
-                        DisplayError("<" + szItem1 + "> >= <" + szItem2 + "> is invalid");
+                        DisplayError("<" + szItem1 + "> >= <" + szItem2 + "> is invalid", a_functionarguments);
                     }
                     else
                     {
@@ -2608,13 +2663,13 @@ namespace twaincscert
                 int iItem2;
                 if (!int.TryParse(szItem1, out iItem1))
                 {
-                    DisplayError("<" + szItem1 + "> < <" + szItem2 + "> is invalid");
+                    DisplayError("<" + szItem1 + "> < <" + szItem2 + "> is invalid", a_functionarguments);
                 }
                 else
                 {
                     if (!int.TryParse(szItem2, out iItem2))
                     {
-                        DisplayError("<" + szItem1 + "> < <" + szItem2 + "> is invalid");
+                        DisplayError("<" + szItem1 + "> < <" + szItem2 + "> is invalid", a_functionarguments);
                     }
                     else
                     {
@@ -2633,13 +2688,13 @@ namespace twaincscert
                 int iItem2;
                 if (!int.TryParse(szItem1, out iItem1))
                 {
-                    DisplayError("<" + szItem1 + "> <= <" + szItem2 + "> is invalid");
+                    DisplayError("<" + szItem1 + "> <= <" + szItem2 + "> is invalid", a_functionarguments);
                 }
                 else
                 {
                     if (!int.TryParse(szItem2, out iItem2))
                     {
-                        DisplayError("<" + szItem1 + "> <= <" + szItem2 + "> is invalid");
+                        DisplayError("<" + szItem1 + "> <= <" + szItem2 + "> is invalid", a_functionarguments);
                     }
                     else
                     {
@@ -2687,7 +2742,7 @@ namespace twaincscert
                 }
                 if (!blItem1 || !blItem2 || !blItem3)
                 {
-                    DisplayError("badly formed if-statement...");
+                    DisplayError("badly formed if-statement...", a_functionarguments);
                     return (false);
                 }
                 iAnd = iItem1 & iItem2;
@@ -2741,7 +2796,7 @@ namespace twaincscert
                 }
                 if (!blItem1 || !blItem2 || !blItem3)
                 {
-                    DisplayError("badly formed if-statement...");
+                    DisplayError("badly formed if-statement", a_functionarguments);
                     return (false);
                 }
                 iOr = iItem1 | iItem2;
@@ -2798,7 +2853,7 @@ namespace twaincscert
             // Unrecognized operator...
             else
             {
-                DisplayError("unrecognized operator: <" + szOperator + ">");
+                DisplayError("unrecognized operator: <" + szOperator + ">", a_functionarguments);
                 return (false);
             }
 
@@ -2814,7 +2869,7 @@ namespace twaincscert
                     // Validate...
                     if ((a_functionarguments.aszCmd.Length < (iAction + 1)) || string.IsNullOrEmpty(a_functionarguments.aszCmd[iAction + 1]))
                     {
-                        DisplayError("goto label is missing...");
+                        DisplayError("goto label is missing...", a_functionarguments);
                         return (false);
                     }
 
@@ -2831,14 +2886,14 @@ namespace twaincscert
                     }
 
                     // Ugh...
-                    DisplayError("goto label not found: <" + szLabel + ">");
+                    DisplayError("goto label not found: <" + szLabel + ">", a_functionarguments);
                     return (false);
                 }
 
                 // We have no idea what we're doing...
                 else
                 {
-                    DisplayError("unrecognized action: <" + a_functionarguments.aszCmd[iAction] + ">");
+                    DisplayError("unrecognized action: <" + a_functionarguments.aszCmd[iAction] + ">", a_functionarguments);
                     return (false);
                 }
             }
@@ -2861,14 +2916,14 @@ namespace twaincscert
             // Validate...
             if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[1] == null))
             {
-                DisplayError("badly formed increment...");
+                DisplayError("badly formed increment", a_functionarguments);
                 return (false);
             }
 
             // Turn the source into a number...
             if (!int.TryParse(a_functionarguments.aszCmd[2], out iSrc))
             {
-                DisplayError("source is not a number...");
+                DisplayError("source is not a number", a_functionarguments);
                 return (false);
             }
 
@@ -2877,7 +2932,7 @@ namespace twaincscert
             {
                 if (!int.TryParse(a_functionarguments.aszCmd[3], out iStep))
                 {
-                    DisplayError("step is not a number...");
+                    DisplayError("step is not a number", a_functionarguments);
                     return (false);
                 }
             }
@@ -3101,7 +3156,7 @@ namespace twaincscert
             // If we have no arguments, then log a complaint...
             if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[1] == null))
             {
-                DisplayError("please specify initialize or save");
+                DisplayError("please specify initialize or save", a_functionarguments);
                 return (false);
             }
 
@@ -3113,7 +3168,7 @@ namespace twaincscert
                 m_szSelfCertReportProductname = "";
                 if ((a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null))
                 {
-                    DisplayError("please specify a driver productname");
+                    DisplayError("please specify a driver productname", a_functionarguments);
                     return (false);
                 }
                 m_szSelfCertReportProductname = a_functionarguments.aszCmd[2];
@@ -3125,7 +3180,7 @@ namespace twaincscert
                 string szFolder = "";
                 if (string.IsNullOrEmpty(m_szSelfCertReportProductname))
                 {
-                    DisplayError("'report initialize' must come before 'report save'...");
+                    DisplayError("'report initialize' must come before 'report save'...", a_functionarguments);
                     return (false);
                 }
                 if ((a_functionarguments.aszCmd.Length >= 3) && (a_functionarguments.aszCmd[2] != null))
@@ -3147,7 +3202,7 @@ namespace twaincscert
                 }
                 catch (Exception exception)
                 {
-                    DisplayError("save threw exception: " + exception.Message);
+                    DisplayError("save threw exception: " + exception.Message, a_functionarguments);
                     m_szSelfCertReportPath = null;
                     return (false);
                 }
@@ -3156,7 +3211,7 @@ namespace twaincscert
             // No idea...
             else
             {
-                DisplayError("unrecognized commend: " + a_functionarguments.aszCmd[1]);
+                DisplayError("unrecognized commend: " + a_functionarguments.aszCmd[1], a_functionarguments);
             }
 
             // All done...
@@ -3255,7 +3310,7 @@ namespace twaincscert
                 string[] aszScriptFiles = Directory.GetFiles(".", "*.tc");
                 if ((aszScriptFiles == null) || (aszScriptFiles.Length == 0))
                 {
-                    DisplayError("no script files found");
+                    DisplayError("no script files found", a_functionarguments);
                 }
 
                 // List what we found...
@@ -3276,7 +3331,7 @@ namespace twaincscert
                 szScriptFile = a_functionarguments.aszCmd[1] + ".tc";
                 if (!File.Exists(szScriptFile))
                 {
-                    DisplayError("script not found...<" + szScriptFile + ">");
+                    DisplayError("script not found...<" + szScriptFile + ">", a_functionarguments);
                     return (false);
                 }
             }
@@ -3288,7 +3343,7 @@ namespace twaincscert
             }
             catch (Exception exception)
             {
-                DisplayError("failed to read script...<" + szScriptFile + ">" + exception.Message);
+                DisplayError("failed to read script...<" + szScriptFile + ">" + exception.Message, a_functionarguments);
                 return (false);
             }
 
@@ -3302,6 +3357,7 @@ namespace twaincscert
             // of the script...
             callstack = default(CallStack);
             callstack.functionarguments = a_functionarguments;
+            callstack.functionarguments.szScriptFile = szScriptFile;
             callstack.functionarguments.aszScript = aszScript;
             m_lcallstack.Add(callstack);
             iCallStackCount = m_lcallstack.Count;
@@ -3354,6 +3410,7 @@ namespace twaincscert
                 // Dispatch...
                 Interpreter.FunctionArguments functionarguments = default(Interpreter.FunctionArguments);
                 functionarguments.aszCmd = aszCmd;
+                functionarguments.szScriptFile = szScriptFile;
                 functionarguments.aszScript = aszScript;
                 functionarguments.iCurrentLine = iLine;
                 blDone = interpreter.Dispatch(ref functionarguments, m_ldispatchtable);
@@ -3455,7 +3512,7 @@ namespace twaincscert
                 {
                         if (m_lkeyvalue.Count == 0)
                     {
-                        DisplayError("no keys to list...");
+                        DisplayError("no keys to list", a_functionarguments);
                         return (false);
                     }
 
@@ -3548,7 +3605,7 @@ namespace twaincscert
                 // We got nothing...
                 if (callstack.lkeyvalue.Count == 0)
                 {
-                    DisplayError("no local keys to list...");
+                    DisplayError("no local keys to list", a_functionarguments);
                     return (false);
                 }
 
@@ -3775,7 +3832,7 @@ namespace twaincscert
             // Whoops...nothing to work with...
             if (!Directory.Exists(szCertificationFolder))
             {
-                DisplayError("cannot find certification folder:\n" + szCertificationFolder);
+                DisplayError("cannot find certification folder:\n" + szCertificationFolder, new Interpreter.FunctionArguments());
                 return;
             }
 
@@ -3783,7 +3840,7 @@ namespace twaincscert
             aszCategories = Directory.GetDirectories(szCertificationFolder);
             if (aszCategories == null)
             {
-                DisplayError("cannot find any certification categories:\n" + szCertificationFolder);
+                DisplayError("cannot find any certification categories:\n" + szCertificationFolder, new Interpreter.FunctionArguments());
                 return;
             }
 
@@ -3926,12 +3983,24 @@ namespace twaincscert
         /// Display an error message...
         /// </summary>
         /// <param name="a_szText">the text to display</param>
-        private void DisplayError(string a_szText)
+        private void DisplayError(string a_szText, Interpreter.FunctionArguments a_functionarguments)
         {
-            Console.Out.WriteLine("ERROR: " + a_szText);
+            string szMessage;
+            if (string.IsNullOrEmpty(a_functionarguments.szScriptFile))
+            {
+                szMessage = "ERROR: " + a_szText;
+            }
+            else
+            {
+                szMessage =
+                    "ERROR: " + a_szText +
+                    " ('" + a_functionarguments.szScriptFile +
+                    "' at line " + a_functionarguments.iCurrentLine + ")";
+            }
+            Console.Out.WriteLine(szMessage);
             if (m_stringbuilderSelfCertReport != null)
             {
-                m_stringbuilderSelfCertReport.AppendLine(a_szText);
+                m_stringbuilderSelfCertReport.AppendLine(szMessage);
             }
         }
 
@@ -4446,7 +4515,7 @@ namespace twaincscert
 
         // Private Definitions
         #region Private Definitions
-        
+
         /// <summary>
         /// Select the cloud import code we're working with...
         /// </summary>
@@ -5229,7 +5298,19 @@ namespace twaincscert
             // No joy, make sure to lose the last transaction if the
             // user enters a bad command, so that we reduce the risk
             // of it be badly interpreted later on...
-            Console.Out.WriteLine("command not found: " + a_functionarguments.aszCmd[0]);
+            if (string.IsNullOrEmpty(a_functionarguments.szScriptFile))
+            {
+                Console.Out.WriteLine("command not found: " + a_functionarguments.aszCmd[0]);
+            }
+            else
+            {
+                Console.Out.WriteLine
+                (
+                    "command not found: " + a_functionarguments.aszCmd[0] +
+                    " ('" + a_functionarguments.szScriptFile +
+                    "' at line " + a_functionarguments.iCurrentLine + ")"
+                );
+            }
             return (false);
         }
 
@@ -5250,6 +5331,7 @@ namespace twaincscert
             /// The script we're running or null, used for
             /// commands like "goto"...
             /// </summary>
+            public string szScriptFile;
             public string[] aszScript;
 
             /// <summary>

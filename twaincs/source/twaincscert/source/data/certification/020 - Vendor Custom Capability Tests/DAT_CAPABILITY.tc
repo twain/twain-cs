@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; DAT_CAPABILITY
-;   Exercise DAT_CAPABILITY for the standard TWAIN capabilities
+;   Exercise DAT_CAPABILITY for the vendor custom capabilities
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
@@ -28,7 +28,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_CAPABILITY v1.0 21-Feb-2020'
+echo.titletest 'DAT_CAPABILITY v1.0 23-Feb-2020'
 setlocal twptlist 'TWPT_BW,TWPT_GRAY,TWPT_RGB'
 setlocal itwpt '-1'
 setglobal g_datcapabilityresult 'pass'
@@ -68,8 +68,8 @@ echo.passfail '${get:g_icap_pixeltypevalue}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Repeat this section for Standard TWAIN array values found inside of
-; CAP_SUPPORTEDCAPS (each Standard TWAIN capability ID is referred to as #CAP#
+; Repeat this section for vendor custom array values found inside of
+; CAP_SUPPORTEDCAPS (each vendor custom capability ID is referred to as #CAP#
 ; for the rest of this section)
 ;
 setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
@@ -89,15 +89,15 @@ call ENABLECAPABILITIES '${get:cap_supportedcaps}'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Grab a standard TWAIN capability from CAP_SUPPORTEDCAPS, we know it's
-; supported if we have a name for it (it's not a number).
+; Grab a vendor custom capability from CAP_SUPPORTEDCAPS, we know it's
+; vendor custom if it's a number.
 ;
 setlocal icap '5'
 :NEXTCAP
 increment icap '${get:icap}'
 setlocal cap '${getindex:cap_supportedcaps.${get:icap}}'
 if '${get:cap}' == '' goto NEXTTWPT
-if '${get:cap}' ~contains '0x' goto NEXTCAP
+if '${get:cap}' !~contains '0x' goto NEXTCAP
 
 
 
@@ -221,20 +221,6 @@ setlocal name '    Verify Cap'
 if '${getindex:twcapability.${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGET.ERROR.ECHOPASSFAIL
 echo.passfail '  ${get:name}' 'pass'
 ;
-; If the value of TW_CAPABILITY.ConType doesn’t match the Specification’s
-; MSG_GET container for this capability, then end with error
-setlocal name '    Verify ConType contains ${get:${arg:1}.ConType}'
-if '${get:${arg:1}.ConType}' !~contains '${getindex:twcapability.${get:TW_CAPABILITY.ConType}}' goto MSGGET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-;
-; If container’s ItemType doesn’t match the Specification’s ItemType for
-; this capability, then end with error.  Note that the index for ItemType
-; is the same for all containers, so it doesn't matter which one we use
-; to check this...
-setlocal name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
-if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:TW_ONEVALUE.ItemType}}' goto MSGGET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-;
 ; All done...
 goto MSGGET.PASS
 :MSGGET.ERROR.ECHOPASSFAIL
@@ -270,29 +256,6 @@ setlocal twcapability '${ret:}'
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
 setlocal name '    Verify Cap'
 if '${getindex:twcapability.${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-;
-; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
-; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETCURRENT must be
-; TWTY_ONEVALUE, if not then end with error
-; SPECNOTE: we're testing for array, which gives us the same result...
-if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGGETCURRENT.ARRAY
-setlocal name '    Verify ConType contains TWON_ONEVALUE'
-if '${getindex:twcapability.${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-goto MSGGETCURRENT.ITEMTYPE
-:MSGGETCURRENT.ARRAY
-setlocal name '    Verify ConType contains TWON_ARRAY'
-if '${getindex:twcapability.${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-;
-; If container’s ItemType doesn’t match the Specification’s ItemType for
-; this capability, then end with error.  Note that the index for ItemType
-; is the same for all containers, so it doesn't matter which one we use
-; to check this...
-:MSGGETCURRENT.ITEMTYPE
-setlocal name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
-if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:TW_ONEVALUE.ItemType}}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
 echo.passfail '  ${get:name}' 'pass'
 ;
 ; All done...
@@ -332,29 +295,6 @@ setlocal name '    Verify Cap'
 if '${getindex:twcapability.${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
 echo.passfail '  ${get:name}' 'pass'
 ;
-; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
-; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETDEFAULT must be
-; TWTY_ONEVALUE, if not then end with error
-; SPECNOTE: we're testing for array, which gives us the same result...
-if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGGETDEFAULT.ARRAY
-setlocal name '    Verify ConType contains TWON_ONEVALUE'
-if '${getindex:twcapability.${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-goto MSGGETDEFAULT.ITEMTYPE
-:MSGGETDEFAULT.ARRAY
-setlocal name '    Verify ConType contains TWON_ARRAY'
-if '${getindex:twcapability.${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-;
-; If container’s ItemType doesn’t match the Specification’s ItemType for
-; this capability, then end with error.  Note that the index for ItemType
-; is the same for all containers, so it doesn't matter which one we use
-; to check this...
-:MSGGETDEFAULT.ITEMTYPE
-setlocal name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
-if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:TW_ONEVALUE.ItemType}}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-;
 ; All done...
 goto MSGGETDEFAULT.PASS
 :MSGGETDEFAULT.ERROR.ECHOPASSFAIL
@@ -392,41 +332,15 @@ setlocal name '    Verify Cap'
 if '${getindex:twcapability.${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGRESET.ERROR.ECHOPASSFAIL
 echo.passfail '  ${get:name}' 'pass'
 ;
-; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
-; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETDEFAULT must be
-; TWTY_ONEVALUE, if not then end with error
-; SPECNOTE: the test implies that the MSG_GET container should returned, this is wrong...
-; SPECNOTE: we're testing for array, which gives us the same result...
-if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGRESET.ARRAY
-setlocal name '    Verify ConType contains TWON_ONEVALUE'
-if '${getindex:twcapability.${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-goto MSGRESET.ITEMTYPE
-:MSGRESET.ARRAY
-setlocal name '    Verify ConType contains TWON_ARRAY'
-if '${getindex:twcapability.${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-;
-; If container’s ItemType doesn’t match the Specification’s ItemType for
-; this capability, then end with error.  Note that the index for ItemType
-; is the same for all containers, so it doesn't matter which one we use
-; to check this...
-:MSGRESET.ITEMTYPE
-setlocal name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
-if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability.${get:TW_ONEVALUE.ItemType}}' goto MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
-;
 ; All done...
 goto MSGRESET.PASS
 :MSGRESET.ERROR.ECHOPASSFAIL
 echo.passfail '  ${get:name}' 'fail'
-call RESTORECAPABILITY '${arg:1}'
 setglobal '${arg:3}' 'fail'
 return
 :MSGRESET.SKIP
 return
 :MSGRESET.PASS
-call RESTORECAPABILITY '${arg:1}'
 return
 
 
@@ -454,6 +368,7 @@ dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '      ${get:name}' 'pass'
 setlocal twcapability '${ret:}'
+setlocal twcapabilityrestore '${ret:}'
 setlocal name 'Send MSG_SET with that GET'
 dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
 if '/CHECKSTATUS/SUCCESS/' !~contains '/${sts:}/' goto MSGSET.ERROR.ECHOPASSFAIL
@@ -516,17 +431,18 @@ if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '      ${get:name}' 'pass'
 ;
+; Restore the setting when we came into this function...
+dsmentry src ds dg_control dat_capability msg_set '${get:twcapabilityrestore}'
+;
 ; All done...
 goto MSGSET.PASS
 :MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '      ${get:name}' 'fail ${sts:} <${get:twcapability}> <${get:value}>'
-call RESTORECAPABILITY '${arg:1}'
 setglobal '${arg:3}' 'fail'
 return
 :MSGSET.SKIP
 return
 :MSGSET.PASS
-call RESTORECAPABILITY '${arg:1}'
 return
 
 
@@ -572,62 +488,4 @@ echo.passfail '  Enable CAP_PATCHCODEDETECTIONENABLED' 'fail (but we won't fail 
 ;
 ; All done...
 :ENABLECAPABILITIES.DONE
-return
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Function: RESTORECAPABILITY 
-; arg:1 - the current capability
-; returns: (none)
-; If we recognize it and need to maintain it, restore it.  Note that to
-; get into this function we're assuming the capability exists, so it's
-; okay to set it.
-; SPECNOTE: the concept of restoring isn't described in the tests
-;
-:RESTORECAPABILITY
-if '${arg:1}' == 'CAP_PRINTERENABLED' goto RESTORECAPABILITY.CAP_PRINTERENABLED
-if '${arg:1}' == 'ICAP_BARCODEDETECTIONENABLED' goto RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED
-if '${arg:1}' == 'ICAP_PATCHCODEDETECTIONENABLED' goto RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED
-if '${arg:1}' == 'ICAP_PIXELTYPE' goto RESTORECAPABILITY.ICAP_PIXELTYPE
-return
-;
-; CAP_PRINTERENABLED
-:RESTORECAPABILITY.CAP_PRINTERENABLED
-dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
-if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.CAP_PRINTERENABLED.ECHOPASSFAIL
-echo.passfail '      Restore CAP_PRINTERENABLED value to TRUE' 'pass'
-return
-:RESTORECAPABILITY.CAP_PRINTERENABLED.FAIL
-echo.passfail '      Restore CAP_PRINTERENABLED value to TRUE' 'fail (but we won't fail on it here)'
-return
-;
-; ICAP_BARCODEDETECTIONENABLED
-:RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED
-dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_UINT16,TRUE'
-if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
-echo.passfail '      Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'pass'
-return
-:RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.FAIL
-echo.passfail '      Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'fail (but we won't fail on it here)'
-return
-;
-; ICAP_PATCHCODEDETECTIONENABLED
-:RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED
-dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_UINT16,TRUE'
-if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
-echo.passfail '      Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'pass'
-return
-:RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.FAIL
-echo.passfail '      Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'fail (but we won't fail on it here)'
-return
-;
-; ICAP_PIXELTYPE
-:RESTORECAPABILITY.ICAP_PIXELTYPE
-dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:g_icap_pixeltypevalue}'
-if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_PIXELTYPE.ECHOPASSFAIL
-echo.passfail '      Restore ICAP_PIXELTYPE value to ${get:g_icap_pixeltypevalue}' 'pass'
-return
-:RESTORECAPABILITY.ICAP_PIXELTYPE.FAIL
-echo.passfail '      Restore ICAP_PIXELTYPE value to ${get:g_icap_pixeltypevalue}' 'fail (but we won't fail on it here)'
 return

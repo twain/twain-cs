@@ -1090,7 +1090,7 @@ namespace TWAINWorkingGroup
                             string szValue;
                             for (uu = 0; uu < NumItems; uu++)
                             {
-                                string szItem = GetIndexedItem(ItemType, intptr, (int)uu);
+                                string szItem = GetIndexedItem(a_twcapability, ItemType, intptr, (int)uu);
                                 szValue = CvtCapValueToEnum(a_twcapability.Cap, szItem);
                                 csvArray.Add(szValue);
                             }
@@ -1099,7 +1099,7 @@ namespace TWAINWorkingGroup
                         {
                             for (uu = 0; uu < NumItems; uu++)
                             {
-                                csvArray.Add(GetIndexedItem(ItemType, intptr, (int)uu));
+                                csvArray.Add(GetIndexedItem(a_twcapability, ItemType, intptr, (int)uu));
                             }
                         }
 
@@ -1178,7 +1178,7 @@ namespace TWAINWorkingGroup
                             string szValue;
                             for (uu = 0; uu < NumItems; uu++)
                             {
-                                string szItem = GetIndexedItem(ItemType, intptr, (int)uu);
+                                string szItem = GetIndexedItem(a_twcapability, ItemType, intptr, (int)uu);
                                 szValue = CvtCapValueToEnum(a_twcapability.Cap, szItem);
                                 csvEnum.Add(szValue);
                             }
@@ -1187,7 +1187,7 @@ namespace TWAINWorkingGroup
                         {
                             for (uu = 0; uu < NumItems; uu++)
                             {
-                                csvEnum.Add(GetIndexedItem(ItemType, intptr, (int)uu));
+                                csvEnum.Add(GetIndexedItem(a_twcapability, ItemType, intptr, (int)uu));
                             }
                         }
 
@@ -1227,13 +1227,13 @@ namespace TWAINWorkingGroup
                         if (a_blUseSymbols)
                         {
                             string szValue;
-                            string szItem = GetIndexedItem(ItemType, intptr, 0);
+                            string szItem = GetIndexedItem(a_twcapability, ItemType, intptr, 0);
                             szValue = CvtCapValueToEnum(a_twcapability.Cap, szItem);
                             csvOnevalue.Add(szValue);
                         }
                         else
                         {
-                            csvOnevalue.Add(GetIndexedItem(ItemType, intptr, 0));
+                            csvOnevalue.Add(GetIndexedItem(a_twcapability, ItemType, intptr, 0));
                         }
 
                         // All done...
@@ -11053,7 +11053,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_iIndex">Index of the item in the data</param>
         /// <returns>Data in CSV form</returns>
         [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
-        public string GetIndexedItem(TWTY a_twty, IntPtr a_intptr, int a_iIndex)
+        public string GetIndexedItem(TW_CAPABILITY a_twcapability, TWTY a_twty, IntPtr a_intptr, int a_iIndex)
         {
             IntPtr intptr;
 

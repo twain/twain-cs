@@ -170,6 +170,20 @@ namespace TWAINWorkingGroup
                 abyItem[28] = byItem028; abyItem[29] = byItem029; abyItem[30] = byItem030; abyItem[31] = byItem031;
                 abyItem[32] = byItem032; abyItem[33] = byItem033;
 
+                // Zero anything after the NUL...
+                bool blNul = false;
+                for (int ii = 0; ii < abyItem.Length; ii++)
+                {
+                    if (!blNul && (abyItem[ii] == 0))
+                    {
+                        blNul = true;
+                    }
+                    else if (blNul)
+                    {
+                        abyItem[ii] = 0;
+                    }
+                }
+
                 // change encoding of byte array, then convert the bytes array to a string
                 string sz = Encoding.Unicode.GetString(Encoding.Convert(Language.GetEncoding(), Encoding.Unicode, abyItem));
 
@@ -248,16 +262,19 @@ namespace TWAINWorkingGroup
                 // convert string to byte array, then change the encoding of the byte array
                 byte[] abyItem = Encoding.Convert(Encoding.Unicode, Language.GetEncoding(), Encoding.Unicode.GetBytes(sz));
 
-                // concert byte array to bytes
-                byItem000 = abyItem[0];  byItem001 = abyItem[1];  byItem002 = abyItem[2];  byItem003 = abyItem[3];
-                byItem004 = abyItem[4];  byItem005 = abyItem[5];  byItem006 = abyItem[6];  byItem007 = abyItem[7];
-                byItem008 = abyItem[8];  byItem009 = abyItem[9];  byItem010 = abyItem[10]; byItem011 = abyItem[11];
-                byItem012 = abyItem[12]; byItem013 = abyItem[13]; byItem014 = abyItem[14]; byItem015 = abyItem[15];
-                byItem016 = abyItem[16]; byItem017 = abyItem[17]; byItem018 = abyItem[18]; byItem019 = abyItem[19];
-                byItem020 = abyItem[20]; byItem021 = abyItem[21]; byItem022 = abyItem[22]; byItem023 = abyItem[23];
-                byItem024 = abyItem[24]; byItem025 = abyItem[25]; byItem026 = abyItem[26]; byItem027 = abyItem[27];
-                byItem028 = abyItem[28]; byItem029 = abyItem[29]; byItem030 = abyItem[30]; byItem031 = abyItem[31];
-                byItem032 = abyItem[32]; byItem033 = abyItem[33];
+                // convert byte array to bytes
+                if (abyItem.Length > 0)
+                {
+                    byItem000 = abyItem[0];  byItem001 = abyItem[1];  byItem002 = abyItem[2];  byItem003 = abyItem[3];
+                    byItem004 = abyItem[4];  byItem005 = abyItem[5];  byItem006 = abyItem[6];  byItem007 = abyItem[7];
+                    byItem008 = abyItem[8];  byItem009 = abyItem[9];  byItem010 = abyItem[10]; byItem011 = abyItem[11];
+                    byItem012 = abyItem[12]; byItem013 = abyItem[13]; byItem014 = abyItem[14]; byItem015 = abyItem[15];
+                    byItem016 = abyItem[16]; byItem017 = abyItem[17]; byItem018 = abyItem[18]; byItem019 = abyItem[19];
+                    byItem020 = abyItem[20]; byItem021 = abyItem[21]; byItem022 = abyItem[22]; byItem023 = abyItem[23];
+                    byItem024 = abyItem[24]; byItem025 = abyItem[25]; byItem026 = abyItem[26]; byItem027 = abyItem[27];
+                    byItem028 = abyItem[28]; byItem029 = abyItem[29]; byItem030 = abyItem[30]; byItem031 = abyItem[31];
+                    byItem032 = abyItem[32]; byItem033 = abyItem[33];
+                }
             }
         }
 
@@ -333,6 +350,20 @@ namespace TWAINWorkingGroup
                 abyItem[56] = byItem056; abyItem[57] = byItem057; abyItem[58] = byItem058; abyItem[59] = byItem059;
                 abyItem[60] = byItem060; abyItem[61] = byItem061; abyItem[62] = byItem062; abyItem[63] = byItem063;
                 abyItem[64] = byItem064; abyItem[65] = byItem065;
+
+                // Zero anything after the NUL...
+                bool blNul = false;
+                for (int ii = 0; ii < abyItem.Length; ii++)
+                {
+                    if (!blNul && (abyItem[ii] == 0))
+                    {
+                        blNul = true;
+                    }
+                    else if (blNul)
+                    {
+                        abyItem[ii] = 0;
+                    }
+                }
 
                 // change encoding of byte array, then convert the bytes array to a string
                 string sz = Encoding.Unicode.GetString(Encoding.Convert(Language.GetEncoding(), Encoding.Unicode, abyItem));
@@ -533,6 +564,20 @@ namespace TWAINWorkingGroup
                 abyItem[120] = byItem120; abyItem[121] = byItem121; abyItem[122] = byItem122; abyItem[123] = byItem123;
                 abyItem[124] = byItem124; abyItem[125] = byItem125; abyItem[126] = byItem126; abyItem[127] = byItem127;
                 abyItem[128] = byItem128; abyItem[129] = byItem129;
+
+                // Zero anything after the NUL...
+                bool blNul = false;
+                for (int ii = 0; ii < abyItem.Length; ii++)
+                {
+                    if (!blNul && (abyItem[ii] == 0))
+                    {
+                        blNul = true;
+                    }
+                    else if (blNul)
+                    {
+                        abyItem[ii] = 0;
+                    }
+                }
 
                 // change encoding of byte array, then convert the bytes array to a string
                 string sz = Encoding.Unicode.GetString(Encoding.Convert(Language.GetEncoding(), Encoding.Unicode, abyItem));
@@ -813,6 +858,20 @@ namespace TWAINWorkingGroup
                 abyItem[244] = byItem244; abyItem[245] = byItem245; abyItem[246] = byItem246; abyItem[247] = byItem247;
                 abyItem[248] = byItem248; abyItem[249] = byItem249; abyItem[250] = byItem250; abyItem[251] = byItem251;
                 abyItem[252] = byItem252; abyItem[253] = byItem253; abyItem[254] = byItem254; abyItem[255] = byItem255;
+
+                // Zero anything after the NUL...
+                bool blNul = false;
+                for (int ii = 0; ii < abyItem.Length; ii++)
+                {
+                    if (!blNul && (abyItem[ii] == 0))
+                    {
+                        blNul = true;
+                    }
+                    else if (blNul)
+                    {
+                        abyItem[ii] = 0;
+                    }
+                }
 
                 // change encoding of byte array, then convert the bytes array to a string
                 string sz = Encoding.Unicode.GetString(Encoding.Convert(Language.GetEncoding(), Encoding.Unicode, abyItem));

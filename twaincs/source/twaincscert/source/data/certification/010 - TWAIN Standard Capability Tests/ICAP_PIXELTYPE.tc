@@ -21,7 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-call INITIALIZE 'ICAP_PIXELTYPE/ICAP_BITDEPTH v1.0 21-Feb-2020' '${arg:1}'
+echo.titletest 'ICAP_PIXELTYPE/ICAP_BITDEPTH v1.0 21-Feb-2020'
 
 
 
@@ -32,7 +32,7 @@ call INITIALIZE 'ICAP_PIXELTYPE/ICAP_BITDEPTH v1.0 21-Feb-2020' '${arg:1}'
 setlocal name 'TWPT_BW MSG_SET'
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,TWPT_BW'
 if '${sts:}' != 'SUCCESS' goto MAIN.TWPTGRAY
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -42,7 +42,7 @@ echopassfail '${get:name}' 'pass'
 setlocal name 'TWPT_BW MSG_GET ICAP_BITDEPTH'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_BITDEPTH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 setlocal icap_bitdepth '${ret:}'
 
 
@@ -53,7 +53,7 @@ setlocal icap_bitdepth '${ret:}'
 ;
 setlocal name 'TWPT_BW TW_CAPABILITY.ConType is TWON_ENUMERATION'
 if '${getindex:icap_bitdepth.${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.TWPTGRAY
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -62,7 +62,7 @@ echopassfail '${get:name}' 'pass'
 ;
 setlocal name 'TWPT_BW TW_ENUMERATION.ItemType is TWTY_UINT16'
 if '${getindex:icap_bitdepth.${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -72,7 +72,7 @@ echopassfail '${get:name}' 'pass'
 setlocal name 'TWPT_BW TW_ENUMERATION does not contain 8 or 24'
 call CHECKENUMERATION '${get:icap_bitdepth}' '8' '24'
 if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -84,7 +84,7 @@ echopassfail '${get:name}' 'pass'
 setlocal name 'TWPT_GRAY MSG_SET'
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,TWPT_GRAY'
 if '${sts:}' != 'SUCCESS' goto MAIN.TWPTRGB
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -94,7 +94,7 @@ echopassfail '${get:name}' 'pass'
 setlocal name 'TWPT_GRAY MSG_GET ICAP_BITDEPTH'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_BITDEPTH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 setlocal icap_bitdepth '${ret:}'
 
 
@@ -104,7 +104,7 @@ setlocal icap_bitdepth '${ret:}'
 ;
 setlocal name 'TWPT_GRAY TW_CAPABILITY.ConType is TWON_ENUMERATION'
 if '${getindex:icap_bitdepth.${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.TWPTRGB
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -113,7 +113,7 @@ echopassfail '${get:name}' 'pass'
 ;
 setlocal name 'TWPT_GRAY TW_ENUMERATION.ItemType is TWTY_UINT16'
 if '${getindex:icap_bitdepth.${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -123,7 +123,7 @@ echopassfail '${get:name}' 'pass'
 setlocal name 'TWPT_GRAY TW_ENUMERATION does not contain 1 or 24'
 call CHECKENUMERATION '${get:icap_bitdepth}' '1' '24'
 if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -135,7 +135,7 @@ echopassfail '${get:name}' 'pass'
 setlocal name 'TWPT_RGB MSG_SET'
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,TWPT_RGB'
 if '${sts:}' != 'SUCCESS' goto MAIN.PASS
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -145,7 +145,7 @@ echopassfail '${get:name}' 'pass'
 setlocal name 'TWPT_RGB MSG_GET ICAP_BITDEPTH'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_BITDEPTH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 setlocal icap_bitdepth '${ret:}'
 
 
@@ -155,7 +155,7 @@ setlocal icap_bitdepth '${ret:}'
 ;
 setlocal name 'TWPT_RGB TW_CAPABILITY.ConType is TWON_ENUMERATION'
 if '${getindex:icap_bitdepth.${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.PASS
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -164,7 +164,7 @@ echopassfail '${get:name}' 'pass'
 ;
 setlocal name 'TWPT_RGB TW_ENUMERATION.ItemType is TWTY_UINT16'
 if '${getindex:icap_bitdepth.${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -174,7 +174,7 @@ echopassfail '${get:name}' 'pass'
 setlocal name 'TWPT_RGB TW_ENUMERATION does not contain 1 or 8'
 call CHECKENUMERATION '${get:icap_bitdepth}' '1' '8'
 if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'pass'
+echo.passfail '${get:name}' 'pass'
 
 
 
@@ -183,32 +183,15 @@ echopassfail '${get:name}' 'pass'
 ;
 ; Did we pass?
 :MAIN.PASS
-echopassfail 'SUMMARY' 'pass'
+echo.passfail 'SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
-echopassfail '${get:name}' 'fail'
+echo.passfail '${get:name}' 'fail'
 :MAIN.ERROR
-echopassfail 'SUMMARY' 'fail'
+echo.passfail 'SUMMARY' 'fail'
 return 'fail'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Function: Initialize
-; arg:1 - name of this test suite
-; arg:2 - scanner to test
-; returns: true or false
-;
-:INITIALIZE
-;
-echo.yellow
-echo.yellow
-echo.yellow
-echo.yellow '********************************************************************************'
-echo.yellow '${arg:1}'
-return
 
 
 

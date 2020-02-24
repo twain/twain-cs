@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Status Return Tests
-;   Check the TWRC/TWCC values for some situations...
+; Stress Tests
+;   Perform repeated open/close commands
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
@@ -22,7 +22,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff...
 ;
-echo.titlesuite 'Status Return Tests v1.0 23-Feb-2020'
+echo.titlesuite 'Stress Tests v1.0 23-Feb-2020'
 setlocal twidentity.productname '${arg:1}'
 setlocal certifyresult '${arg:2}'
 setglobal g_statusreturnresult 'pass' ; assume success
@@ -30,10 +30,17 @@ setglobal g_statusreturnresult 'pass' ; assume success
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Status Return Tests...
+; Stress Tests...
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_statusreturnresult embedded
-call CERTIFY 'Status Return Tests'             '${get:twidentity.productname}' g_statusreturnresult
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_statusreturnresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_statusreturnresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_statusreturnresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_statusreturnresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_statusreturnresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_statusreturnresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_statusreturnresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_statusreturnresult embedded
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_statusreturnresult embedded
 
 
@@ -69,6 +76,5 @@ if '${ret:}' != 'pass' goto CERTIFY.FAIL
 return 'pass'
 ;
 :CERTIFY.FAIL
-echo '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>${arg:1}'
 setglobal '${arg:3}' 'fail'
 return 'fail'

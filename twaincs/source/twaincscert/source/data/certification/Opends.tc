@@ -4,6 +4,7 @@
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - set to 'embedded', to limit messages
 ;
 ; Globals
 ;   (none)
@@ -20,7 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-call INITIALIZE 'Opends v1.0 12-Feb-2020' '${arg:1}'
+call INITIALIZE 'Opends v1.0 22-Feb-2020' '${arg:2}'
 
 
 
@@ -44,14 +45,30 @@ if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-echopassfail 'dg_control/dat_identity/msg_opends' 'pass'
-echopassfail 'SUMMARY' 'pass'
+if '${arg:2}' == 'embedded' goto MAIN.PASS.EMBEDDED
+echo.passfail 'dg_control/dat_identity/msg_opends' 'pass'
+echo.passfail 'SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR
-echopassfail 'dg_control/dat_identity/msg_opends' 'fail'
-echopassfail 'SUMMARY' 'fail'
+if '${arg:2}' == 'embedded' goto MAIN.ERROR.EMBEDDED
+echo.passfail 'dg_control/dat_identity/msg_opends' 'fail'
+echo.passfail 'SUMMARY' 'fail'
+return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Enbedded summary and cleanup...
+;
+:MAIN.PASS.EMBEDDED
+echo.passfail '    dg_control/dat_identity/msg_opends' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.EMBEDDED
+echo.passfail '    dg_control/dat_identity/msg_opends' 'fail'
 return 'fail'
 
 
@@ -59,14 +76,12 @@ return 'fail'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: Initialize
 ; arg:1 - name of this test suite
-; arg:2 - scanner to test
-; returns: true or false
+; arg:2 - set to 'embedded', to limit messages
+; returns: (none)
 ;
 :INITIALIZE
 ;
-echo.yellow
-echo.yellow
-echo.yellow
-echo.yellow '********************************************************************************'
-echo.yellow '${arg:1}'
+if '${arg:2}' == 'embedded' goto INITIALIZE.SKIP
+echo.titletest '${arg:1}'
+:INITIALIZE.SKIP
 return
