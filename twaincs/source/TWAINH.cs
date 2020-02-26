@@ -4576,6 +4576,18 @@ namespace TWAINWorkingGroup
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool GlobalUnlock(IntPtr hMem);
 
+        [DllImport("kernel32.dll")]
+        public static extern UIntPtr GlobalSize(IntPtr hMem);
+
+        [DllImport("msvcrt.dll")]
+        public static extern UIntPtr _msize(IntPtr ptr);
+
+        [DllImport("libc.so")]
+        public static extern UIntPtr malloc_usable_size(IntPtr ptr);
+
+        [DllImport("libSystem.dylib")]
+        public static extern UIntPtr malloc_size(IntPtr ptr);
+
         #endregion
 
 

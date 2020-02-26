@@ -141,6 +141,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGc,                           new string[] { "gc" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGoto,                         new string[] { "goto" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIf,                           new string[] { "if" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdImage,                        new string[] { "image" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIncrement,                    new string[] { "increment" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdInput,                        new string[] { "input" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdLog,                          new string[] { "log" }));
@@ -148,6 +149,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReturn,                       new string[] { "return" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRun,                          new string[] { "run" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRunv,                         new string[] { "runv" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSaveImage,                    new string[] { "saveimage" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetGlobal,                    new string[] { "setglobal" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetLocal,                     new string[] { "setlocal" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSleep,                        new string[] { "sleep" }));
@@ -1900,6 +1902,9 @@ namespace twaincscert
                 Display("  Resolves to the full path for targeted special folder: certification, data, desktop, local,");
                 Display("  pictures, roaming");
                 Display("");
+                Display("  '${format:specifier|value}'");
+                Display("  Formats the value according to the specifier.");
+                Display("");
                 Display("  '${get:target}'");
                 Display("  The value last assigned to the target using the set command.");
                 Display("");
@@ -2161,6 +2166,23 @@ namespace twaincscert
                 Display("Examples");
                 Display("  if '${sts:}' != 'SUCCESS' goto FAIL");
                 Display("  if '${get:value}' & '1' == '1' goto BITSET");
+                return (false);
+            }
+
+            // Image...
+            if ((szCommand == "image"))
+            {
+                DisplayRed("IMAGE {free|append|save} {variable|native} {TW_IMAGEMEMXFER|filename}");
+                Display("Either free the byte array associate with 'variable', or add the");
+                Display("byte array referenced in TW_IMAEGMEMXFER to it, or save the byte");
+                Display("array to a file.  If the extension is left off of the filename, the");
+                Display("code will provide one automatically.");
+                Display("");
+                Display("Examples");
+                Display("  image free myimage");
+                Display("  image append myimage '${twimagememxfer}'");
+                Display("  image save myimage myfile");
+                Display("  image save native myfile");
                 return (false);
             }
 
@@ -2903,6 +2925,183 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Manage an image byte array for DAT_IMAGEMEMXFER or DAT_IMAGEMEMFILEXFER...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdImage(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            // Validate...
+            if (a_functionarguments.aszCmd.Length < 2)
+            {
+                DisplayError("must specify an action for the image command", a_functionarguments);
+                return (false);
+            }
+
+            // Pick an action...
+            switch (a_functionarguments.aszCmd[1].ToLowerInvariant())
+            {
+                // Oops...
+                default:
+                    DisplayError("unrecognized action", a_functionarguments);
+                    return (false);
+
+                // Free...
+                case "free":
+                    // Validate
+                    if (a_functionarguments.aszCmd.Length < 3)
+                    {
+                        DisplayError("must specify a variable for the image free command", a_functionarguments);
+                        return (false);
+                    }
+                    // We need protection...
+                    lock (m_objectKeyValue)
+                    {
+                        // Find the value for this key...
+                        int iKey;
+                        for (iKey = 0; iKey < m_lkeyvalue.Count; iKey++)
+                        {
+                            if (m_lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[2])
+                            {
+                                UInt64 u64Ptr;
+                                IntPtr intptr;
+                                if (UInt64.TryParse(m_lkeyvalue[iKey].szValue, out u64Ptr))
+                                {
+                                    if (u64Ptr > 0)
+                                    {
+                                        intptr = (IntPtr)u64Ptr;
+                                        Marshal.FreeHGlobal(intptr);
+                                        KeyValue keyvalue = new KeyValue();
+                                        keyvalue.szKey = m_lkeyvalue[iKey].szKey;
+                                        keyvalue.szValue = "0";
+                                        keyvalue.iBytes = 0;
+                                        m_lkeyvalue[iKey] = keyvalue;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    return (false);
+
+                // Append (grow the memory)...
+                case "append":
+                    // Validate
+                    if (a_functionarguments.aszCmd.Length < 4)
+                    {
+                        DisplayError("must specify a variable and tw_imagememxfer data", a_functionarguments);
+                        return (false);
+                    }
+                    // We need protection...
+                    lock (m_objectKeyValue)
+                    {
+                        KeyValue keyvalue = default(KeyValue);
+                        string[] asz = CSV.Parse(a_functionarguments.aszCmd[3]);
+                        if (asz.Length != 10)
+                        {
+                            DisplayError("invalid tw_imagememxfer data (should be 10 elements) <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
+                            return (false);
+                        }
+                        int iBytesWritten;
+                        UInt64 u64TheMem;
+                        IntPtr intptrTheMem;
+                        if (!int.TryParse(asz[6], out iBytesWritten))
+                        {
+                            DisplayError("TW_IMAGEMEMXFER.BytesWritten isn't a number", a_functionarguments);
+                            return (false);
+                        }
+                        if (!UInt64.TryParse(asz[9], out u64TheMem))
+                        {
+                            DisplayError("TW_IMAGEMEMXFER.Memory.TheMem isn't a number", a_functionarguments);
+                            return (false);
+                        }
+                        intptrTheMem = (IntPtr)u64TheMem;
+                        if ((iBytesWritten > 0) && (intptrTheMem != IntPtr.Zero))
+                        {
+                            // Find the value for this key...
+                            int iKey;
+                            for (iKey = 0; iKey < m_lkeyvalue.Count; iKey++)
+                            {
+                                if (m_lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[2])
+                                {
+                                    break;
+                                }
+                            }
+                            if (iKey < m_lkeyvalue.Count)
+                            {
+                                keyvalue = m_lkeyvalue[iKey];
+                            }
+                            else
+                            {
+                                keyvalue.szKey = a_functionarguments.aszCmd[2];
+                                keyvalue.szValue = "0";
+                                keyvalue.iBytes = 0;
+                                m_lkeyvalue.Add(keyvalue);
+                            }
+                            UInt64 u64Ptr;
+                            IntPtr intptrPtr;
+                            if (UInt64.TryParse(m_lkeyvalue[iKey].szValue, out u64Ptr))
+                            {
+                                // We're starting fresh...
+                                if (u64Ptr == 0)
+                                {
+                                    intptrPtr = Marshal.AllocHGlobal(iBytesWritten);
+                                    NativeMethods.MemCpy(intptrPtr, intptrTheMem, iBytesWritten);
+                                    keyvalue.szValue = intptrPtr.ToString();
+                                    keyvalue.iBytes = iBytesWritten;
+                                    m_lkeyvalue[iKey] = keyvalue;
+                                }
+                                // We're appending...
+                                else
+                                {
+                                    intptrPtr = (IntPtr)u64Ptr;
+                                    intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(m_lkeyvalue[iKey].iBytes + iBytesWritten));
+                                    NativeMethods.MemCpy((IntPtr)((UInt64)intptrPtr + (UInt64)m_lkeyvalue[iKey].iBytes), intptrTheMem, iBytesWritten);
+                                    keyvalue.szValue = intptrPtr.ToString();
+                                    keyvalue.iBytes += iBytesWritten;
+                                    m_lkeyvalue[iKey] = keyvalue;
+                                }
+                            }
+                        }
+                    }
+                    return (false);
+
+                // Free...
+                case "save":
+                    // Validate
+                    if (a_functionarguments.aszCmd.Length < 4)
+                    {
+                        DisplayError("must specify a variable and a filename for the image save command", a_functionarguments);
+                        return (false);
+                    }
+                    // We need protection...
+                    lock (m_objectKeyValue)
+                    {
+                        // Find the value for this key...
+                        int iKey;
+                        for (iKey = 0; iKey < m_lkeyvalue.Count; iKey++)
+                        {
+                            if (m_lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[2])
+                            {
+                                UInt64 u64Ptr;
+                                IntPtr intptr;
+                                if (UInt64.TryParse(m_lkeyvalue[iKey].szValue, out u64Ptr))
+                                {
+                                    if (u64Ptr > 0)
+                                    {
+                                        intptr = (IntPtr)u64Ptr;
+                                        NativeMethods.WriteImageFile(a_functionarguments.aszCmd[3], intptr, m_lkeyvalue[iKey].iBytes);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    return (false);
+            }
+        }
+
+        /// <summary>
         /// Return from the current function...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
@@ -3484,6 +3683,81 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Save an image to disk, used for DAT_IMAGEMEMFILEXFER, DAT_IMAGEMEMXFER,
+        /// and DAT_IMAGENATIVEXFER.  We don't need it for DAT_IMAGEFILEXFER...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdSaveImage(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            byte[] abImage;
+            UInt64 u64Handle;
+
+            // Basic sanity check...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[1] == null))
+            {
+                DisplayError("insufficient arguments, please see help for saveimage", a_functionarguments);
+                return (false);
+            }
+
+            // Dispatch off the second argument...
+            switch (a_functionarguments.aszCmd[1].ToLowerInvariant())
+            {
+                // Oh dear...
+                default:
+                    DisplayError("unrecognized type <" + a_functionarguments.aszCmd[1] + ">", a_functionarguments);
+                    return (false);
+
+                // Memory transfer, we need the image file, pointer, byte size, and DAT_IMAGEINFO metadata...
+                case "mem":
+                    if (a_functionarguments.aszCmd.Length < 6)
+                    {
+                        DisplayError("insufficient arguments, please see help for saveimage", a_functionarguments);
+                        return (false);
+                    }
+                    break;
+
+                // Memory file transfer, we need the image file, pointer, and the byte size...
+                case "memfile":
+                    if (a_functionarguments.aszCmd.Length < 5)
+                    {
+                        DisplayError("insufficient arguments, please see help for saveimage", a_functionarguments);
+                        return (false);
+                    }
+                    break;
+
+                // Native transfer, we need the image file and the handle...
+                case "native":
+                    if (a_functionarguments.aszCmd.Length < 4)
+                    {
+                        DisplayError("insufficient arguments, please see help for saveimage", a_functionarguments);
+                        return (false);
+                    }
+                    string szImageFile = a_functionarguments.aszCmd[2];
+                    if (!UInt64.TryParse(a_functionarguments.aszCmd[3], out u64Handle))
+                    {
+                        DisplayError("failed to convert the byte size", a_functionarguments);
+                        return (false);
+                    }
+                    // This beastie autodetects the image type...
+                    abImage = m_twain.NativeToByteArray((IntPtr)u64Handle, true);
+                    try
+                    {
+                        File.WriteAllBytes(szImageFile, abImage);
+                    }
+                    catch (Exception exception)
+                    {
+                        DisplayError("saveimage failed <" + szImageFile + "> - " + exception.Message, a_functionarguments);
+                        return (false);
+                    }
+                    break;
+            }
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
         /// Select a scanner, do a snapshot, if needed, if no selection
         /// is offered, then pick the first scanner found...
         /// </summary>
@@ -3510,7 +3784,8 @@ namespace twaincscert
             {
                 lock (m_objectKeyValue)
                 {
-                        if (m_lkeyvalue.Count == 0)
+                    // Hmmm...
+                    if (m_lkeyvalue.Count == 0)
                     {
                         DisplayError("no keys to list", a_functionarguments);
                         return (false);
@@ -4116,6 +4391,7 @@ namespace twaincscert
                         || szSymbol.StartsWith("${bits:")
                         || szSymbol.StartsWith("${ds:")
                         || szSymbol.StartsWith("${folder:")
+                        || szSymbol.StartsWith("${format:")
                         || szSymbol.StartsWith("${get:")
                         || szSymbol.StartsWith("${getindex:")
                         || szSymbol.StartsWith("${localtime:")
@@ -4226,6 +4502,29 @@ namespace twaincscert
                                 {
                                     szValue = asz[iIndex];
                                 }
+                            }
+                        }
+                    }
+
+                    // Format the data using a specifier...
+                    else if (szSymbol.StartsWith("${format:"))
+                    {
+                        // Strip off ${...}, split specifier and value...
+                        string szFormat = szSymbol.Substring(0, szSymbol.Length - 1).Substring(9);
+                        string[] aszFormat = szFormat.Split(new char[] { '|' }, 2);
+                        if (aszFormat.Length >= 2)
+                        {
+                            // Assume it's a number...
+                            if (aszFormat[0].ToLowerInvariant().Contains("x") || aszFormat[0].ToLowerInvariant().Contains("d"))
+                            {
+                                int iValue = 0;
+                                int.TryParse(aszFormat[1], out iValue);
+                                szValue = string.Format("{0:" + aszFormat[0] + "}", iValue);
+                            }
+                            // Assume it's a string...
+                            else
+                            {
+                                szValue = string.Format("{0:" + aszFormat[0] + "}", aszFormat[1]);
                             }
                         }
                     }
@@ -4539,6 +4838,12 @@ namespace twaincscert
             /// The key's value...
             /// </summary>
             public string szValue;
+
+            /// <summary>
+            /// The bytesize of value, only used when
+            /// value is an IntPtr to memory...
+            /// </summary>
+            public int iBytes;
         }
 
         /// <summary>
@@ -8317,6 +8622,115 @@ namespace twaincscert
 
         [DllImport("user32.dll")]
         public static extern IntPtr DefWindowProc(IntPtr hWnd, int iMsg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", EntryPoint = "CopyMemory", SetLastError = false)]
+        private static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
+
+        [DllImport("libc.so", EntryPoint = "memcpy", SetLastError = false)]
+        private static extern void memcpy(IntPtr dest, IntPtr src, int count);
+
+        /// <summary>
+        /// Copy intptr to intptr...
+        /// </summary>
+        /// <param name="dest"></param>
+        /// <param name="src"></param>
+        /// <param name="count"></param>
+        public static void MemCpy(IntPtr dest, IntPtr src, int count)
+        {
+            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+            {
+                CopyMemory(dest, src, (uint)count);
+            }
+            else
+            {
+                memcpy(dest, src, count);
+            }
+        }
+
+        [DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern Int32 _wfopen_s(out IntPtr pFile, string filename, string mode);
+
+        [DllImport("libc.so", CharSet = CharSet.Ansi, SetLastError = true, BestFitMapping=false, ThrowOnUnmappableChar = true)]
+        private static extern IntPtr fopen([MarshalAs(UnmanagedType.LPStr)] string filename, [MarshalAs(UnmanagedType.LPStr)] string mode);
+
+        [DllImport("msvcrt.dll", EntryPoint = "fwrite", SetLastError = true)]
+        private static extern IntPtr fwriteWin(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
+
+        [DllImport("libc.so", EntryPoint = "fwrite", SetLastError = true)]
+        private static extern IntPtr fwrite(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
+
+        [DllImport("msvcrt.dll", EntryPoint = "fclose", SetLastError = true)]
+        private static extern IntPtr fcloseWin(IntPtr file);
+
+        [DllImport("libc.so", EntryPoint = "fclose", SetLastError = true)]
+        private static extern IntPtr fclose(IntPtr file);
+
+        /// <summary>
+        /// Write stuff to a file without having to rebuffer it...
+        /// </summary>
+        /// <param name="a_szFilename"></param>
+        /// <param name="a_intptrPtr"></param>
+        /// <param name="a_iBytes"></param>
+        /// <returns></returns>
+        public static int WriteImageFile(string a_szFilename, IntPtr a_intptrPtr, int a_iBytes)
+        {
+            try
+            {
+                // If we don't have an extension, try to add one...
+                if (!Path.GetFileName(a_szFilename).Contains(".") && (a_iBytes >= 2))
+                {
+                    byte[] abData = new byte[2];
+                    Marshal.Copy(a_intptrPtr, abData, 0, 2);
+                    // BMP
+                    if ((abData[0] == 0x42) && (abData[1] == 0x4D))
+                    {
+                        a_szFilename += ".bmp";
+                    }
+                    else if ((abData[0] == 0x49) && (abData[1] == 0x49))
+                    {
+                        a_szFilename += ".tif";
+                    }
+                    else if ((abData[0] == 0xFF) && (abData[1] == 0xD8))
+                    {
+                        a_szFilename += ".jpg";
+                    }
+                }
+
+                // Handle Windows...
+                if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+                {
+                    IntPtr intptrFile;
+                    IntPtr intptrBytes;
+                    if (_wfopen_s(out intptrFile, a_szFilename, "wb") != 0)
+                    {
+                        return (-1);
+                    }
+                    intptrBytes = fwriteWin(a_intptrPtr, (IntPtr)a_iBytes, (IntPtr)1, intptrFile);
+                    fcloseWin(intptrFile);
+                    return ((int)intptrBytes);
+                }
+
+                // Handle everybody else...
+                else
+                {
+                    IntPtr intptrFile;
+                    IntPtr intptrBytes;
+                    intptrFile = fopen(a_szFilename, "w");
+                    if (intptrFile == IntPtr.Zero)
+                    {
+                        return (-1);
+                    }
+                    intptrBytes = fwrite(a_intptrPtr, (IntPtr)a_iBytes, (IntPtr)1, intptrFile);
+                    fclose(intptrFile);
+                    return ((int)intptrBytes);
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.Error("Write file failed <" + a_szFilename + "> - " + exception.Message);
+                return (-1);
+            }
+        }
 
         #endregion
     }

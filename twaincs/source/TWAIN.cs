@@ -11843,6 +11843,166 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Get .NET 'Bitmap' object from memory DIB via stream constructor.
+        /// This should work for most DIBs.
+        /// </summary>
+        /// <param name="a_intptrNative">The pointer to something (presumably a BITMAP or a TIFF image)</param>
+        /// <returns>C# Bitmap of image</returns>
+        public byte[] NativeToByteArray(IntPtr a_intptrNative, bool a_blIsHandle)
+        {
+            ushort u16Magic;
+            UIntPtr uintptrBytes;
+            IntPtr intptrNative;
+
+            // Give ourselves what protection we can...
+            try
+            {
+                // We need the first two bytes to decide if we have a DIB or a TIFF.  Don't
+                // forget to lock the silly thing...
+                intptrNative = a_blIsHandle ? DsmMemLock(a_intptrNative) : a_intptrNative;
+                u16Magic = (ushort)Marshal.PtrToStructure(intptrNative, typeof(ushort));
+
+                // Windows uses a DIB, the first unsigned short is 40...
+                if (u16Magic == 40)
+                {
+                    byte[] bBitmap;
+                    BITMAPFILEHEADER bitmapfileheader;
+                    BITMAPINFOHEADER bitmapinfoheader;
+
+                    // Our incoming DIB is a bitmap info header...
+                    bitmapinfoheader = (BITMAPINFOHEADER)Marshal.PtrToStructure(intptrNative, typeof(BITMAPINFOHEADER));
+
+                    // Build our file header...
+                    bitmapfileheader = new BITMAPFILEHEADER();
+                    bitmapfileheader.bfType = 0x4D42; // "BM"
+                    bitmapfileheader.bfSize
+                        = (uint)Marshal.SizeOf(typeof(BITMAPFILEHEADER)) +
+                           bitmapinfoheader.biSize +
+                           (bitmapinfoheader.biClrUsed * 4) +
+                           bitmapinfoheader.biSizeImage;
+                    bitmapfileheader.bfOffBits
+                        = (uint)Marshal.SizeOf(typeof(BITMAPFILEHEADER)) +
+                           bitmapinfoheader.biSize +
+                           (bitmapinfoheader.biClrUsed * 4);
+
+                    // Copy the file header into our byte array...
+                    IntPtr intptr = Marshal.AllocHGlobal(Marshal.SizeOf(bitmapfileheader));
+                    Marshal.StructureToPtr(bitmapfileheader, intptr, true);
+                    bBitmap = new byte[bitmapfileheader.bfSize];
+                    Marshal.Copy(intptr, bBitmap, 0, Marshal.SizeOf(bitmapfileheader));
+                    Marshal.FreeHGlobal(intptr);
+                    intptr = IntPtr.Zero;
+
+                    // Copy the rest of the DIB into our byte array......
+                    Marshal.Copy(intptrNative, bBitmap, Marshal.SizeOf(typeof(BITMAPFILEHEADER)), (int)bitmapfileheader.bfSize - Marshal.SizeOf(typeof(BITMAPFILEHEADER)));
+
+                    // Unlock the handle, and return our byte array...
+                    if (a_blIsHandle)
+                    {
+                        DsmMemUnlock(a_intptrNative);
+                    }
+                    return (bBitmap);
+                }
+
+                // Linux and Mac OS X use TIFF.  We'll handle a simple Intel TIFF ("II")...
+                else if (u16Magic == 0x4949)
+                {
+                    int iTiffSize;
+                    ulong u64;
+                    ulong u64Pointer;
+                    ulong u64TiffHeaderSize;
+                    ulong u64TiffTagSize;
+                    byte[] abTiff;
+                    TIFFHEADER tiffheader;
+                    TIFFTAG tifftag;
+
+                    // Init stuff...
+                    tiffheader = new TIFFHEADER();
+                    tifftag = new TIFFTAG();
+                    u64TiffHeaderSize = (ulong)Marshal.SizeOf(tiffheader);
+                    u64TiffTagSize = (ulong)Marshal.SizeOf(tifftag);
+
+                    // Find the size of the image so we can turn it into a byte array...
+                    iTiffSize = 0;
+                    tiffheader = (TIFFHEADER)Marshal.PtrToStructure(intptrNative, typeof(TIFFHEADER));
+                    for (u64 = 0; u64 < 999; u64++)
+                    {
+                        u64Pointer = (ulong)intptrNative + u64TiffHeaderSize + (u64TiffTagSize * u64);
+                        tifftag = (TIFFTAG)Marshal.PtrToStructure((IntPtr)u64Pointer, typeof(TIFFTAG));
+
+                        // StripOffsets...
+                        if (tifftag.u16Tag == 273)
+                        {
+                            iTiffSize += (int)tifftag.u32Value;
+                        }
+
+                        // StripByteCounts...
+                        if (tifftag.u16Tag == 279)
+                        {
+                            iTiffSize += (int)tifftag.u32Value;
+                        }
+                    }
+
+                    // No joy...
+                    if (iTiffSize == 0)
+                    {
+                        if (a_blIsHandle)
+                        {
+                            DsmMemUnlock(a_intptrNative);
+                        }
+                        return (null);
+                    }
+
+                    // Copy the data to our byte array...
+                    abTiff = new byte[iTiffSize];
+                    Marshal.Copy(intptrNative, abTiff, 0, iTiffSize);
+
+                    // Unlock the handle, and return our byte array...
+                    if (a_blIsHandle)
+                    {
+                        DsmMemUnlock(a_intptrNative);
+                    }
+                    return (abTiff);
+                }
+
+                // As long as we're here, let's handle JFIF (JPEG) too,
+                // this can never be a handle...
+                else if (u16Magic == 0xFFD8)
+                {
+                    byte[] abJfif;
+
+                    // We need the size of this memory block...
+                    switch (GetPlatform())
+                    {
+                        default:
+                            Log.Error("Really? <" + GetPlatform() + ">");
+                            return (null);
+                        case Platform.WINDOWS:
+                            uintptrBytes = NativeMethods._msize(a_intptrNative);
+                            break;
+                        case Platform.LINUX:
+                            uintptrBytes = NativeMethods.malloc_usable_size(a_intptrNative);
+                            break;
+                        case Platform.MACOSX:
+                            uintptrBytes = NativeMethods.malloc_size(a_intptrNative);
+                            break;
+                    }
+                    abJfif = new byte[(int)uintptrBytes];
+                    Marshal.Copy(a_intptrNative, abJfif, 0, (int)(int)uintptrBytes);
+                    return (abJfif);
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.Error("NativeToByteArray threw an exceptions - " + exception.Message);
+            }
+
+            // Byte-bye...
+            DsmMemUnlock(a_intptrNative);
+            return (null);
+        }
+
+        /// <summary>
         /// Convert a public identity to a legacy identity...
         /// </summary>
         /// <param name="a_twidentity">Identity to convert</param>
