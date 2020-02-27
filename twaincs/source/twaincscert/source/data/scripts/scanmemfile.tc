@@ -87,9 +87,9 @@ setlocal image.pointer '${ret:}'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Set DAT_SETUPFILEXFER to TWFF_JFIF
+; Set DAT_SETUPFILEXFER to TWFF_TIFF
 ;
-dsmentry src null dg_control dat_setupfilexfer msg_set 'file,TWFF_JFIF,0'
+dsmentry src null dg_control dat_setupfilexfer msg_set 'file,TWFF_TIFF,0'
 echo 'capability/set.............${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 
@@ -116,11 +116,14 @@ if '${ret:}' !~contains 'msg_xferready' goto MAIN.PASS
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Do a memory transfer...
+; Do a memory file transfer...
 ; This little song and dance with the states is so that we can
 ; start the transfer in state 6 with each new image, but switch
 ; to state 7 if we need multiple calls to capture the current
 ; image...
+;
+; The saved images will be in TIFF format, which includes TIFF
+; JPEG (the better form, where a simple TIFF header is added).
 ;
 :MAIN.NEXTIMAGEMEMFILEXFER.STATE6
 setlocal twain.state '6'
@@ -139,7 +142,7 @@ image append memfileimage '${ret:}'
 goto MAIN.NEXTIMAGEMEMFILEXFER.STATE7
 :MAIN.NEXTIMAGEMEMFILEXFER.XFERDONE
 image append memfileimage '${ret:}'
-image save memfileimage '${folder:desktop}/twaincscert/img${format:D6|${get:imagecount}}'
+image save memfileimage memfile '${folder:desktop}/twaincscert/img${format:D6|${get:imagecount}}'
 setlocal twain.state '7'
 
 

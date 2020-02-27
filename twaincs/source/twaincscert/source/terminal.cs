@@ -284,6 +284,22 @@ namespace twaincscert
         #endregion
 
 
+        // Public Definitions
+        #region Public Definitions
+
+        /// <summary>
+        /// The scope of a variable...
+        /// </summary>
+        public enum VariableScope
+        {
+            Auto = 0,
+            Local = 1,
+            Global = 2
+        }
+
+        #endregion
+
+
         // Private Methods (DsmEntry)
         #region Private Methods (DsmEntry)
 
@@ -2172,17 +2188,30 @@ namespace twaincscert
             // Image...
             if ((szCommand == "image"))
             {
-                DisplayRed("IMAGE {free|append|save} {variable|native} {TW_IMAGEMEMXFER|filename}");
-                Display("Either free the byte array associate with 'variable', or add the");
-                Display("byte array referenced in TW_IMAEGMEMXFER to it, or save the byte");
-                Display("array to a file.  If the extension is left off of the filename, the");
-                Display("code will provide one automatically.");
+                DisplayRed("IMAGE {free} {variable}");
+                DisplayRed("IMAGE {append} {variable} {TW_IMAGEMEMXFER}");
+                DisplayRed("IMAGE {addheader} {variable} {TW_IMAGEINFO}");
+                DisplayRed("IMAGE {save} {variable} {native|memfile|memory} {filename}");
+                Display("Use image append to chain together data from one or more DAT_IMAGEMEMXFER");
+                Display("or DAT_IMAGEMEMFILEXFER calls.  Use image free to free that memory when");
+                Display("done with it.");
+                Display("");
+                Display("Use image save to save an image to disk.  You can use the return value from");
+                Display("DAT_IMAGENATIVEXFER to save a .bmp bitmap file.  If an extension isn't given");
+                Display("one will be provided: .bmp, .jpg, or .tif.");
                 Display("");
                 Display("Examples");
-                Display("  image free myimage");
-                Display("  image append myimage '${twimagememxfer}'");
-                Display("  image save myimage myfile");
-                Display("  image save native myfile");
+                Display("  image append mymemoryimage '${get:twimagememxfer}'");
+                Display("  image addheader mymemoryimage  '${get:twimageinfo}'");
+                Display("  image save mymemoryimage memfile ./myfile");
+                Display("  image free mymemoryimage");
+                Display("");
+                Display("  image save twmemref memfile ./myfile");
+                Display("");
+                Display("  image append mymemfileimage '${get:twimagememxfer}'");
+                Display("  image save mymemfileimage memfile ./myfile");
+                Display("  image free mymemfileimage");
+                Display("");
                 return (false);
             }
 
@@ -2931,6 +2960,15 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdImage(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            int iResult = 0;
+            UInt64 u64Ptr = 0;
+            IntPtr intptrPtr = IntPtr.Zero;
+            bool blGlobal = false;
+            byte[] abImage;
+            KeyValue keyvalue = default(KeyValue);
+            TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
+            TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
+
             // Validate...
             if (a_functionarguments.aszCmd.Length < 2)
             {
@@ -2946,41 +2984,104 @@ namespace twaincscert
                     DisplayError("unrecognized action", a_functionarguments);
                     return (false);
 
-                // Free...
-                case "free":
+                // Add a header to data (this is always going to be TIFF)...
+                case "addheader":
                     // Validate
-                    if (a_functionarguments.aszCmd.Length < 3)
+                    if (a_functionarguments.aszCmd.Length < 4)
                     {
-                        DisplayError("must specify a variable for the image free command", a_functionarguments);
+                        DisplayError("must specify a variable and tw_imageinfo data", a_functionarguments);
                         return (false);
                     }
-                    // We need protection...
-                    lock (m_objectKeyValue)
+
+                    // Validate...
+                    keyvalue.szKey = a_functionarguments.aszCmd[2];
+                    if (!m_twain.CsvToImageinfo(ref twimageinfo, a_functionarguments.aszCmd[3]))
                     {
-                        // Find the value for this key...
-                        int iKey;
-                        for (iKey = 0; iKey < m_lkeyvalue.Count; iKey++)
-                        {
-                            if (m_lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[2])
-                            {
-                                UInt64 u64Ptr;
-                                IntPtr intptr;
-                                if (UInt64.TryParse(m_lkeyvalue[iKey].szValue, out u64Ptr))
-                                {
-                                    if (u64Ptr > 0)
-                                    {
-                                        intptr = (IntPtr)u64Ptr;
-                                        Marshal.FreeHGlobal(intptr);
-                                        KeyValue keyvalue = new KeyValue();
-                                        keyvalue.szKey = m_lkeyvalue[iKey].szKey;
-                                        keyvalue.szValue = "0";
-                                        keyvalue.iBytes = 0;
-                                        m_lkeyvalue[iKey] = keyvalue;
-                                    }
-                                }
-                                break;
-                            }
-                        }
+                        DisplayError("invalid tw_imageinfo data <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
+                        return (false);
+                    }
+
+                    // Find the local value for this key...
+                    GetVariable(keyvalue.szKey, -1, out keyvalue.szValue, out keyvalue.iBytes, out blGlobal, VariableScope.Local);
+
+                    // If we got a pointer
+                    if (!UInt64.TryParse(keyvalue.szValue, out u64Ptr))
+                    {
+                        DisplayError("bad pointer <" + keyvalue.szValue + ">", a_functionarguments);
+                        return (false);
+                    }
+
+                    // Ruh-roh...
+                    if (u64Ptr == 0)
+                    {
+                        DisplayError("null pointer <" + a_functionarguments.aszCmd[2] + ">", a_functionarguments);
+                        return (false);
+                    }
+
+                    // The pointer to our raw image data...
+                    intptrPtr = (IntPtr)u64Ptr;
+
+                    // Bitonal uncompressed...
+                    if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.BW) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.NONE))
+                    {
+                        TWAIN.TiffBitonalUncompressed tiffbitonaluncompressed;
+                        tiffbitonaluncompressed = new TWAIN.TiffBitonalUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)keyvalue.iBytes);
+                        intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(Marshal.SizeOf(tiffbitonaluncompressed) + keyvalue.iBytes));
+                        NativeMethods.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffbitonaluncompressed)), intptrPtr, keyvalue.iBytes);
+                        Marshal.StructureToPtr(tiffbitonaluncompressed, intptrPtr, true);
+                        SetVariable(keyvalue.szKey, keyvalue.szValue, (int)(Marshal.SizeOf(tiffbitonaluncompressed) + keyvalue.iBytes), VariableScope.Local);
+                    }
+
+                    // Bitonal GROUP4...
+                    else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.BW) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.GROUP4))
+                    {
+                        TWAIN.TiffBitonalG4 tiffbitonalg4;
+                        tiffbitonalg4 = new TWAIN.TiffBitonalG4((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)keyvalue.iBytes);
+                        intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(Marshal.SizeOf(tiffbitonalg4) + keyvalue.iBytes));
+                        NativeMethods.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffbitonalg4)), intptrPtr, keyvalue.iBytes);
+                        Marshal.StructureToPtr(tiffbitonalg4, intptrPtr, true);
+                        SetVariable(keyvalue.szKey, keyvalue.szValue, (int)(Marshal.SizeOf(tiffbitonalg4) + keyvalue.iBytes), VariableScope.Local);
+                    }
+
+                    // Gray uncompressed...
+                    else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.GRAY) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.NONE))
+                    {
+                        TWAIN.TiffGrayscaleUncompressed tiffgrayscaleuncompressed;
+                        tiffgrayscaleuncompressed = new TWAIN.TiffGrayscaleUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)keyvalue.iBytes);
+                        intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(Marshal.SizeOf(tiffgrayscaleuncompressed) + keyvalue.iBytes));
+                        NativeMethods.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffgrayscaleuncompressed)), intptrPtr, keyvalue.iBytes);
+                        Marshal.StructureToPtr(tiffgrayscaleuncompressed, intptrPtr, true);
+                        SetVariable(keyvalue.szKey, keyvalue.szValue, (int)(Marshal.SizeOf(tiffgrayscaleuncompressed) + keyvalue.iBytes), VariableScope.Local);
+                    }
+
+                    // Gray JPEG...
+                    else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.GRAY) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.JPEG))
+                    {
+                        // No work to be done, we'll output JPEG...
+                    }
+
+                    // RGB uncompressed...
+                    else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.RGB) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.NONE))
+                    {
+                        TWAIN.TiffColorUncompressed tiffcoloruncompressed;
+                        tiffcoloruncompressed = new TWAIN.TiffColorUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)keyvalue.iBytes);
+                        intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(Marshal.SizeOf(tiffcoloruncompressed) + keyvalue.iBytes));
+                        NativeMethods.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffcoloruncompressed)), intptrPtr, keyvalue.iBytes);
+                        Marshal.StructureToPtr(tiffcoloruncompressed, intptrPtr, true);
+                        SetVariable(keyvalue.szKey, keyvalue.szValue, (int)(Marshal.SizeOf(tiffcoloruncompressed) + keyvalue.iBytes), VariableScope.Local);
+                    }
+
+                    // RGB JPEG...
+                    else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.RGB) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.JPEG))
+                    {
+                        // No work to be done, we'll output JPEG...
+                    }
+
+                    // Oh well...
+                    else
+                    {
+                        DisplayError("unsupported format <" + twimageinfo.PixelType + "," + twimageinfo.Compression + ">", a_functionarguments);
+                        return (false);
                     }
                     return (false);
 
@@ -2992,76 +3093,69 @@ namespace twaincscert
                         DisplayError("must specify a variable and tw_imagememxfer data", a_functionarguments);
                         return (false);
                     }
-                    // We need protection...
-                    lock (m_objectKeyValue)
+
+                    // Validate...
+                    keyvalue.szKey = a_functionarguments.aszCmd[2];
+                    if (!m_twain.CsvToImagememxfer(ref twimagememxfer, a_functionarguments.aszCmd[3]))
                     {
-                        KeyValue keyvalue = default(KeyValue);
-                        string[] asz = CSV.Parse(a_functionarguments.aszCmd[3]);
-                        if (asz.Length != 10)
+                        DisplayError("invalid tw_imagememxfer data <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
+                        return (false);
+                    }
+
+                    // Validate the pointer...
+                    if (twimagememxfer.Memory.TheMem == IntPtr.Zero)
+                    {
+                        DisplayError("null tw_imagememxfer.memory.themem data <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
+                        return (false);
+                    }
+
+                    // Only do this bit of there's something to do...
+                    if (twimagememxfer.BytesWritten > 0)
+                    {
+                        keyvalue.szKey = a_functionarguments.aszCmd[2];
+                        GetVariable(keyvalue.szKey, -1, out keyvalue.szValue, out keyvalue.iBytes, out blGlobal, VariableScope.Local);
+                        if (string.IsNullOrEmpty(keyvalue.szValue) || UInt64.TryParse(keyvalue.szValue, out u64Ptr))
                         {
-                            DisplayError("invalid tw_imagememxfer data (should be 10 elements) <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
-                            return (false);
-                        }
-                        int iBytesWritten;
-                        UInt64 u64TheMem;
-                        IntPtr intptrTheMem;
-                        if (!int.TryParse(asz[6], out iBytesWritten))
-                        {
-                            DisplayError("TW_IMAGEMEMXFER.BytesWritten isn't a number", a_functionarguments);
-                            return (false);
-                        }
-                        if (!UInt64.TryParse(asz[9], out u64TheMem))
-                        {
-                            DisplayError("TW_IMAGEMEMXFER.Memory.TheMem isn't a number", a_functionarguments);
-                            return (false);
-                        }
-                        intptrTheMem = (IntPtr)u64TheMem;
-                        if ((iBytesWritten > 0) && (intptrTheMem != IntPtr.Zero))
-                        {
-                            // Find the value for this key...
-                            int iKey;
-                            for (iKey = 0; iKey < m_lkeyvalue.Count; iKey++)
+                            // We're starting fresh...
+                            if (u64Ptr == 0)
                             {
-                                if (m_lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[2])
-                                {
-                                    break;
-                                }
+                                intptrPtr = Marshal.AllocHGlobal((int)twimagememxfer.BytesWritten);
+                                NativeMethods.MemCpy(intptrPtr, twimagememxfer.Memory.TheMem, (int)twimagememxfer.BytesWritten);
+                                SetVariable(keyvalue.szKey, intptrPtr.ToString(), (int)twimagememxfer.BytesWritten, VariableScope.Local);
                             }
-                            if (iKey < m_lkeyvalue.Count)
-                            {
-                                keyvalue = m_lkeyvalue[iKey];
-                            }
+                            // We're appending...
                             else
                             {
-                                keyvalue.szKey = a_functionarguments.aszCmd[2];
-                                keyvalue.szValue = "0";
-                                keyvalue.iBytes = 0;
-                                m_lkeyvalue.Add(keyvalue);
+                                intptrPtr = (IntPtr)u64Ptr;
+                                intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(keyvalue.iBytes + (int)twimagememxfer.BytesWritten));
+                                NativeMethods.MemCpy((IntPtr)((UInt64)intptrPtr + (UInt64)keyvalue.iBytes), twimagememxfer.Memory.TheMem, (int)twimagememxfer.BytesWritten);
+                                SetVariable(keyvalue.szKey, intptrPtr.ToString(), keyvalue.iBytes + (int)twimagememxfer.BytesWritten, VariableScope.Local);
                             }
-                            UInt64 u64Ptr;
-                            IntPtr intptrPtr;
-                            if (UInt64.TryParse(m_lkeyvalue[iKey].szValue, out u64Ptr))
-                            {
-                                // We're starting fresh...
-                                if (u64Ptr == 0)
-                                {
-                                    intptrPtr = Marshal.AllocHGlobal(iBytesWritten);
-                                    NativeMethods.MemCpy(intptrPtr, intptrTheMem, iBytesWritten);
-                                    keyvalue.szValue = intptrPtr.ToString();
-                                    keyvalue.iBytes = iBytesWritten;
-                                    m_lkeyvalue[iKey] = keyvalue;
-                                }
-                                // We're appending...
-                                else
-                                {
-                                    intptrPtr = (IntPtr)u64Ptr;
-                                    intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(m_lkeyvalue[iKey].iBytes + iBytesWritten));
-                                    NativeMethods.MemCpy((IntPtr)((UInt64)intptrPtr + (UInt64)m_lkeyvalue[iKey].iBytes), intptrTheMem, iBytesWritten);
-                                    keyvalue.szValue = intptrPtr.ToString();
-                                    keyvalue.iBytes += iBytesWritten;
-                                    m_lkeyvalue[iKey] = keyvalue;
-                                }
-                            }
+                        }
+                    }
+                    return (false);
+
+                // Free...
+                case "free":
+                    // Validate
+                    if (a_functionarguments.aszCmd.Length < 3)
+                    {
+                        DisplayError("must specify a variable for the image free command", a_functionarguments);
+                        return (false);
+                    }
+
+                    // Get the value...
+                    keyvalue.szKey = a_functionarguments.aszCmd[2];
+                    GetVariable(keyvalue.szKey, -1, out keyvalue.szValue, out keyvalue.iBytes, out blGlobal, VariableScope.Local);
+
+                    // If we have a pointer, free it, and set the varible to 0...
+                    if (UInt64.TryParse(keyvalue.szValue, out u64Ptr))
+                    {
+                        intptrPtr = (IntPtr)u64Ptr;
+                        if (intptrPtr != IntPtr.Zero)
+                        {
+                            Marshal.FreeHGlobal(intptrPtr);
+                            SetVariable(keyvalue.szKey, "0", 0, VariableScope.Local);
                         }
                     }
                     return (false);
@@ -3069,33 +3163,62 @@ namespace twaincscert
                 // Free...
                 case "save":
                     // Validate
-                    if (a_functionarguments.aszCmd.Length < 4)
+                    if (a_functionarguments.aszCmd.Length < 5)
                     {
-                        DisplayError("must specify a variable and a filename for the image save command", a_functionarguments);
+                        DisplayError("must specify a variable, xfermech, and a filename for the image save command", a_functionarguments);
                         return (false);
                     }
-                    // We need protection...
-                    lock (m_objectKeyValue)
+
+                    // More validating...
+                    if ((a_functionarguments.aszCmd[3].ToLowerInvariant() != "native") && (a_functionarguments.aszCmd[3].ToLowerInvariant() != "memfile") && (a_functionarguments.aszCmd[3].ToLowerInvariant() != "memory"))
                     {
-                        // Find the value for this key...
-                        int iKey;
-                        for (iKey = 0; iKey < m_lkeyvalue.Count; iKey++)
-                        {
-                            if (m_lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[2])
+                        DisplayError("unrecognized xfermech <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
+                        return (false);
+                    }
+
+                    // Get the value...
+                    keyvalue.szKey = a_functionarguments.aszCmd[2];
+                    GetVariable(keyvalue.szKey, -1, out keyvalue.szValue, out keyvalue.iBytes, out blGlobal, VariableScope.Local);
+
+                    // Validate the pointer...
+                    if (!UInt64.TryParse(keyvalue.szValue, out u64Ptr))
+                    {
+                        DisplayError("bad pointer <" + keyvalue.szKey + ">", a_functionarguments);
+                        return (false);
+                    }
+                    if (u64Ptr == 0)
+                    {
+                        DisplayError("null pointer <" + keyvalue.szKey + ">", a_functionarguments);
+                        return (false);
+                    }
+
+                    // Okay, we're ready to save...
+                    intptrPtr = (IntPtr)u64Ptr;
+                    switch (a_functionarguments.aszCmd[3].ToLowerInvariant())
+                    {
+                        default:
+                        case "native":
+                            abImage = m_twain.NativeToByteArray(intptrPtr, true);
+                            try
                             {
-                                UInt64 u64Ptr;
-                                IntPtr intptr;
-                                if (UInt64.TryParse(m_lkeyvalue[iKey].szValue, out u64Ptr))
-                                {
-                                    if (u64Ptr > 0)
-                                    {
-                                        intptr = (IntPtr)u64Ptr;
-                                        NativeMethods.WriteImageFile(a_functionarguments.aszCmd[3], intptr, m_lkeyvalue[iKey].iBytes);
-                                    }
-                                }
-                                break;
+                                File.WriteAllBytes(a_functionarguments.aszCmd[4], abImage);
                             }
-                        }
+                            catch (Exception exception)
+                            {
+                                DisplayError("image save failed <" + a_functionarguments.aszCmd[4] + "> - " + exception.Message, a_functionarguments);
+                                return (false);
+                            }
+                            break;
+
+                        case "memfile":
+                        case "memory":
+                            iResult = NativeMethods.WriteImageFile(a_functionarguments.aszCmd[4], intptrPtr, keyvalue.iBytes);
+                            if (iResult == -1)
+                            {
+                                DisplayError("image save failed <" + a_functionarguments.aszCmd[4] + ">", a_functionarguments);
+                                return (false);
+                            }
+                            break;
                     }
                     return (false);
             }
@@ -3777,8 +3900,6 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdSetGlobal(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            int iKey;
-
             // If we don't have any arguments, list what we have...
             if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[1] == null))
             {
@@ -3803,44 +3924,8 @@ namespace twaincscert
                 return (false);
             }
 
-            // We need protection...
-            lock (m_objectKeyValue)
-            {
-                // Find the value for this key...
-                for (iKey = 0; iKey < m_lkeyvalue.Count; iKey++)
-                {
-                    if (m_lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[1])
-                    {
-                        break;
-                    }
-                }
-
-                // If we have no value to set, then delete this item...
-                if ((a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null))
-                {
-                    if (iKey < m_lkeyvalue.Count)
-                    {
-                        m_lkeyvalue.Remove(m_lkeyvalue[iKey]);
-                    }
-                    return (false);
-                }
-
-                // Create a new keyvalue...
-                KeyValue keyvalueNew = new KeyValue();
-                keyvalueNew.szKey = a_functionarguments.aszCmd[1];
-                keyvalueNew.szValue = a_functionarguments.aszCmd[2];
-
-                // If the key already exists, update its value...
-                if (iKey < m_lkeyvalue.Count)
-                {
-                    m_lkeyvalue[iKey] = keyvalueNew;
-                    return (false);
-                }
-
-                // Otherwise, add it, and sort...
-                m_lkeyvalue.Add(keyvalueNew);
-                m_lkeyvalue.Sort(SortByKeyAscending);
-            }
+            // Set the variable in the global list...
+            SetVariable(a_functionarguments.aszCmd[1], (a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null) ? "" : a_functionarguments.aszCmd[2], 0, VariableScope.Global);
 
             // All done...
             return (false);
@@ -3855,7 +3940,6 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdSetLocal(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            int iKey;
             CallStack callstack;
 
             // If we don't have a stack, add this to the global list...
@@ -3906,43 +3990,8 @@ namespace twaincscert
                 return (false);
             }
 
-            // Find the value for this key...
-            for (iKey = 0; iKey < callstack.lkeyvalue.Count; iKey++)
-            {
-                if (callstack.lkeyvalue[iKey].szKey == a_functionarguments.aszCmd[1])
-                {
-                    break;
-                }
-            }
-
-            // If we have no value to set, then delete this item...
-            if ((a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null))
-            {
-                if (iKey < callstack.lkeyvalue.Count)
-                {
-                    callstack.lkeyvalue.Remove(callstack.lkeyvalue[iKey]);
-                    m_lcallstack[m_lcallstack.Count - 1] = callstack;
-                }
-                return (false);
-            }
-
-            // Create a new keyvalue...
-            KeyValue keyvalueNew = new KeyValue();
-            keyvalueNew.szKey = a_functionarguments.aszCmd[1];
-            keyvalueNew.szValue = a_functionarguments.aszCmd[2];
-
-            // If the key already exists, update its value...
-            if (iKey < callstack.lkeyvalue.Count)
-            {
-                callstack.lkeyvalue[iKey] = keyvalueNew;
-                m_lcallstack[m_lcallstack.Count - 1] = callstack;
-                return (false);
-            }
-
-            // Otherwise, add it, and sort...
-            callstack.lkeyvalue.Add(keyvalueNew);
-            callstack.lkeyvalue.Sort(SortByKeyAscending);
-            m_lcallstack[m_lcallstack.Count - 1] = callstack;
+            // Set the variable in the local list...
+            SetVariable(a_functionarguments.aszCmd[1], (a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null) ? "" : a_functionarguments.aszCmd[2], 0, VariableScope.Global);
 
             // All done...
             return (false);
@@ -4534,43 +4583,14 @@ namespace twaincscert
                     // and if that fails go to the global list...
                     else if (szSymbol.StartsWith("${get:"))
                     {
-                        bool blGetFound = false;
+                        int iBytes = 0;
+                        bool blGlobal = false;
 
                         // Strip off ${...}
                         string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(6);
 
-                        // Local check...
-                        if ((m_lcallstack.Count > 0) && (m_lcallstack[m_lcallstack.Count - 1].lkeyvalue != null))
-                        {
-                            foreach (KeyValue keyvalue in m_lcallstack[m_lcallstack.Count - 1].lkeyvalue)
-                            {
-                                if (keyvalue.szKey == szGet)
-                                {
-                                    szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
-                                    blGetFound = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        // Global check...
-                        if (!blGetFound)
-                        {
-                            lock (m_objectKeyValue)
-                            {
-                                if (m_lkeyvalue.Count >= 0)
-                                {
-                                    foreach (KeyValue keyvalue in m_lkeyvalue)
-                                    {
-                                        if (keyvalue.szKey == szGet)
-                                        {
-                                            szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // Get the value, if any...
+                        GetVariable(szGet, -1, out szValue, out iBytes, out blGlobal);
                     }
 
                     // Use value as a GET key to get a value, we don't allow a null in this
@@ -4579,65 +4599,18 @@ namespace twaincscert
                     // first, and if that fails go to the global list...
                     if (szSymbol.StartsWith("${getindex:"))
                     {
-                        bool blGetFound = false;
+                        int iIndex = 0;
+                        int iBytes = 0;
+                        bool blGlobal = false;
 
                         // Strip off ${...}, split name and index...
                         string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(11);
                         string[] aszGet = szGet.Split('.');
 
-                        // Local check...
-                        if ((m_lcallstack.Count > 0) && (m_lcallstack[m_lcallstack.Count - 1].lkeyvalue != null))
+                        // Get the value, if any...
+                        if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
                         {
-                            // Split name and index...
-                            foreach (KeyValue keyvalue in m_lcallstack[m_lcallstack.Count - 1].lkeyvalue)
-                            {
-                                if (keyvalue.szKey == aszGet[0])
-                                {
-                                    int iIndex = 0;
-                                    szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
-                                    string[] aszValue = CSV.Parse(szValue);
-                                    szValue = ""; // make sure we're empty before processing...
-                                    if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
-                                    {
-                                        if ((iIndex >= 0) && (iIndex < aszValue.Length))
-                                        {
-                                            szValue = aszValue[iIndex];
-                                        }
-                                    }
-                                    blGetFound = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        // Global check...
-                        if (!blGetFound)
-                        {
-                            lock (m_objectKeyValue)
-                            {
-                                if (m_lkeyvalue.Count >= 0)
-                                {
-                                    // Split name and index...
-                                    foreach (KeyValue keyvalue in m_lkeyvalue)
-                                    {
-                                        if (keyvalue.szKey == aszGet[0])
-                                        {
-                                            int iIndex = 0;
-                                            szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
-                                            string[] aszValue = CSV.Parse(szValue);
-                                            szValue = ""; // make sure we're empty before processing...
-                                            if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
-                                            {
-                                                if ((iIndex >= 0) && (iIndex < aszValue.Length))
-                                                {
-                                                    szValue = aszValue[iIndex];
-                                                }
-                                            }
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
+                            GetVariable(aszGet[0], iIndex, out szValue, out iBytes, out blGlobal);
                         }
                     }
 
@@ -4785,6 +4758,209 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Get a variable from the local or global lists...
+        /// </summary>
+        /// <param name="a_szKey">key to find</param>
+        /// <param name="a_iIndex">-1 for all, 0 - n for a CSV index</param>
+        /// <param name="a_szValue">value found</param>
+        /// <param name="a_iBytes">bytes found</param>
+        /// <param name="a_blGlobal">true if global</param>
+        /// <param name="a_variablescope">scope</param>
+        /// <returns>true if found</returns>
+        private bool GetVariable(string a_szKey, int a_iIndex, out string a_szValue, out int a_iBytes, out bool a_blGlobal, VariableScope a_variablescope = VariableScope.Auto)
+        {
+            // Local check...
+            if ((a_variablescope != VariableScope.Global) && (m_lcallstack.Count > 0) && (m_lcallstack[m_lcallstack.Count - 1].lkeyvalue != null))
+            {
+                foreach (KeyValue keyvalue in m_lcallstack[m_lcallstack.Count - 1].lkeyvalue)
+                {
+                    if (keyvalue.szKey == a_szKey)
+                    {
+                        if (a_iIndex == -1)
+                        {
+                            a_szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                            a_iBytes = keyvalue.iBytes;
+                            a_blGlobal = false;
+                            return (true);
+                        }
+                        else
+                        {
+                            string[] aszValue = CSV.Parse((keyvalue.szValue == null) ? "" : keyvalue.szValue);
+                            a_szValue = ((a_iIndex >= 0) && (a_iIndex < aszValue.Length)) ? aszValue[a_iIndex] : "";
+                            a_iBytes = keyvalue.iBytes;
+                            a_blGlobal = false;
+                            return (true);
+                        }
+                    }
+                }
+            }
+
+            // Global check...
+            if (a_variablescope != VariableScope.Local)
+            {
+                lock (m_objectKeyValue)
+                {
+                    if (m_lkeyvalue.Count >= 0)
+                    {
+                        foreach (KeyValue keyvalue in m_lkeyvalue)
+                        {
+                            if (keyvalue.szKey == a_szKey)
+                            {
+                                if (a_iIndex == -1)
+                                {
+                                    a_szValue = (keyvalue.szValue == null) ? "" : keyvalue.szValue;
+                                    a_iBytes = keyvalue.iBytes;
+                                    a_blGlobal = true;
+                                    return (true);
+                                }
+                                else
+                                {
+                                    string[] aszValue = CSV.Parse((keyvalue.szValue == null) ? "" : keyvalue.szValue);
+                                    a_szValue = ((a_iIndex >= 0) && (a_iIndex < aszValue.Length)) ? aszValue[a_iIndex] : "";
+                                    a_iBytes = keyvalue.iBytes;
+                                    a_blGlobal = true;
+                                    return (true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // No joy...
+            a_szValue = "";
+            a_iBytes = 0;
+            a_blGlobal = false;
+            return (false);
+        }
+
+        /// <summary>
+        /// Set a global or a local variable...
+        /// </summary>
+        /// <param name="a_szKey">key to set</param>
+        /// <param name="a_szValue">value to set</param>
+        /// <param name="a_iBytes">bytes to set</param>
+        /// <param name="a_variablescope">scope</param>
+        public void SetVariable(string a_szKey, string a_szValue, int a_iBytes, VariableScope a_variablescope = VariableScope.Auto)
+        {
+            int iKey;
+
+            // If automatic, check if we have a value in either list...
+            if (a_variablescope == VariableScope.Auto)
+            {
+                string szValue;
+                int iBytes;
+                bool blGlobal;
+                bool blFound = GetVariable(a_szKey, -1, out szValue, out iBytes, out blGlobal);
+                // If not found, force local...
+                if (!blFound)
+                {
+                    a_variablescope = VariableScope.Local;
+                }
+                // Otherwise, force to what we found...
+                else
+                {
+                    a_variablescope = blGlobal ? VariableScope.Global : VariableScope.Local;
+                }
+            }
+
+            // We're local if not-global, or if we don't have a stack...
+            if ((a_variablescope == VariableScope.Local) || (m_lcallstack.Count == 0))
+            {
+                CallStack callstack;
+
+                // This is what we'll be referencing...
+                callstack = m_lcallstack[m_lcallstack.Count - 1];
+                if (callstack.lkeyvalue == null)
+                {
+                    callstack.lkeyvalue = new List<KeyValue>();
+                }
+
+                // Find the value for this key...
+                for (iKey = 0; iKey < callstack.lkeyvalue.Count; iKey++)
+                {
+                    if (callstack.lkeyvalue[iKey].szKey == a_szKey)
+                    {
+                        break;
+                    }
+                }
+
+                // If we have no value to set, then delete this item...
+                if (string.IsNullOrEmpty(a_szValue))
+                {
+                    if (iKey < callstack.lkeyvalue.Count)
+                    {
+                        callstack.lkeyvalue.Remove(callstack.lkeyvalue[iKey]);
+                        m_lcallstack[m_lcallstack.Count - 1] = callstack;
+                    }
+                    return;
+                }
+
+                // Create a new keyvalue...
+                KeyValue keyvalueNew = default(KeyValue);
+                keyvalueNew.szKey = a_szKey;
+                keyvalueNew.szValue = a_szValue;
+                keyvalueNew.iBytes = a_iBytes;
+
+                // If the key already exists, update its value...
+                if (iKey < callstack.lkeyvalue.Count)
+                {
+                    callstack.lkeyvalue[iKey] = keyvalueNew;
+                    m_lcallstack[m_lcallstack.Count - 1] = callstack;
+                    return;
+                }
+
+                // Otherwise, add it, and sort...
+                callstack.lkeyvalue.Add(keyvalueNew);
+                callstack.lkeyvalue.Sort(SortByKeyAscending);
+                m_lcallstack[m_lcallstack.Count - 1] = callstack;
+
+                // All done...
+                return;
+            }
+
+            // Global: we need protection...
+            lock (m_objectKeyValue)
+            {
+                // Find the value for this key...
+                for (iKey = 0; iKey < m_lkeyvalue.Count; iKey++)
+                {
+                    if (m_lkeyvalue[iKey].szKey == a_szKey)
+                    {
+                        break;
+                    }
+                }
+
+                // If we have no value to set, then delete this item...
+                if (string.IsNullOrEmpty(a_szValue))
+                {
+                    if (iKey < m_lkeyvalue.Count)
+                    {
+                        m_lkeyvalue.Remove(m_lkeyvalue[iKey]);
+                    }
+                    return;
+                }
+
+                // Create a new keyvalue...
+                KeyValue keyvalueNew = default(KeyValue);
+                keyvalueNew.szKey = a_szKey;
+                keyvalueNew.szValue = a_szValue;
+                keyvalueNew.iBytes = a_iBytes;
+
+                // If the key already exists, update its value...
+                if (iKey < m_lkeyvalue.Count)
+                {
+                    m_lkeyvalue[iKey] = keyvalueNew;
+                    return;
+                }
+
+                // Otherwise, add it, and sort...
+                m_lkeyvalue.Add(keyvalueNew);
+                m_lkeyvalue.Sort(SortByKeyAscending);
+            }
+        }
+
+        /// <summary>
         /// A comparison operator for sorting keys in CmdSet...
         /// </summary>
         /// <param name="name1"></param>
@@ -4858,7 +5034,7 @@ namespace twaincscert
             public List<KeyValue> lkeyvalue;
         }
 
-    #endregion
+        #endregion
 
 
         // Private Attributes
@@ -8644,6 +8820,30 @@ namespace twaincscert
             else
             {
                 memcpy(dest, src, count);
+            }
+        }
+
+        [DllImport("kernel32.dll", EntryPoint = "MoveMemory", SetLastError = false)]
+        private static extern void MoveMemory(IntPtr dest, IntPtr src, uint count);
+
+        [DllImport("libc.so", EntryPoint = "memmove", SetLastError = false)]
+        private static extern void memmove(IntPtr dest, IntPtr src, int count);
+
+        /// <summary>
+        /// Safely move intptr to intptr...
+        /// </summary>
+        /// <param name="dest"></param>
+        /// <param name="src"></param>
+        /// <param name="count"></param>
+        public static void MemMove(IntPtr dest, IntPtr src, int count)
+        {
+            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+            {
+                MoveMemory(dest, src, (uint)count);
+            }
+            else
+            {
+                memmove(dest, src, count);
             }
         }
 
