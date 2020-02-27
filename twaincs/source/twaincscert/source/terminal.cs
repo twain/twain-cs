@@ -1654,8 +1654,14 @@ namespace twaincscert
                 return (false);
             }
 
-            // Get the length...
-            if (!UInt64.TryParse(a_functionarguments.aszCmd[1], out u64Handle))
+            // Get the data from the variable...
+            bool blGlobal = false;
+            KeyValue keyvalue = default(KeyValue);
+            keyvalue.szKey = a_functionarguments.aszCmd[1];
+            GetVariable(keyvalue.szKey, -1, out keyvalue.szValue, out keyvalue.iBytes, out blGlobal);
+
+            // Get the handle...
+            if (!UInt64.TryParse(keyvalue.szValue, out u64Handle))
             {
                 a_functionarguments.sts = TWAIN.STS.BADVALUE;
                 a_functionarguments.szReturnValue = "0";
@@ -1664,9 +1670,13 @@ namespace twaincscert
                 return (false);
             }
 
-            // Allocate the memory...
-            intptrHandle = (IntPtr)u64Handle;
-            m_twain.DsmMemFree(ref intptrHandle);
+            // If the handle is non-zero, free it and clear the variable...
+            if (u64Handle != 0)
+            {
+                intptrHandle = (IntPtr)u64Handle;
+                m_twain.DsmMemFree(ref intptrHandle);
+                SetVariable(keyvalue.szKey, "0", 0, blGlobal ? VariableScope.Global : VariableScope.Local);
+            }
 
             // All done...
             a_functionarguments.sts = TWAIN.STS.SUCCESS;
@@ -2965,6 +2975,7 @@ namespace twaincscert
             IntPtr intptrPtr = IntPtr.Zero;
             bool blGlobal = false;
             byte[] abImage;
+            string szFilename = "";
             KeyValue keyvalue = default(KeyValue);
             TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
             TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
@@ -3201,11 +3212,16 @@ namespace twaincscert
                             abImage = m_twain.NativeToByteArray(intptrPtr, true);
                             try
                             {
-                                File.WriteAllBytes(a_functionarguments.aszCmd[4], abImage);
+                                szFilename = a_functionarguments.aszCmd[4];
+                                if (!Path.GetFileName(szFilename).Contains("."))
+                                {
+                                    szFilename += ".bmp";
+                                }
+                                File.WriteAllBytes(szFilename, abImage);
                             }
                             catch (Exception exception)
                             {
-                                DisplayError("image save failed <" + a_functionarguments.aszCmd[4] + "> - " + exception.Message, a_functionarguments);
+                                DisplayError("image save failed <" + szFilename + "> - " + exception.Message, a_functionarguments);
                                 return (false);
                             }
                             break;
@@ -3991,7 +4007,7 @@ namespace twaincscert
             }
 
             // Set the variable in the local list...
-            SetVariable(a_functionarguments.aszCmd[1], (a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null) ? "" : a_functionarguments.aszCmd[2], 0, VariableScope.Global);
+            SetVariable(a_functionarguments.aszCmd[1], (a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[2] == null) ? "" : a_functionarguments.aszCmd[2], 0, VariableScope.Local);
 
             // All done...
             return (false);
@@ -4588,6 +4604,11 @@ namespace twaincscert
 
                         // Strip off ${...}
                         string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(6);
+
+                        if (szGet == "twain.state")
+                        {
+                            iBytes = 0;
+                        }
 
                         // Get the value, if any...
                         GetVariable(szGet, -1, out szValue, out iBytes, out blGlobal);

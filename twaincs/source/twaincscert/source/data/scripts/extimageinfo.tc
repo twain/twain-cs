@@ -12,11 +12,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Init stuff...
 ;
-set twextimageinfo '0'
-set twextimageinfo.numinfos '0'
-set twextimageinfo.twinfo ''
-set comma ''
-set tweilist '${arg:2}'
+setlocal twextimageinfo '0'
+setlocal twextimageinfo.numinfos '0'
+setlocal twextimageinfo.twinfo ''
+setlocal comma ''
+setlocal tweilist '${arg:2}'
 
 
 
@@ -25,14 +25,14 @@ set tweilist '${arg:2}'
 ;
 if '${arg:${get:twextimageinfo.numinfos}}' == '' goto MAIN.DATEXTIMAGEINGO
 :MAIN.NEXTTWINFO
-set twei '${getindex:tweilist.${get:twextimageinfo.numinfos}}'
+setlocal twei '${getindex:tweilist.${get:twextimageinfo.numinfos}}'
 if '${get:twei}' == '' goto MAIN.SETTWEXTIMAGEINFO
-set twextimageinfo.twinfo '${get:twextimageinfo.twinfo}${get:comma}${get:twei},0,0,0,0'
+setlocal twextimageinfo.twinfo '${get:twextimageinfo.twinfo}${get:comma}${get:twei},0,0,0,0'
 increment twextimageinfo.numinfos '${get:twextimageinfo.numinfos}' '1'
-set comma ','
+setlocal comma ','
 goto MAIN.NEXTTWINFO
 :MAIN.SETTWEXTIMAGEINFO
-set twextimageinfo '${get:twextimageinfo.numinfos},${get:twextimageinfo.twinfo}'
+setlocal twextimageinfo '${get:twextimageinfo.numinfos},${get:twextimageinfo.twinfo}'
 
 
 
@@ -50,7 +50,7 @@ if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 ; We've passed...
 ;
 :MAIN.PASS
-set '${arg:1}' '${ret:}'
+setglobal '${arg:1}' '${ret:}'
 return 'pass'
 
 

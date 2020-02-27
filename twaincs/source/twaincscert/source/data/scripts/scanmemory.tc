@@ -11,25 +11,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Init stuff...
 ;
-setlocal twain.state '0'
 setlocal index.twpendingxfers.count '0'
 setlocal index.twsetupmemxfer.preferred '2'
 setlocal image.pointer '0'
 setlocal imagecount '0'
+setglobal g_twainstate '0'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Load and open the DSM...
 ;
-setlocal twain.state '1'
+setglobal g_twainstate '1'
 dsmload
 echo 'dsmload'
-setlocal twain.state '2'
+setglobal g_twainstate '2'
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 echo 'parent/opendsm.............${sts:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-setlocal twain.state '3'
+setglobal g_twainstate '3'
 
 
 
@@ -39,7 +39,7 @@ setlocal twain.state '3'
 dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
 echo 'identity/opends............${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-setlocal twain.state '4'
+setglobal g_twainstate '4'
 
 
 
@@ -93,7 +93,7 @@ wait reset
 dsmentry src ds dg_control dat_userinterface msg_enableds '0,0'
 echo 'userinterface/enableds.....${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-setlocal twain.state '5'
+setglobal g_twainstate '5'
 
 
 
@@ -114,12 +114,12 @@ if '${ret:}' !~contains 'msg_xferready' goto MAIN.PASS
 ; image...
 ;
 :MAIN.NEXTIMAGEMEMXFER.STATE6
-setlocal twain.state '6'
+setglobal g_twainstate '6'
 increment imagecount '${get:imagecount}' 1
 image free memimage
 goto MAIN.NEXTIMAGEMEMXFER
 :MAIN.NEXTIMAGEMEMXFER.STATE7
-setlocal twain.state '7'
+setglobal g_twainstate '7'
 ;
 :MAIN.NEXTIMAGEMEMXFER
 dsmentry src ds dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,${get:twsetupmemxfer.preferred},${get:image.pointer}'
@@ -130,7 +130,7 @@ image append memimage '${ret:}'
 goto MAIN.NEXTIMAGEMEMXFER.STATE7
 :MAIN.NEXTIMAGEMEMXFER.XFERDONE
 image append memimage '${ret:}'
-setlocal twain.state '7'
+setglobal g_twainstate '7'
 
 
 
@@ -153,7 +153,7 @@ echo 'pendingxfers/endxfer.......${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 if '${ret:${get:index.twpendingxfers.count}}' != '0' goto MAIN.NEXTIMAGEMEMXFER.STATE6
 image free memimage
-setlocal twain.state '5'
+setglobal g_twainstate '5'
 
 
 
@@ -167,7 +167,7 @@ goto MAIN.EXIT
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; We're run into a problem...
+; We've run into a problem...
 ;
 :MAIN.FAIL
 echo 'ERROR...........${sts:}'
@@ -194,34 +194,34 @@ return '${get:main.result}'
 ;
 freepointer '${get:image.pointer)'
 setlocal image.pointer '0'
-if '${get:twain.state}' < '7' goto REWIND.6
+if '${get:g_twainstate}' < '7' goto REWIND.6
 dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
 echo 'pendingxfers/endxfer.......${sts:}'
-setlocal twain.state '6'
+setglobal g_twainstate '6'
 :REWIND.6
-if '${get:twain.state}' < '6' goto REWIND.5
+if '${get:g_twainstate}' < '6' goto REWIND.5
 dsmentry src ds dg_control dat_pendingxfers msg_reset '0,0'
 echo 'pendingxfers/reset.........${sts:}'
-setlocal twain.state '5'
+setglobal g_twainstate '5'
 :REWIND.5
-if '${get:twain.state}' < '5' goto REWIND.4
+if '${get:g_twainstate}' < '5' goto REWIND.4
 dsmentry src ds dg_control dat_userinterface msg_disableds '0,0'
 echo 'userinterface/disableds....${sts:}'
-setlocal twain.state '4'
+setglobal g_twainstate '4'
 :REWIND.4
-if '${get:twain.state}' < '4' goto REWIND.3
+if '${get:g_twainstate}' < '4' goto REWIND.3
 dsmentry src null dg_control dat_identity msg_closeds '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
 echo 'identity/closeds...........${sts:}'
-setlocal twain.state '3'
+setglobal g_twainstate '3'
 :REWIND.3
-if '${get:twain.state}' < '3' goto REWIND.2
+if '${get:g_twainstate}' < '3' goto REWIND.2
 dsmentry src null dg_control dat_parent msg_closedsm hwnd
 echo 'parent/closedsm............${sts:}'
-setlocal twain.state '2'
+setglobal g_twainstate '2'
 :REWIND.2
-if '${get:twain.state}' < '2' goto REWIND.1
+if '${get:g_twainstate}' < '2' goto REWIND.1
 dsmunload
 echo 'dsmunload'
-setlocal twain.state '1'
+setglobal g_twainstate '1'
 :REWIND.1
 return
