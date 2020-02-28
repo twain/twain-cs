@@ -1,9 +1,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Scannative v1.0 21-Jan-2020
-; ${arg:1} - product name of scanner to open
-; returns: pass or fail
+; Scanfile
+;   Scan with DAT_IMAGENATIVEXFER...
 ;
-; Scan with DAT_IMAGENATIVEXFER...
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   (none)
+;
+; Locals
+;   image.handle - handle to native transfer
+;   image.count - count of images, starting at 1
+;   image.folder - location of the images
+;   twainstate - pass/fail result of all tests
+;
+; Returns
+;   pass or fail
 ;
 
 
@@ -11,25 +23,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Init stuff...
 ;
-setlocal index.twpendingxfers.count '0'
-setlocal index.twsetupmemxfer.preferred '2'
-setlocal nativehandle '0'
-setlocal imagecount '0'
-setglobal g_twainstate '0'
+run 'LoadTables'
+setlocal image.handle '0'
+setlocal image.count '0'
+setlocal image.folder '${folder:desktop}/twaincscert'
+setlocal twainstate '0'
+image cleanfolder '${get:image.folder}'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Load and open the DSM...
 ;
-setglobal g_twainstate '1'
+setlocal twainstate '1'
 dsmload
 echo 'dsmload'
-setglobal g_twainstate '2'
+setlocal twainstate '2'
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 echo 'parent/opendsm.............${sts:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-setglobal g_twainstate '3'
+setlocal twainstate '3'
 
 
 
@@ -37,9 +50,10 @@ setglobal g_twainstate '3'
 ; Open the driver...
 ;
 dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
-echo 'identity/opends............${sts:} - ${ret:}'
+setlocal twidentity '${ret:}'
+echo 'identity/opends............${sts:} - ${get:twidentity}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-setglobal g_twainstate '4'
+setlocal twainstate '4'
 
 
 
@@ -59,7 +73,7 @@ wait reset
 dsmentry src null dg_control dat_userinterface msg_enableds '0,0'
 echo 'userinterface/enableds.....${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-setglobal g_twainstate '5'
+setlocal twainstate '5'
 
 
 
@@ -76,15 +90,15 @@ if '${ret:}' !~contains 'msg_xferready' goto MAIN.PASS
 ; Do a native transfer...
 ;
 :MAIN.NEXTIMAGENATIVEXFER
-setglobal g_twainstate '6'
-increment imagecount '${get:imagecount}' 1
+setlocal twainstate '6'
+increment image.count '${get:image.count}' 1
 dsmentry src ds dg_image dat_imagenativexfer msg_get '0'
-setlocal nativehandle '${ret:}'
+setlocal image.handle '${ret:}'
 echo 'imagenativexfer/get........${sts:} - ${ret:}'
 if '${sts:}' != 'XFERDONE' goto MAIN.FAIL
-image save nativehandle native '${folder:desktop}/twaincscert/img${format:D6|${get:imagecount}}'
-freehandle nativehandle
-setglobal g_twainstate '7'
+image save image.handle native '${get:image.folder}/img${format:D6|${get:image.count}}'
+free handle image.handle
+setlocal twainstate '7'
 
 
 
@@ -94,8 +108,8 @@ setglobal g_twainstate '7'
 dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
 echo 'pendingxfers/endxfer.......${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-if '${ret:${get:index.twpendingxfers.count}}' != '0' goto MAIN.NEXTIMAGENATIVEXFER
-setglobal g_twainstate '5'
+if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.NEXTIMAGENATIVEXFER
+setlocal twainstate '5'
 
 
 
@@ -122,45 +136,49 @@ goto MAIN.EXIT
 ; Rewind the driver, close and unload the DSM, return...
 ;
 :MAIN.EXIT
-call TWAIN.REWIND
+free handle image.handle
+call TWAIN.REWIND '${get:twainstate}' '${get:twidentity}'
 return '${get:main.result}'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: Rewind from any TWAIN state...
+; arg:1 - twainstate
+; arg:2 - twidentity
 ; returns: (nothing)
 ;
 :TWAIN.REWIND
 ;
-if '${get:g_twainstate}' < '7' goto REWIND.6
+setlocal twainstate '${arg:1}'
+if '${get:twainstate}' < '7' goto REWIND.6
 dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
 echo 'pendingxfers/endxfer.......${sts:}'
-setglobal g_twainstate '6'
+setlocal twainstate '6'
 :REWIND.6
-if '${get:g_twainstate}' < '6' goto REWIND.5
+if '${get:twainstate}' < '6' goto REWIND.5
 dsmentry src ds dg_control dat_pendingxfers msg_reset '0,0'
 echo 'pendingxfers/reset.........${sts:}'
-setglobal g_twainstate '5'
+setlocal twainstate '5'
 :REWIND.5
-if '${get:g_twainstate}' < '5' goto REWIND.4
-dsmentry src null dg_control dat_userinterface msg_disableds '0,0'
+if '${get:twainstate}' < '5' goto REWIND.4
+dsmentry src ds dg_control dat_userinterface msg_disableds '0,0'
 echo 'userinterface/disableds....${sts:}'
-setglobal g_twainstate '4'
+setlocal twainstate '4'
 :REWIND.4
-if '${get:g_twainstate}' < '4' goto REWIND.3
-dsmentry src null dg_control dat_identity msg_closeds '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
+if '${get:twainstate}' < '4' goto REWIND.3
+dsmentry src null dg_control dat_identity msg_closeds '${arg:2}'
 echo 'identity/closeds...........${sts:}'
-setglobal g_twainstate '3'
+setlocal twainstate '3'
 :REWIND.3
-if '${get:g_twainstate}' < '3' goto REWIND.2
+if '${get:twainstate}' < '3' goto REWIND.2
 dsmentry src null dg_control dat_parent msg_closedsm hwnd
 echo 'parent/closedsm............${sts:}'
-setglobal g_twainstate '2'
+setlocal twainstate '2'
 :REWIND.2
-if '${get:g_twainstate}' < '2' goto REWIND.1
+if '${get:twainstate}' < '2' goto REWIND.1
 dsmunload
 echo 'dsmunload'
-setglobal g_twainstate '1'
+setlocal twainstate '1'
 :REWIND.1
-return
+return ${get:twainstate}'

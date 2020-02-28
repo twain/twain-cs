@@ -122,8 +122,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDsmUnload,                    new string[] { "dsmunload" }));
 
             // Scripting...
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdAllocatehandle,               new string[] { "allocatehandle" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdAllocatepointer,              new string[] { "allocatepointer" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdAllocate,                     new string[] { "allocate" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCall,                         new string[] { "call" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCd,                           new string[] { "cd", "pwd" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdClean,                        new string[] { "clean" }));
@@ -136,8 +135,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitlesuite,               new string[] { "echo.titlesuite" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitletest,                new string[] { "echo.titletest" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoYellow,                   new string[] { "echo.yellow" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFreehandle,                   new string[] { "freehandle" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFreepointer,                  new string[] { "freepointer" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFree,                         new string[] { "free" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGc,                           new string[] { "gc" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGoto,                         new string[] { "goto" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIf,                           new string[] { "if" }));
@@ -1185,19 +1183,20 @@ namespace twaincscert
         #region Private Methods (commands)
 
         /// <summary>
-        /// Allocate a handle, we'll get an IntPtr to it...
+        /// Allocate a handle or a pointer, we'll get an IntPtr to it...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
         /// <returns>true to quit</returns>
-        private bool CmdAllocatehandle(ref Interpreter.FunctionArguments a_functionarguments)
+        private bool CmdAllocate(ref Interpreter.FunctionArguments a_functionarguments)
         {
             UInt32 u32Bytes = 0;
             IntPtr intptr = IntPtr.Zero;
             CallStack callstack = m_lcallstack[m_lcallstack.Count - 1];
 
             // Validate...
-            if (a_functionarguments.aszCmd.Length != 2)
+            if (a_functionarguments.aszCmd.Length != 4)
             {
+                DisplayError("command needs 3 arguments", a_functionarguments);
                 a_functionarguments.sts = TWAIN.STS.BADVALUE;
                 a_functionarguments.szReturnValue = "0";
                 callstack.functionarguments.sts = a_functionarguments.sts;
@@ -1205,21 +1204,56 @@ namespace twaincscert
                 return (false);
             }
 
-            // Get the length...
-            if (!UInt32.TryParse(a_functionarguments.aszCmd[1], out u32Bytes))
+            // Get the size...
+            if (!UInt32.TryParse(a_functionarguments.aszCmd[3], out u32Bytes))
             {
+                DisplayError("size is not a number <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
                 a_functionarguments.sts = TWAIN.STS.BADVALUE;
                 a_functionarguments.szReturnValue = "0";
                 callstack.functionarguments.sts = a_functionarguments.sts;
                 callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+                SetVariable(a_functionarguments.aszCmd[2], "0", 0, VariableScope.Local);
                 return (false);
             }
 
-            // Allocate the memory...
-            intptr = m_twain.DsmMemAlloc(u32Bytes);
-            if (intptr == IntPtr.Zero)
+            // Allocate a handle...
+            if (a_functionarguments.aszCmd[1].ToLowerInvariant() == "handle")
             {
-                a_functionarguments.sts = TWAIN.STS.LOWMEMORY;
+                // Allocate the memory...
+                intptr = m_twain.DsmMemAlloc(u32Bytes);
+                if (intptr == IntPtr.Zero)
+                {
+                    DisplayError("allocation failed <" + a_functionarguments.aszCmd[2] + ">", a_functionarguments);
+                    a_functionarguments.sts = TWAIN.STS.LOWMEMORY;
+                    a_functionarguments.szReturnValue = "0";
+                    callstack.functionarguments.sts = a_functionarguments.sts;
+                    callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+                    SetVariable(a_functionarguments.aszCmd[2], "0", 0, VariableScope.Local);
+                    return (false);
+                }
+            }
+
+            // Allocate a pointer...
+            else if (a_functionarguments.aszCmd[1].ToLowerInvariant() == "pointer")
+            {
+                intptr = Marshal.AllocHGlobal((IntPtr)u32Bytes);
+                if (intptr == IntPtr.Zero)
+                {
+                    DisplayError("allocation failed <" + a_functionarguments.aszCmd[2] + ">", a_functionarguments);
+                    a_functionarguments.sts = TWAIN.STS.LOWMEMORY;
+                    a_functionarguments.szReturnValue = "0";
+                    callstack.functionarguments.sts = a_functionarguments.sts;
+                    callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+                    SetVariable(a_functionarguments.aszCmd[2], "0", 0, VariableScope.Local);
+                    return (false);
+                }
+            }
+
+            // Oops...
+            else
+            {
+                DisplayError("unrecognized flag <" + a_functionarguments.aszCmd[1] + ">", a_functionarguments);
+                a_functionarguments.sts = TWAIN.STS.BADVALUE;
                 a_functionarguments.szReturnValue = "0";
                 callstack.functionarguments.sts = a_functionarguments.sts;
                 callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
@@ -1231,56 +1265,7 @@ namespace twaincscert
             a_functionarguments.szReturnValue = intptr.ToString();
             callstack.functionarguments.sts = a_functionarguments.sts;
             callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
-            return (false);
-        }
-
-        /// <summary>
-        /// Allocate a pointer, we'll get an IntPtr to it...
-        /// </summary>
-        /// <param name="a_functionarguments">tokenized command and anything needed</param>
-        /// <returns>true to quit</returns>
-        private bool CmdAllocatepointer(ref Interpreter.FunctionArguments a_functionarguments)
-        {
-            UInt32 u32Bytes = 0;
-            IntPtr intptr = IntPtr.Zero;
-            CallStack callstack = m_lcallstack[m_lcallstack.Count - 1];
-
-            // Validate...
-            if (a_functionarguments.aszCmd.Length != 2)
-            {
-                a_functionarguments.sts = TWAIN.STS.BADVALUE;
-                a_functionarguments.szReturnValue = "0";
-                callstack.functionarguments.sts = a_functionarguments.sts;
-                callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
-                return (false);
-            }
-
-            // Get the length...
-            if (!UInt32.TryParse(a_functionarguments.aszCmd[1], out u32Bytes))
-            {
-                a_functionarguments.sts = TWAIN.STS.BADVALUE;
-                a_functionarguments.szReturnValue = "0";
-                callstack.functionarguments.sts = a_functionarguments.sts;
-                callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
-                return (false);
-            }
-
-            // Allocate the memory...
-            intptr = m_twain.DsmMemAlloc(u32Bytes, true);
-            if (intptr == IntPtr.Zero)
-            {
-                a_functionarguments.sts = TWAIN.STS.LOWMEMORY;
-                a_functionarguments.szReturnValue = "0";
-                callstack.functionarguments.sts = a_functionarguments.sts;
-                callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
-                return (false);
-            }
-
-            // All done...
-            a_functionarguments.sts = TWAIN.STS.SUCCESS;
-            a_functionarguments.szReturnValue = intptr.ToString();
-            callstack.functionarguments.sts = a_functionarguments.sts;
-            callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+            SetVariable(a_functionarguments.aszCmd[2], intptr.ToString(), (int)u32Bytes, VariableScope.Local);
             return (false);
         }
 
@@ -1288,7 +1273,7 @@ namespace twaincscert
         /// Call a function...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
-        /// <returns>true to quit</returns>
+        /// <returns>true to quit</returns>Free
         private bool CmdCall(ref Interpreter.FunctionArguments a_functionarguments)
         {
             int iLine;
@@ -1634,19 +1619,20 @@ namespace twaincscert
         }
 
         /// <summary>
-        /// Free a handle...
+        /// Free a handle or a pointer...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
         /// <returns>true to quit</returns>
-        private bool CmdFreehandle(ref Interpreter.FunctionArguments a_functionarguments)
+        private bool CmdFree(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            UInt64 u64Handle = 0;
-            IntPtr intptrHandle = IntPtr.Zero;
+            UInt64 u64IntPtr = 0;
+            IntPtr intptr = IntPtr.Zero;
             CallStack callstack = m_lcallstack[m_lcallstack.Count - 1];
 
             // Validate...
-            if (a_functionarguments.aszCmd.Length != 2)
+            if (a_functionarguments.aszCmd.Length != 3)
             {
+                DisplayError("command needs 3 arguments", a_functionarguments);
                 a_functionarguments.sts = TWAIN.STS.BADVALUE;
                 a_functionarguments.szReturnValue = "";
                 callstack.functionarguments.sts = a_functionarguments.sts;
@@ -1654,52 +1640,13 @@ namespace twaincscert
                 return (false);
             }
 
-            // Get the data from the variable...
+            // Get the handle or pointer from the variable...
             bool blGlobal = false;
             KeyValue keyvalue = default(KeyValue);
-            keyvalue.szKey = a_functionarguments.aszCmd[1];
-            GetVariable(keyvalue.szKey, -1, out keyvalue.szValue, out keyvalue.iBytes, out blGlobal);
-
-            // Get the handle...
-            if (!UInt64.TryParse(keyvalue.szValue, out u64Handle))
+            keyvalue.szKey = a_functionarguments.aszCmd[2];
+            if (!GetVariable(keyvalue.szKey, -1, out keyvalue.szValue, out keyvalue.iBytes, out blGlobal, VariableScope.Local))
             {
-                a_functionarguments.sts = TWAIN.STS.BADVALUE;
-                a_functionarguments.szReturnValue = "0";
-                callstack.functionarguments.sts = a_functionarguments.sts;
-                callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
-                return (false);
-            }
-
-            // If the handle is non-zero, free it and clear the variable...
-            if (u64Handle != 0)
-            {
-                intptrHandle = (IntPtr)u64Handle;
-                m_twain.DsmMemFree(ref intptrHandle);
-                SetVariable(keyvalue.szKey, "0", 0, blGlobal ? VariableScope.Global : VariableScope.Local);
-            }
-
-            // All done...
-            a_functionarguments.sts = TWAIN.STS.SUCCESS;
-            a_functionarguments.szReturnValue = "";
-            callstack.functionarguments.sts = a_functionarguments.sts;
-            callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
-            return (false);
-        }
-
-        /// <summary>
-        /// Free a pointer...
-        /// </summary>
-        /// <param name="a_functionarguments">tokenized command and anything needed</param>
-        /// <returns>true to quit</returns>
-        private bool CmdFreepointer(ref Interpreter.FunctionArguments a_functionarguments)
-        {
-            UInt64 u64Handle = 0;
-            IntPtr intptrHandle = IntPtr.Zero;
-            CallStack callstack = m_lcallstack[m_lcallstack.Count - 1];
-
-            // Validate...
-            if (a_functionarguments.aszCmd.Length != 2)
-            {
+                DisplayError("variable not found (make sure to set it to 0 at the top of the function)", a_functionarguments);
                 a_functionarguments.sts = TWAIN.STS.BADVALUE;
                 a_functionarguments.szReturnValue = "";
                 callstack.functionarguments.sts = a_functionarguments.sts;
@@ -1707,8 +1654,8 @@ namespace twaincscert
                 return (false);
             }
 
-            // Get the length...
-            if (!UInt64.TryParse(a_functionarguments.aszCmd[1], out u64Handle))
+            // Get the value...
+            if (!UInt64.TryParse(keyvalue.szValue, out u64IntPtr))
             {
                 a_functionarguments.sts = TWAIN.STS.BADVALUE;
                 a_functionarguments.szReturnValue = "0";
@@ -1717,15 +1664,36 @@ namespace twaincscert
                 return (false);
             }
 
-            // Allocate the memory...
-            intptrHandle = (IntPtr)u64Handle;
-            m_twain.DsmMemFree(ref intptrHandle, true);
+            // If the value is non-zero, free it and clear the variable...
+            if (u64IntPtr > 0)
+            {
+                if (a_functionarguments.aszCmd[1] == "handle")
+                {
+                    intptr = (IntPtr)u64IntPtr;
+                    m_twain.DsmMemFree(ref intptr);
+                }
+                else if (a_functionarguments.aszCmd[1] == "pointer")
+                {
+                    intptr = (IntPtr)u64IntPtr;
+                    Marshal.FreeHGlobal(intptr);
+                }
+                else
+                {
+                    DisplayError("unrecognized flag <" + a_functionarguments.aszCmd[1] + ">", a_functionarguments);
+                    a_functionarguments.sts = TWAIN.STS.BADVALUE;
+                    a_functionarguments.szReturnValue = "0";
+                    callstack.functionarguments.sts = a_functionarguments.sts;
+                    callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+                    return (false);
+                }
+            }
 
-            // All done...
+            // All done (set the variable to 0)...
             a_functionarguments.sts = TWAIN.STS.SUCCESS;
             a_functionarguments.szReturnValue = "";
             callstack.functionarguments.sts = a_functionarguments.sts;
             callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+            SetVariable(keyvalue.szKey, "0", 0, blGlobal ? VariableScope.Global : VariableScope.Local);
             return (false);
         }
 
@@ -1810,6 +1778,7 @@ namespace twaincscert
                 Display("wait [timeout]...............................wait for a DAT_NULL message");
                 Display("");
                 DisplayRed("Scripting");
+                Display("allocate {flag} {variable} {size}............allocate memory");
                 Display("call {label}.................................call function");
                 Display("cd [path]....................................shows or sets the current directory");
                 Display("clean........................................clean the images folder");
@@ -1818,6 +1787,7 @@ namespace twaincscert
                 Display("echo.passfail {title} {result}...............echo test result in a tabular form");
                 Display("echo.titlesuite {title}......................echo test suite");
                 Display("echo.titletest {title}.......................echo test title");
+                Display("free {flag} {variable}.......................free memory");
                 Display("goto {label}.................................jump to the :label in the script");
                 Display("if {item1} {operator} {item2} goto {label}...if statement");
                 Display("increment {dst} {src} [step].................increment src by step and store in dst");
@@ -2076,8 +2046,17 @@ namespace twaincscert
             // Scripting
             #region Scripting
 
+            // Allocate...
+            if ((szCommand == "allocate"))
+            {
+                DisplayRed("ALLOCATE {HANDLE|POINTER} {VARIABLE} {SIZE}");
+                Display("Allocate a pointer or a handle of SIZE bytes and store the value in");
+                Display("the specified variable.  On failure the value will be 0.");
+                return (false);
+            }
+
             // Call...
-            if ((szCommand == "call"))
+            else if ((szCommand == "call"))
             {
                 DisplayRed("CALL {FUNCTION [argument1 [argument2 [...]]}");
                 Display("Call a function with optional arguments.  Check '${ret:} to see what the");
@@ -2131,16 +2110,26 @@ namespace twaincscert
             // Echo...
             if ((szCommand == "echo"))
             {
-                Display("ECHO [TEXT]");
-                Display("Echoes the text.  If there is no text an empty line is echoed.");
+                Display("ECHO[.COLOR] [TEXT]");
+                Display("Echoes the text.  If there is no text an empty line is echoed.  The");
                 return (false);
             }
 
-            // Echopassfail...
-            if ((szCommand == "echopassfail"))
+            // Echop.assfail...
+            if ((szCommand == "echo.passfail"))
             {
                 DisplayRed("ECHOPASSFAIL [TITLE] [RESULT]");
                 Display("Echoes the title and result in a tabular format.");
+                return (false);
+            }
+
+            // Free...
+            if ((szCommand == "free"))
+            {
+                DisplayRed("FREE {HANDLE|POINTER} {VARIABLE}");
+                Display("Free a pointer or a handle in the specified variable.  If it");
+                Display("is already 0, no action is taken.  On success the variable is");
+                Display("set to 0.");
                 return (false);
             }
 
@@ -2201,6 +2190,7 @@ namespace twaincscert
                 DisplayRed("IMAGE {free} {variable}");
                 DisplayRed("IMAGE {append} {variable} {TW_IMAGEMEMXFER}");
                 DisplayRed("IMAGE {addheader} {variable} {TW_IMAGEINFO}");
+                DisplayRed("IMAGE {delete} {folder}");
                 DisplayRed("IMAGE {save} {variable} {native|memfile|memory} {filename}");
                 Display("Use image append to chain together data from one or more DAT_IMAGEMEMXFER");
                 Display("or DAT_IMAGEMEMFILEXFER calls.  Use image free to free that memory when");
@@ -2208,7 +2198,8 @@ namespace twaincscert
                 Display("");
                 Display("Use image save to save an image to disk.  You can use the return value from");
                 Display("DAT_IMAGENATIVEXFER to save a .bmp bitmap file.  If an extension isn't given");
-                Display("one will be provided: .bmp, .jpg, or .tif.");
+                Display("one will be provided: .bmp, .jpg, or .tif.  Use image cleanfolder to specify");
+                Display("a folder where .bmp, .jpg, and .tif files will be removed.");
                 Display("");
                 Display("Examples");
                 Display("  image append mymemoryimage '${get:twimagememxfer}'");
@@ -3146,6 +3137,29 @@ namespace twaincscert
                     }
                     return (false);
 
+                // Cleanfolder...
+                case "cleanfolder":
+                    // Validate
+                    if (a_functionarguments.aszCmd.Length != 3)
+                    {
+                        DisplayError("must specify 3 arguments", a_functionarguments);
+                        return (false);
+                    }
+                    if (!Directory.Exists(a_functionarguments.aszCmd[2]))
+                    {
+                        try { Directory.CreateDirectory(a_functionarguments.aszCmd[2]); } catch { /* don't care */ }
+                    }
+                    else
+                    {
+                        string[] aszFiles = Directory.GetFiles(a_functionarguments.aszCmd[2], "*.bmp");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                        aszFiles = Directory.GetFiles(a_functionarguments.aszCmd[2], "*.tif");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                        aszFiles = Directory.GetFiles(a_functionarguments.aszCmd[2], "*.jpg");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                    }
+                    return (false);
+
                 // Free...
                 case "free":
                     // Validate
@@ -3171,7 +3185,7 @@ namespace twaincscert
                     }
                     return (false);
 
-                // Free...
+                // Save...
                 case "save":
                     // Validate
                     if (a_functionarguments.aszCmd.Length < 5)
@@ -3201,6 +3215,12 @@ namespace twaincscert
                     {
                         DisplayError("null pointer <" + keyvalue.szKey + ">", a_functionarguments);
                         return (false);
+                    }
+
+                    // Make sure the folder exists...
+                    if (!Directory.Exists(Path.GetDirectoryName(a_functionarguments.aszCmd[4])))
+                    {
+                        try { Directory.CreateDirectory(Path.GetDirectoryName(a_functionarguments.aszCmd[4])); } catch { /* don't care */ }
                     }
 
                     // Okay, we're ready to save...
@@ -4335,7 +4355,7 @@ namespace twaincscert
                 szMessage =
                     "ERROR: " + a_szText +
                     " ('" + a_functionarguments.szScriptFile +
-                    "' at line " + a_functionarguments.iCurrentLine + ")";
+                    "' at line " + (a_functionarguments.iCurrentLine + 1) + ")";
             }
             Console.Out.WriteLine(szMessage);
             if (m_stringbuilderSelfCertReport != null)
@@ -5810,7 +5830,7 @@ namespace twaincscert
                 (
                     "command not found: " + a_functionarguments.aszCmd[0] +
                     " ('" + a_functionarguments.szScriptFile +
-                    "' at line " + a_functionarguments.iCurrentLine + ")"
+                    "' at line " + (a_functionarguments.iCurrentLine + 1) + ")"
                 );
             }
             return (false);
