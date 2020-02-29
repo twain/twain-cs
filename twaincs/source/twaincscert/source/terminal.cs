@@ -131,6 +131,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoBlue,                     new string[] { "echo.blue" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoGreen,                    new string[] { "echo.green" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoPassfail,                 new string[] { "echo.passfail" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoProgress,                 new string[] { "echo.progress" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoRed,                      new string[] { "echo.red" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitlesuite,               new string[] { "echo.titlesuite" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitletest,                new string[] { "echo.titletest" }));
@@ -1568,6 +1569,42 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Display a progress message...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdEchoProgress(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            string szLine;
+            string szDots = "..............................";
+
+            // No data...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[0] == null))
+            {
+                DisplayError("echo.progress needs two arguments", a_functionarguments);
+                return (false);
+            }
+
+            // Build the string...
+            szLine = a_functionarguments.aszCmd[1];
+            if ((szDots.Length - szLine.Length) > 0)
+            {
+                szLine += szDots.Substring(0, szDots.Length - szLine.Length);
+            }
+            else
+            {
+                szLine += "..."; // mininum separation if we can't fit the left side in szDots
+            }
+            szLine += a_functionarguments.aszCmd[2];
+
+            // Spit it out...
+            Display(szLine, true);
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
         /// Display a title suite message...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
@@ -1785,6 +1822,7 @@ namespace twaincscert
                 Display("dir..........................................lists files and folders in the current directory");
                 Display("echo[.color] [text]..........................echo text");
                 Display("echo.passfail {title} {result}...............echo test result in a tabular form");
+                Display("echo.progress {title} {result}...............echo progress in a tabular form");
                 Display("echo.titlesuite {title}......................echo test suite");
                 Display("echo.titletest {title}.......................echo test title");
                 Display("free {flag} {variable}.......................free memory");
@@ -2115,11 +2153,19 @@ namespace twaincscert
                 return (false);
             }
 
-            // Echop.assfail...
+            // Echo.passfail...
             if ((szCommand == "echo.passfail"))
             {
-                DisplayRed("ECHOPASSFAIL [TITLE] [RESULT]");
-                Display("Echoes the title and result in a tabular format.");
+                DisplayRed("ECHO.PASSFAIL [TITLE] [RESULT]");
+                Display("Echoes the title and result in a long tabular format.");
+                return (false);
+            }
+
+            // Echo.progress...
+            if ((szCommand == "echo.progress"))
+            {
+                DisplayRed("ECHO.PROGRESS [TITLE] [RESULT]");
+                Display("Echoes the title and result in a short tabular format.");
                 return (false);
             }
 
