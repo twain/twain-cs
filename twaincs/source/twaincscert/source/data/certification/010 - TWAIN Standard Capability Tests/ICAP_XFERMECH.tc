@@ -41,7 +41,7 @@ setlocal icap_xfermech '${ret:}'
 ; If TW_CAPABILITY.Cap is not ICAP_XFERMECH, then end with error
 ;
 setlocal name 'TW_CAPABILITY.Cap is ICAP_XFERMECH'
-if '${getindex:icap_xfermech.${get:TW_CAPABILITY.Cap}}' != 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:icap_xfermech:${get:TW_CAPABILITY.Cap}}' != 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -50,7 +50,7 @@ echo.passfail '${get:name}' 'pass'
 ; If TW_CAPABILITY.ConType is not TWON_ENUMERATION, then end with error
 ;
 setlocal name 'TW_CAPABILITY.ConType is TWON_ENUMERATION'
-if '${getindex:icap_xfermech.${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:icap_xfermech:${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -59,7 +59,7 @@ echo.passfail '${get:name}' 'pass'
 ; If TW_ENUMERATION.ItemType is not TWTY_UINT16, then end with error
 ;
 setlocal name 'TW_ENUMERATION.ItemType is TWTY_UINT16'
-if '${getindex:icap_xfermech.${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:icap_xfermech:${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -113,11 +113,11 @@ setlocal enum '${arg:1}'
 setlocal ee '5'
 :NEXTENUM
 increment ee '${get:ee}'
-if '${getindex:enum.${get:ee}}' == '' goto CHECKENUMERATION.FAIL
+if '${getindex:enum:${get:ee}}' == '' goto CHECKENUMERATION.FAIL
 setlocal aa '2'
 :NEXTARG
 if '${arg:${get:aa}}' == '' goto NEXTENUM
-if '${arg:${get:aa}}' == '${getindex:enum.${get:ee}}' goto CHECKENUMERATION.PASS
+if '${arg:${get:aa}}' == '${getindex:enum:${get:ee}}' goto CHECKENUMERATION.PASS
 increment aa '${get:aa}'
 goto NEXTARG
 :CHECKENUMERATION.FAIL

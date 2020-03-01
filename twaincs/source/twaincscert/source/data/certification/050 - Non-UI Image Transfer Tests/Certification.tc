@@ -14,6 +14,7 @@
 ; Locals
 ;   twidentity.productname - product name of scanner to test
 ;   certifyresult - global to set on fail
+;   xfermech - result of getting ICAP_XFERMECH
 ;
 ; Returns
 ;   (none)
@@ -22,23 +23,34 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialize stuff...
+; Initialize stuff, load tables if not already done for us..
 ;
-echo.titlesuite 'Non-UI Image Transfer Tests v1.0 27-Feb-2020'
+echo.titlesuite 'Non-UI Image Transfer Tests v1.0 01-Mar-2020'
 setlocal twidentity.productname '${arg:1}'
 setlocal certifyresult '${arg:2}'
+if '${get:TW_ARRAY.ItemType}' != '' goto CERTIFY.FAIL
+run '${folder:certification}/LoadTables'
+:MAIN.LOADTABLES.SKIP
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TWAIN Standard Capability Tests...
 ;
-
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'
+
+; Get ICAP_XFERMECH...
+setlocal name 'ICAP_XFERMECH MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+if '${sts:}' != 'SUCCESS' goto CERTIFY.FAIL
+setlocal xfermech '${ret:}'
+echo.passfail '${get:name}' 'pass'
+
+; Do the tests...
 call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}'
 call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}'
-call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}'
-call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}'
+call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' '${get:xfermech}'
+call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' '${get:xfermech}'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}'
 return
 
@@ -49,11 +61,12 @@ return
 ; arg:1 - script to run
 ; arg:2 - TW_IDENTITY.ProductName of scanner to test
 ; arg:3 - global value to update on fail
+; arg:4 - xfermech values
 ; returns: (none)
 ;
 :CERTIFY
 ;
-run '${arg:1}' '${arg:2}'
+run '${arg:1}' '${arg:2}' '${arg:3}' '${arg:4}'
 if '${ret:}' != 'pass' goto CERTIFY.FAIL
 return 'pass'
 ;

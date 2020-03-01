@@ -124,7 +124,7 @@ if '${ret:}' !~contains 'msg_xferready' goto MAIN.PASS
 :MAIN.NEXTIMAGEINFO
 setlocal twainstate '6'
 dsmentry src ds dg_image dat_imageinfo msg_get '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
-echo.progres 'imageinfo/get' '${sts:} - ${ret:}'
+echo.progress 'imageinfo/get' '${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 setlocal twimageinfo.compression '${ret:${get:index.twimageinfo.compression}}'
 
@@ -138,6 +138,7 @@ if '${get:twimageinfo.compression}' == 'JPEG' goto MAIN.JPEG
 setlocal twsetupfilexfer.filename '${get:image.folder}/img${format:D6|${get:image.count}}.tif'
 setlocal twsetupfilexfer.format 'TWFF_TIFF'
 goto MAIN.SETUPFILEXFER
+:MAIN.JPEG
 setlocal twsetupfilexfer.filename '${get:image.folder}/img${format:D6|${get:image.count}}.jpg'
 setlocal twsetupfilexfer.format 'TWFF_JFIF'
 :MAIN.SETUPFILEXFER

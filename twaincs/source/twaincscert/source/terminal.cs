@@ -660,8 +660,6 @@ namespace twaincscert
                 // DAT_IDENTITY...
                 case (int)TWAIN.DAT.IDENTITY:
                     {
-
-
                         TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
                         m_twain.CsvToIdentity(ref twidentity, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatIdentity((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twidentity);
@@ -883,6 +881,15 @@ namespace twaincscert
                         a_functionarguments.szReturnValue = m_twain.UserinterfaceToCsv(twuserinterface);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+                        // Clear the list, so the script writer doesn't have to...
+                        if (a_functionarguments.iMsg == (int)TWAIN.MSG.DISABLEDS)
+                        {
+                            lock (m_lmsgDatNull)
+                            {
+                                m_lmsgDatNull.Clear();
+                                m_autoreseteventMsgDatNull.Reset();
+                            }
+                        }
                     }
                     break;
 
@@ -1132,24 +1139,33 @@ namespace twaincscert
             {
                 lock (m_lmsgDatNull)
                 {
-                    m_lmsgDatNull.Add(TWAIN.MSG.XFERREADY);
-                    m_autoreseteventMsgDatNull.Set();
+                    if (!m_lmsgDatNull.Contains(TWAIN.MSG.XFERREADY))
+                    {
+                        m_lmsgDatNull.Add(TWAIN.MSG.XFERREADY);
+                        m_autoreseteventMsgDatNull.Set();
+                    }
                 }
             }
             if (m_twain.IsMsgCloseDsReq())
             {
                 lock (m_lmsgDatNull)
                 {
-                    m_lmsgDatNull.Add(TWAIN.MSG.CLOSEDSREQ);
-                    m_autoreseteventMsgDatNull.Set();
+                    if (!m_lmsgDatNull.Contains(TWAIN.MSG.CLOSEDSREQ))
+                    {
+                        m_lmsgDatNull.Add(TWAIN.MSG.CLOSEDSREQ);
+                        m_autoreseteventMsgDatNull.Set();
+                    }
                 }
             }
             if (m_twain.IsMsgCloseDsOk())
             {
                 lock (m_lmsgDatNull)
                 {
-                    m_lmsgDatNull.Add(TWAIN.MSG.CLOSEDSOK);
-                    m_autoreseteventMsgDatNull.Set();
+                    if (!m_lmsgDatNull.Contains(TWAIN.MSG.CLOSEDSOK))
+                    {
+                        m_lmsgDatNull.Add(TWAIN.MSG.CLOSEDSOK);
+                        m_autoreseteventMsgDatNull.Set();
+                    }
                 }
             }
 
@@ -1921,7 +1937,7 @@ namespace twaincscert
                 Display("The most interesting part of the scripting support is variable expansion.  Variables take the");
                 Display("form ${source:target} with the following available sources:");
                 Display("");
-                Display("  '${arg:[index.]target}'");
+                Display("  '${arg:[index:]target}'");
                 Display("  Expands an argument argument to run, runv, or call.  A target of 0 is the name of the script");
                 Display("  or label; 1 - n accesses the rest of the arguments.  An index can be specified to access any");
                 Display("  command in the stack, but only 0 is recommended to look at the last user command.");
@@ -1933,8 +1949,8 @@ namespace twaincscert
                 Display("  Complete TW_IDENTITY of the current scanner driver.");
                 Display("");
                 Display("  '${folder:target}'");
-                Display("  Resolves to the full path for targeted special folder: certification, data, desktop, local,");
-                Display("  pictures, roaming");
+                Display("  Resolves to the full path for targeted special folder: certification, certimages, data, desktop,");
+                Display("  local, pictures, roaming.");
                 Display("");
                 Display("  '${format:specifier|value}'");
                 Display("  Formats the value according to the specifier.");
@@ -1942,7 +1958,7 @@ namespace twaincscert
                 Display("  '${get:target}'");
                 Display("  The value last assigned to the target using the set command.");
                 Display("");
-                Display("  '${getindex:target.index}'");
+                Display("  '${getindex:target:index}'");
                 Display("  Runs the target through CSV and returns the item at the requested index.");
                 Display("");
                 Display("  '${localtime:[format]}'");
@@ -3012,6 +3028,7 @@ namespace twaincscert
             IntPtr intptrPtr = IntPtr.Zero;
             bool blGlobal = false;
             byte[] abImage;
+            string szFolder = "";
             string szFilename = "";
             KeyValue keyvalue = default(KeyValue);
             TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
@@ -3191,17 +3208,18 @@ namespace twaincscert
                         DisplayError("must specify 3 arguments", a_functionarguments);
                         return (false);
                     }
-                    if (!Directory.Exists(a_functionarguments.aszCmd[2]))
+                    szFolder = a_functionarguments.aszCmd[2];
+                    if (!Directory.Exists(szFolder))
                     {
-                        try { Directory.CreateDirectory(a_functionarguments.aszCmd[2]); } catch { /* don't care */ }
+                        try { Directory.CreateDirectory(szFolder); } catch { /* don't care */ }
                     }
                     else
                     {
-                        string[] aszFiles = Directory.GetFiles(a_functionarguments.aszCmd[2], "*.bmp");
+                        string[] aszFiles = Directory.GetFiles(szFolder, "*.bmp");
                         foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
-                        aszFiles = Directory.GetFiles(a_functionarguments.aszCmd[2], "*.tif");
+                        aszFiles = Directory.GetFiles(szFolder, "*.tif");
                         foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
-                        aszFiles = Directory.GetFiles(a_functionarguments.aszCmd[2], "*.jpg");
+                        aszFiles = Directory.GetFiles(szFolder, "*.jpg");
                         foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
                     }
                     return (false);
@@ -3264,9 +3282,10 @@ namespace twaincscert
                     }
 
                     // Make sure the folder exists...
-                    if (!Directory.Exists(Path.GetDirectoryName(a_functionarguments.aszCmd[4])))
+                    szFolder = a_functionarguments.aszCmd[4];
+                    if (!Directory.Exists(Path.GetDirectoryName(szFolder)))
                     {
-                        try { Directory.CreateDirectory(Path.GetDirectoryName(a_functionarguments.aszCmd[4])); } catch { /* don't care */ }
+                        try { Directory.CreateDirectory(Path.GetDirectoryName(szFolder)); } catch { /* don't care */ }
                     }
 
                     // Okay, we're ready to save...
@@ -3278,7 +3297,7 @@ namespace twaincscert
                             abImage = m_twain.NativeToByteArray(intptrPtr, true);
                             try
                             {
-                                szFilename = a_functionarguments.aszCmd[4];
+                                szFilename = szFolder;
                                 if (!Path.GetFileName(szFilename).Contains("."))
                                 {
                                     szFilename += ".bmp";
@@ -3294,10 +3313,10 @@ namespace twaincscert
 
                         case "memfile":
                         case "memory":
-                            iResult = NativeMethods.WriteImageFile(a_functionarguments.aszCmd[4], intptrPtr, keyvalue.iBytes);
+                            iResult = NativeMethods.WriteImageFile(szFolder, intptrPtr, keyvalue.iBytes);
                             if (iResult == -1)
                             {
-                                DisplayError("image save failed <" + a_functionarguments.aszCmd[4] + ">", a_functionarguments);
+                                DisplayError("image save failed <" + szFolder + ">", a_functionarguments);
                                 return (false);
                             }
                             break;
@@ -4555,11 +4574,11 @@ namespace twaincscert
                             // If we have an index, use it to find our callstack.  As a general rule
                             // the only 'safe' index to use is 0, since that'll point to the last
                             // command entered by the user.  But fancier stuff is possible...
-                            if (szTarget.Contains("."))
+                            if (szTarget.Contains(":"))
                             {
                                 // Use the index info to get the right data...
                                 int iIndex;
-                                string szIndex = szTarget.Remove(szTarget.IndexOf("."));
+                                string szIndex = szTarget.Remove(szTarget.IndexOf(":"));
                                 if (int.TryParse(szIndex, out iIndex))
                                 {
                                     iIndex += 1; // so we can have an index origin at 0...
@@ -4574,7 +4593,7 @@ namespace twaincscert
                                 }
                                 callstack = m_lcallstack[iIndex];
                                 // Ditch the index info...
-                                szTarget = szTarget.Substring(szTarget.IndexOf(".") + 1);
+                                szTarget = szTarget.Substring(szTarget.IndexOf(":") + 1);
                             }
                             // Use the top of the stack...
                             else
@@ -4692,7 +4711,7 @@ namespace twaincscert
 
                         // Strip off ${...}, split name and index...
                         string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(11);
-                        string[] aszGet = szGet.Split('.');
+                        string[] aszGet = szGet.Split(':');
 
                         // Get the value, if any...
                         if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
@@ -4707,6 +4726,18 @@ namespace twaincscert
                         if (szSymbol == "${folder:certification}")
                         {
                             szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
+                        }
+                        else if (szSymbol == "${folder:certimages}")
+                        {
+                            if ((m_twain != null) && !string.IsNullOrEmpty(m_twain.GetDsIdentity()))
+                            {
+                                string[] aszDs = CSV.Parse(m_twain.GetDsIdentity());
+                                if (aszDs.Length >= 12)
+                                {
+                                    szValue = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
+                                    szValue = Path.Combine(szValue, Regex.Replace(aszDs[11], "[^.a-zA-Z0-9]", "_"));
+                                }
+                            }
                         }
                         else if (szSymbol == "${folder:data}")
                         {

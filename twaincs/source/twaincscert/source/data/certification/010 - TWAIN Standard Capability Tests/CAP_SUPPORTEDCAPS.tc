@@ -41,7 +41,7 @@ setlocal cap_supportedcaps '${ret:}'
 ; If TW_CAPABILITY.Cap is not CAP_SUPPORTEDCAPS, then end with error
 ;
 setlocal name 'TW_CAPABILITY.Cap is CAP_SUPPORTEDCAPS'
-if '${getindex:cap_supportedcaps.${get:TW_CAPABILITY.Cap}}' != 'CAP_SUPPORTEDCAPS' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:cap_supportedcaps:${get:TW_CAPABILITY.Cap}}' != 'CAP_SUPPORTEDCAPS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -50,7 +50,7 @@ echo.passfail '${get:name}' 'pass'
 ; If TW_CAPABILITY.ConType is not TWON_ARRAY, then end with error
 ;
 setlocal name 'TW_CAPABILITY.ConType is TWON_ARRAY'
-if '${getindex:cap_supportedcaps.${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:cap_supportedcaps:${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -59,7 +59,7 @@ echo.passfail '${get:name}' 'pass'
 ; If TW_ARRAY.ItemType is not TWTY_UINT16, then end with error
 ;
 setlocal name 'TW_ARRAY.ItemType is TWTY_UINT16'
-if '${getindex:cap_supportedcaps.${get:TW_ARRAY.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:cap_supportedcaps:${get:TW_ARRAY.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -68,7 +68,7 @@ echo.passfail '${get:name}' 'pass'
 ; If TW_ARRAY.NumItems is equal to zero, then end with error
 ;
 setlocal name 'TW_ARRAY.NumItems > 0'
-if '${getindex:cap_supportedcaps.${get:TW_ARRAY.NumItems}}' <= '0' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:cap_supportedcaps:${get:TW_ARRAY.NumItems}}' <= '0' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 

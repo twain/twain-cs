@@ -1,11 +1,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; DAT_IMAGENATIVEXFER
-;   This test issues multiple image transfer sessions using DAT_IMAGENATIVEXFER. It is performed
+; DAT_IMAGEMEMXFER
+;   This test issues multiple image transfer sessions using DAT_IMAGEMEMXFER. It is performed
 ;   for all available image sources (unspecified, flatbed and/or ADF). Only one image is transferred
 ;   per session.
 ;
 ;   We follow the capability ordering, so the loops take the form:
-;   set ICAP_XFERMECH TWSX_NATIVE
+;   set ICAP_XFERMECH TWSX_MEMORY
 ;   foreach CAP_FEEDERENABLED
 ;     foreach ICAP_PIXELTYPE
 ;       scan
@@ -22,8 +22,10 @@
 ; Locals
 ;   name - current test being done
 ;   indent - indent the passfail text
+;   imageinfo - metadata for the current image
+;   imagememxfer - result of DAT_IMAGEMEMXFER call
+;   setupmemxfer.preferred - preferred field from DAT_SETUPMEMXFER call
 ;
-;   image.handle - native handle
 ;   image.count - count of images from 1
 ;   image.folder - folder to put the images in
 ;
@@ -44,11 +46,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGENATIVEXFER v1.0 01-Mar-2020'
+echo.titletest 'DAT_IMAGEMEMXFER v1.0 01-Mar-2020'
 setlocal indent ''
 setlocal image.handle '0'
 setlocal image.count '0'
-setlocal image.folder '${folder:certimages}/50 - Non-UI Image Transfer Tests/DAT_IMAGENATIVEXFER'
+setlocal image.folder '${folder:certimages}/50 - Non-UI Image Transfer Tests/DAT_IMAGEMEMXFER'
 
 
 
@@ -76,11 +78,11 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'ICAP_XFERMECH MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-if '${ret:}' !~contains 'TWSX_NATIVE' goto MAIN.ERROR.ECHOPASSFAIL
+if '${ret:}' !~contains 'TWSX_MEMORY' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'ICAP_XFERMECH MSG_SET TWSX_NATIVE'
-dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,TWSX_NATIVE'
+setlocal name 'ICAP_XFERMECH MSG_SET TWSX_MEMORY'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,TWSX_MEMORY'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
@@ -140,9 +142,30 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If we're a flatbed, we can start scanning...
+; Get the preferred size for memory transfers, and allocate
+; a pointer for the memory transfers...
 ;
 setlocal indent '    '
+setlocal name 'dg_control/dat_setupmemxfer/msg_get'
+dsmentry src ds dg_control dat_setupmemxfer msg_get '0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'TW_SETUPMEMXFER.Preferred > 0'
+setlocal setupmemxfer.preferred '${ret:${get:TW_SETUPMEMXFER.Preferred}}'
+if '${get:setupmemxfer.preferred}' <= '0' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'allocate pointer for ${get:setupmemxfer.preferred} bytes'
+allocate pointer image.pointer '${get:setupmemxfer.preferred}'
+if '${get:image.pointer}' == '0' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If we're a flatbed, we can start scanning...
+;
 if '${get:feederenabled.value}' ~~ 'FALSE' goto MAIN.USERINTERFACE
 
 
@@ -180,17 +203,52 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Do a native transfer...
+; Do a memory transfer...
+; This little song and dance with the states is so that we can
+; start the transfer in state 6 with each new image, but switch
+; to state 7 if we need multiple calls to capture the current
+; image...
 ;
-:MAIN.IMAGENATIVEXFER.NEXT
-setlocal name 'dg_image/dat_imagenativexfer/msg_get'
+; The saved images will be in TIFF format, which includes TIFF
+; JPEG (the better form, where a simple TIFF header is added).
+;
 increment image.count '${get:image.count}' 1
-dsmentry src ds dg_image dat_imagenativexfer msg_get '0'
-setlocal image.handle '${ret:}'
-if '${sts:}' != 'XFERDONE' goto MAIN.ERROR.ECHOPASSFAIL
+image free memimage
+;
+:MAIN.IMAGEMEMXFER.NEXT
+setlocal name 'dg_image/dat_imagememxfer/msg_get'
+dsmentry src ds dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,${get:setupmemxfer.preferred},${get:image.pointer}'
+setlocal imagememxfer '${ret:}'
+if '${sts:}' == 'XFERDONE' goto MAIN.IMAGEMEMXFER.XFERDONE
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+;
+echo.passfail '${get:indent}${get:name} SUCCESS' 'pass'
+image append memimage '${get:imagememxfer}'
+goto MAIN.IMAGEMEMXFER.NEXT
+;
+:MAIN.IMAGEMEMXFER.XFERDONE
+echo.passfail '${get:indent}${get:name} XFERDONE' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We need image info to make sense of this data...
+;
+setlocal name 'dg_image/dat_imageinfo/msg_get'
+dsmentry src ds dg_image dat_imageinfo msg_get '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
+setlocal imageinfo '${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-image save image.handle native '${get:image.folder}/img${format:D6|${get:image.count}}'
-free handle image.handle
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Save the image...
+;
+image append memimage '${get:imagememxfer}'
+image addheader memimage '${get:imageinfo}'
+image save memimage memory '${get:image.folder}/img${format:D6|${get:image.count}}'
+image free memimage
 
 
 
@@ -201,7 +259,7 @@ setlocal name 'dg_control/dat_pendingxfers/msg_endxfer'
 dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGENATIVEXFER.NEXT
+if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGEINFO.NEXT
 
 
 
@@ -222,11 +280,14 @@ goto MAIN.PIXELTYPE.NEXT
 ;
 ; Did we pass? (do an extra check)
 :MAIN.PASS
+free pointer image.pointer
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
+image free memimage
+free pointer image.pointer
 echo.passfail '${get:indent}${get:name}' 'fail'
 echo.passfail 'SUMMARY' 'fail'
 setglobal '${arg:2}' 'fail'
