@@ -24,6 +24,18 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Prevent us from getting the focus, so we don't steal it from
+        /// our console...
+        /// </summary>
+        protected override bool ShowWithoutActivation
+        {
+            get
+            {
+                return (true);
+            }
+        }
+
+        /// <summary>
         /// Monitor for DG_CONTROL / DAT_NULL / MSG_* stuff (ex MSG_XFERREADY), this
         /// function is only triggered when SetMessageFilter() is called with 'true'...
         /// </summary>
