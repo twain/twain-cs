@@ -3598,6 +3598,7 @@ namespace twaincscert
                 m_szSelfCertReportProductname = a_functionarguments.aszCmd[2];
                 szFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
                 szFolder = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
+                szFolder = Path.Combine(szFolder, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                 if (Directory.Exists(szFolder))
                 {
                     try { Directory.Delete(szFolder, true); } catch { /* don't care */ }
@@ -3623,6 +3624,7 @@ namespace twaincscert
                     {
                         szFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
                         szFolder = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
+                        szFolder = Path.Combine(szFolder, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                     }
                     if (!Directory.Exists(szFolder))
                     {
@@ -4744,6 +4746,7 @@ namespace twaincscert
                                 {
                                     szValue = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
                                     szValue = Path.Combine(szValue, Regex.Replace(aszDs[11], "[^.a-zA-Z0-9]", "_"));
+                                    szValue = Path.Combine(szValue, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                                 }
                             }
                         }
