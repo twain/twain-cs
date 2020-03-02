@@ -53,6 +53,7 @@ call RUNCERTIFICATION '010 - TWAIN Standard Capability Tests' '${get:twidentity.
 call RUNCERTIFICATION '020 - Vendor Custom Capability Tests'  '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '030 - Status Return Tests'             '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '040 - Stress Tests'                    '${get:twidentity.productname}' g_certifyresult
+call RUNCERTIFICATION '050 - Non-UI Image Transfer Tests'     '${get:twidentity.productname}' g_certifyresult
 
 
 

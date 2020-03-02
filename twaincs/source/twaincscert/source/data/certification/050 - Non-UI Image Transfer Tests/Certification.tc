@@ -28,7 +28,7 @@
 echo.titlesuite 'Non-UI Image Transfer Tests v1.0 01-Mar-2020'
 setlocal twidentity.productname '${arg:1}'
 setlocal certifyresult '${arg:2}'
-if '${get:TW_ARRAY.ItemType}' != '' goto CERTIFY.FAIL
+if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
 run '${folder:certification}/LoadTables'
 :MAIN.LOADTABLES.SKIP
 

@@ -3586,6 +3586,7 @@ namespace twaincscert
             // Clear...
             if (a_functionarguments.aszCmd[1].ToLowerInvariant() == "initialize")
             {
+                string szFolder = "";
                 m_stringbuilderSelfCertReport = new StringBuilder();
                 m_szSelfCertReportPath = null;
                 m_szSelfCertReportProductname = "";
@@ -3595,6 +3596,12 @@ namespace twaincscert
                     return (false);
                 }
                 m_szSelfCertReportProductname = a_functionarguments.aszCmd[2];
+                szFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
+                szFolder = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
+                if (Directory.Exists(szFolder))
+                {
+                    try { Directory.Delete(szFolder, true); } catch { /* don't care */ }
+                }
             }
 
             // Save file...
@@ -3615,6 +3622,7 @@ namespace twaincscert
                     if (string.IsNullOrEmpty(szFolder))
                     {
                         szFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
+                        szFolder = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
                     }
                     if (!Directory.Exists(szFolder))
                     {
