@@ -5,6 +5,7 @@
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
 ;   arg:2 - set to 'embedded', to limit messages
+;   arg:3 - indent padding for embedded
 ;
 ; Globals
 ;   (none)
@@ -63,12 +64,12 @@ return 'fail'
 ; Enbedded summary and cleanup...
 ;
 :MAIN.PASS.EMBEDDED
-echo.passfail '    dg_control/dat_identity/msg_opends' 'pass'
+echo.passfail '${arg:3}dg_control/dat_identity/msg_opends' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.EMBEDDED
-echo.passfail '    dg_control/dat_identity/msg_opends' 'fail'
+echo.passfail '${arg:3}dg_control/dat_identity/msg_opends' 'fail'
 return 'fail'
 
 

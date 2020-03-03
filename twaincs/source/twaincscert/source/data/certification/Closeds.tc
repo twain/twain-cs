@@ -5,6 +5,7 @@
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
 ;   arg:2 - set to 'embedded', to limit messages
+;   arg:3 - indent padding for embedded
 ;
 ; Globals
 ;   (none)
@@ -24,7 +25,7 @@
 call INITIALIZE 'Closeds v1.0 22-Feb-2020' '${arg:2}'
 setlocal closedsresult 'pass'
 if '${arg:2}' != 'embedded' goto MAIN.SKIP.INDENT
-setlocal indent '    '
+setlocal indent '${arg:3}'
 :MAIN.SKIP.INDENT
 
 

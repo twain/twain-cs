@@ -167,17 +167,17 @@ setglobal ACAP_XFERMECH.ValueAfterReset                      TWSX_NATIVE
 setglobal CAP_ALARMS.ConType                                 TWON_ARRAY
 setglobal CAP_ALARMS.ItemType                                TWTY_UINT16
 setglobal CAP_ALARMS.ValueAfterOpen                          UNDEFINED
-setglobal CAP_ALARMS.ValueAfterReset                          UNDEFINED
+setglobal CAP_ALARMS.ValueAfterReset                         UNDEFINED
 ;
 setglobal CAP_ALARMVOLUME.ConType                            TWON_RANGE,TWON_ONEVALUE
 setglobal CAP_ALARMVOLUME.ItemType                           TWTY_INT32
 setglobal CAP_ALARMVOLUME.ValueAfterOpen                     UNDEFINED
-setglobal CAP_ALARMVOLUME.ValueAfterReset                     UNDEFINED
+setglobal CAP_ALARMVOLUME.ValueAfterReset                    UNDEFINED
 ;
 setglobal CAP_AUTHOR.ConType                                 TWON_ONEVALUE
 setglobal CAP_AUTHOR.ItemType                                TWTY_STR128
-setglobal CAP_ALARMS.ValueAfterOpen                          ''
-setglobal CAP_ALARMS.ValueAfterReset                          ''
+setglobal CAP_AUTHOR.ValueAfterOpen                          ''
+setglobal CAP_AUTHOR.ValueAfterReset                         ''
 ;
 setglobal CAP_AUTOFEED.ConType                               TWON_ENUMERATION
 setglobal CAP_AUTOFEED.ItemType                              TWTY_BOOL
@@ -417,7 +417,7 @@ setglobal CAP_PRINTERFONTSTYLE.ValueAfterReset               TWPF_NORMAL
 setglobal CAP_PRINTERINDEX.ConType                           TWON_RANGE,TWON_ONEVALUE
 setglobal CAP_PRINTERINDEX.ItemType                          TWTY_UINT32
 setglobal CAP_PRINTERINDEX.ValueAfterOpen                    UNDEFINED
-setglobal CAP_PRINTERINDEX.ValueAfterReset                   1
+setglobal CAP_PRINTERINDEX.ValueAfterReset                   UNDEFINED
 ;
 setglobal CAP_PRINTERINDEXLEADCHAR.ConType                   TWON_ENUMERATION,TWON_ONEVALUE
 setglobal CAP_PRINTERINDEXLEADCHAR.ItemType                  TWTY_STR32
@@ -812,7 +812,7 @@ setglobal ICAP_NOISEFILTER.ValueAfterReset                   UNDEFINED
 setglobal ICAP_ORIENTATION.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
 setglobal ICAP_ORIENTATION.ItemType                          TWTY_UINT16
 setglobal ICAP_ORIENTATION.ValueAfterOpen                    UNDEFINED
-setglobal ICAP_ORIENTATION.ValueAfterReset                   TWOR_PORTRAIT
+setglobal ICAP_ORIENTATION.ValueAfterReset                   TWOR_ROT0
 ;
 setglobal ICAP_OVERSCAN.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
 setglobal ICAP_OVERSCAN.ItemType                             TWTY_UINT16

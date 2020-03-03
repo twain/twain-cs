@@ -2819,13 +2819,32 @@ namespace TWAINWorkingGroup
         /// <returns></returns>
         private string CvtCapValueToEnumHelper<T>(string a_szValue)
         {
+            // Adjust our value, as needed...
             UInt32 u32 = 0;
             string szCvt = "";
             if (a_szValue.StartsWith(typeof(T).Name + "_"))
             {
                 a_szValue = a_szValue.Substring((typeof(T).Name + "_").Length);
             }
-            if (UInt32.TryParse(a_szValue, out u32))
+
+            // Handle enums with negative numbers...
+            if (a_szValue.StartsWith("-"))
+            {
+                T t;
+                Int32 i32 = 0;
+                if (Int32.TryParse(a_szValue, out i32))
+                {
+                    t = (T)Enum.Parse(typeof(T), a_szValue, true);
+                    szCvt = t.ToString();
+                    if (szCvt != u32.ToString())
+                    {
+                        return (typeof(T).ToString().Replace("TWAINWorkingGroup.TWAIN+", "") + "_" + szCvt);
+                    }
+                }
+            }
+
+            // Everybody else...
+            else if (UInt32.TryParse(a_szValue, out u32))
             {
                 T t;
                 if (typeof(T) == typeof(bool))

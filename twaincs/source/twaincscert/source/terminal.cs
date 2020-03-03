@@ -2654,6 +2654,13 @@ namespace twaincscert
             string szOperator = "";
             string szOperator2 = "";
 
+            // Protection...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 3) || (a_functionarguments.aszCmd[1] == null))
+            {
+                DisplayError("badly formed if-statement", a_functionarguments);
+                return (false);
+            }
+
             // Get all of the stuff (logical operators need more)...
             if (   (a_functionarguments.aszCmd[2] == "&")
                 || (a_functionarguments.aszCmd[2] == "|"))

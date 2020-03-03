@@ -54,6 +54,7 @@ call RUNCERTIFICATION '020 - Vendor Custom Capability Tests'  '${get:twidentity.
 call RUNCERTIFICATION '030 - Status Return Tests'             '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '040 - Stress Tests'                    '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '050 - Non-UI Image Transfer Tests'     '${get:twidentity.productname}' g_certifyresult
+call RUNCERTIFICATION '090 - Verify Values for MSG_OPENDS, MSG_RESET, and MSG_RESETALL' '${get:twidentity.productname}' g_certifyresult
 
 
 
