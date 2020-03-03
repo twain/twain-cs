@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Non-UI Image Transfer Tests
+; UI Image Transfer Tests
 ;   Confirm that multiple MSG_ENABLEDS and MSG_DISABLEDS calls can be made in the context of
 ;   one MSG_OPENDS / MSG_CLOSEDS. This test focuses on image capture with no UI, verifying
 ;   that the Application does not have to close the driver after capturing images.
@@ -25,7 +25,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff, load tables if not already done for us..
 ;
-echo.titlesuite 'Non-UI Image Transfer Tests v1.0 01-Mar-2020'
+echo.titlesuite 'UI Image Transfer Tests v1.0 03-Mar-2020'
 setlocal twidentity.productname '${arg:1}'
 setlocal certifyresult '${arg:2}'
 if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
@@ -47,10 +47,10 @@ setlocal xfermech '${ret:}'
 echo.passfail '${get:name}' 'pass'
 
 ; Do the tests...
-call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '050 - Non-UI Image Transfer Tests'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '050 - Non-UI Image Transfer Tests'
-call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '050 - Non-UI Image Transfer Tests' '${get:xfermech}'
-call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '050 - Non-UI Image Transfer Tests' '${get:xfermech}'
+call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '060 - UI Image Transfer Tests'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '060 - UI Image Transfer Tests'
+call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '060 - UI Image Transfer Tests' '${get:xfermech}'
+call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '060 - UI Image Transfer Tests' '${get:xfermech}'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}'
 return
 

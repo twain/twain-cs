@@ -2700,8 +2700,9 @@ namespace TWAINWorkingGroup
             try
             {
                 CSV csv = new CSV();
-                csv.Add(a_twuserinterface.ShowUI.ToString());
-                csv.Add(a_twuserinterface.ModalUI.ToString());
+                csv.Add(CvtCapValueToEnumHelper<bool>(a_twuserinterface.ShowUI.ToString()));
+                csv.Add(CvtCapValueToEnumHelper<bool>(a_twuserinterface.ModalUI.ToString()));
+                csv.Add(a_twuserinterface.hParent.ToString());
                 return (csv.Get());
             }
             catch (Exception exception)
@@ -2733,20 +2734,23 @@ namespace TWAINWorkingGroup
                 a_twuserinterface.hParent = IntPtr.Zero;
 
                 // Sort out the values...
-                if (asz.Length >= 1)
-                {
-                     ushort.TryParse(asz[0], out a_twuserinterface.ShowUI);
-                }
-                if (asz.Length >= 2)
-                {
-                     ushort.TryParse(asz[1], out a_twuserinterface.ModalUI);
-                }
+                ushort.TryParse(CvtCapValueFromEnumHelper<bool>(asz[0]), out a_twuserinterface.ShowUI);
+                ushort.TryParse(CvtCapValueFromEnumHelper<bool>(asz[1]), out a_twuserinterface.ModalUI);
+
+                // Really shouldn't have this test, but I'll probably break things if I remove it...
                 if (asz.Length >= 3)
                 {
-                    Int64 i64;
-                    if (Int64.TryParse(asz[2], out i64))
+                    if (asz[2].ToLowerInvariant() == "hwnd")
                     {
-                        a_twuserinterface.hParent = (IntPtr)i64;
+                        a_twuserinterface.hParent = m_intptrHwnd;
+                    }
+                    else
+                    {
+                        Int64 i64;
+                        if (Int64.TryParse(asz[2], out i64))
+                        {
+                            a_twuserinterface.hParent = (IntPtr)i64;
+                        }
                     }
                 }
             }
