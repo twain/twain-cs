@@ -51,7 +51,7 @@
 ;
 echo.titletest 'DAT_IMAGEMEMXFER v1.0 01-Mar-2020'
 setlocal indent ''
-setlocal image.handle '0'
+setlocal image.pointer '0'
 setlocal image.count '0'
 setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEMEMXFER'
 setlocal image.prefix 'fb'
@@ -302,7 +302,7 @@ return 'pass'
 :MAIN.ERROR.ECHOPASSFAIL
 image free memimage
 free pointer image.pointer
-echo.passfail '${get:indent}${get:name}' 'fail'
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
 echo.passfail 'SUMMARY' 'fail'
 setglobal '${arg:2}' 'fail'
 return 'fail'

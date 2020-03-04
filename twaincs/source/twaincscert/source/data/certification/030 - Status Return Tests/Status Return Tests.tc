@@ -85,6 +85,6 @@ echo.passfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'pass'
 setglobal '${arg:3}' '${ret:}'
 return
 :SENDANDCHECK.ERROR.ECHOPASSFAIL
-echo.passfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'fail ${sts:}'
+echo.passfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'fail ${sts:} ${ret:}'
 setglobal '${arg:2}' 'fail'
 return

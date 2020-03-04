@@ -58,7 +58,7 @@ return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR
-echo.passfail 'SUMMARY' 'fail'
+echo.passfail 'SUMMARY' 'fail - ${sts:} ${ret:}'
 setglobal '${get:certifyresult}' 'fail'
 return 'fail'
 

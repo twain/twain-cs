@@ -71,6 +71,15 @@ setlocal cap_supportedcaps '${ret:}'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_INDICATORS to TRUE...
+;
+dsmentry src ds dg_control dat_capability msg_set 'CAP_INDICATORS,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+echo.progress 'capability/set' '${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Set ICAP_XFERMECH to TWSX_FILE...
 ;
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,TWSX_FILE'

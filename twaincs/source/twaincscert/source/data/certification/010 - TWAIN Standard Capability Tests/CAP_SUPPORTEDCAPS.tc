@@ -109,7 +109,7 @@ return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:name}' 'fail'
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
 :MAIN.ERROR
 echo.passfail 'SUMMARY' 'fail'
 return 'fail'
