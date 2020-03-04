@@ -227,7 +227,7 @@ setglobal CAP_CAMERAPREVIEWUI.ValueAfterReset                UNDEFINED
 setglobal CAP_CAMERASIDE.ConType                             TWON_ENUMERATION,TWON_ONEVALUE
 setglobal CAP_CAMERASIDE.ItemType                            TWTY_UINT16
 setglobal CAP_CAMERASIDE.ValueAfterOpen                      UNDEFINED
-setglobal CAP_CAMERASIDE.ValueAfterReset                     TWCS_BOTH
+setglobal CAP_CAMERASIDE.ValueAfterReset                     UNDEFINED ; should be TWCS_BOTH, but need a solution for ADF vs Flatbed
 ;
 setglobal CAP_CAPTION.ConType                                TWON_ONEVALUE
 setglobal CAP_CAPTION.ItemType                               TWTY_STR255

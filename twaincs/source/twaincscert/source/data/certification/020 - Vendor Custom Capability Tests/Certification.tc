@@ -20,16 +20,19 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialize stuff...
+; Initialize stuff, load tables if not already done for us...
 ;
 echo.titlesuite 'Vendor Custom Capability Tests v1.0 23-Feb-2020'
 setlocal twidentity.productname '${arg:1}'
 setlocal certifyresult '${arg:2}'
+if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
+run '${folder:certification}/LoadTables'
+:MAIN.LOADTABLES.SKIP
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; TWAIN Standard Capability Tests...
+; Run the tests...
 ;
 
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'

@@ -2526,15 +2526,31 @@ namespace twaincscert
                     }
                     if (szSelection.Length > 0)
                     {
+                        // Do ends with first so that we can properly find
+                        // stuff like 1000 vs 1000X...
                         foreach (string szDriver in aszDrivers)
                         {
-                            if (szDriver.ToLowerInvariant().Contains(szSelection.ToLowerInvariant()))
+                            if (szDriver.ToLowerInvariant().EndsWith(szSelection.ToLowerInvariant()))
                             {
                                 szSelection = szDriver;
                                 blFound = true;
                                 break;
                             }
                         }
+                        // Otherwise go for contains...
+                        if (!blFound)
+                        {
+                            foreach (string szDriver in aszDrivers)
+                            {
+                                if (szDriver.ToLowerInvariant().Contains(szSelection.ToLowerInvariant()))
+                                {
+                                    szSelection = szDriver;
+                                    blFound = true;
+                                    break;
+                                }
+                            }
+                        }
+                        // If we found something, then scoot...
                         if (blFound)
                         {
                             break;
@@ -3310,6 +3326,7 @@ namespace twaincscert
                                     szFilename += ".bmp";
                                 }
                                 File.WriteAllBytes(szFilename, abImage);
+
                             }
                             catch (Exception exception)
                             {
@@ -3320,13 +3337,37 @@ namespace twaincscert
 
                         case "memfile":
                         case "memory":
-                            iResult = NativeMethods.WriteImageFile(szFolder, intptrPtr, keyvalue.iBytes);
+                            iResult = NativeMethods.WriteImageFile(szFolder, intptrPtr, keyvalue.iBytes, out szFilename);
                             if (iResult == -1)
                             {
                                 DisplayError("image save failed <" + szFolder + ">", a_functionarguments);
                                 return (false);
                             }
                             break;
+                    }
+
+                    // Just the file and the DAT folder it's in...
+                    if (szFilename.Contains("\\DAT_"))
+                    {
+                        szFilename = szFilename.Substring(szFilename.IndexOf("\\DAT_"));
+                        if (szFilename.Contains("\\") || szFilename.Contains("/"))
+                        {
+                            szFilename = szFilename.Substring(szFilename.IndexOfAny(new char[] { '\\', '/' }) + 1);
+                        }
+                        a_functionarguments.szReturnValue = szFilename;
+                    }
+                    else if (szFilename.Contains("/DAT_"))
+                    {
+                        szFilename = szFilename.Substring(szFilename.IndexOf("/DAT_"));
+                        if (szFilename.Contains("\\") || szFilename.Contains("/"))
+                        {
+                            szFilename = szFilename.Substring(szFilename.IndexOfAny(new char[] { '\\', '/' }) + 1);
+                        }
+                        a_functionarguments.szReturnValue = szFilename;
+                    }
+                    else
+                    {
+                        a_functionarguments.szReturnValue = szFilename;
                     }
                     return (false);
             }
@@ -3832,6 +3873,7 @@ namespace twaincscert
                     && (aszCmd[0] != "echo")
                     && (aszCmd[0] != "goto")
                     && (aszCmd[0] != "if")
+                    && (aszCmd[0] != "image")
                     && (aszCmd[0] != "increment")
                     && (aszCmd[0] != "log")
                     && (aszCmd[0] != "setglobal")
@@ -3864,6 +3906,7 @@ namespace twaincscert
                 if (   (aszCmd[0] == "allocatehandle")
                     || (aszCmd[0] == "allocatepointer")
                     || (aszCmd[0] == "dsmentry")
+                    || (aszCmd[0] == "image")
                     || (aszCmd[0] == "wait"))
                 {
                     sts = functionarguments.sts;
@@ -9008,8 +9051,12 @@ namespace twaincscert
         /// <param name="a_intptrPtr"></param>
         /// <param name="a_iBytes"></param>
         /// <returns></returns>
-        public static int WriteImageFile(string a_szFilename, IntPtr a_intptrPtr, int a_iBytes)
+        public static int WriteImageFile(string a_szFilename, IntPtr a_intptrPtr, int a_iBytes, out string a_szFinalFilename)
         {
+            // Init stuff...
+            a_szFinalFilename = "";
+
+            // Try to write our file...
             try
             {
                 // If we don't have an extension, try to add one...
@@ -9031,6 +9078,9 @@ namespace twaincscert
                         a_szFilename += ".jpg";
                     }
                 }
+
+                // For the caller...
+                a_szFinalFilename = a_szFilename;
 
                 // Handle Windows...
                 if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)

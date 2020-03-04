@@ -20,17 +20,20 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialize stuff...
+; Initialize stuff, load tables if not already done for us...
 ;
 echo.titlesuite 'Stress Tests v1.0 23-Feb-2020'
 setlocal twidentity.productname '${arg:1}'
 setlocal certifyresult '${arg:2}'
 setglobal g_statusreturnresult 'pass' ; assume success
+if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
+run '${folder:certification}/LoadTables'
+:MAIN.LOADTABLES.SKIP
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Stress Tests...
+; Run the tests...
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_statusreturnresult embedded
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_statusreturnresult embedded

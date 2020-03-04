@@ -1,11 +1,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; DAT_IMAGEMEMXFER
-;   This test issues multiple image transfer sessions using DAT_IMAGEMEMXFER. It is performed
-;   for all available image sources (unspecified, flatbed and/or ADF). Only one image is transferred
-;   per session.
+; DAT_IMAGEMEMFILEXFER
+;   This test sets CAP_XFERCOUNT to 0, 1 and -1 for a flatbed scanner. It expects an error for the
+;   value 0, and only one image to be transferred per scanning session for the values 1 and -1.
 ;
 ;   We follow the capability ordering, so the loops take the form:
-;   set ICAP_XFERMECH TWSX_MEMORY
+;   set ICAP_XFERMECH TWSX_MEMFILE
 ;   foreach CAP_FEEDERENABLED
 ;     foreach ICAP_PIXELTYPE
 ;       scan
@@ -17,6 +16,7 @@
 ;   arg:2 - global for us to update on failure
 ;   arg:3 - value of ShowUI (TRUE or FALSE)
 ;   arg:4 - test name for the image folder
+;   arg:5 - result of a MSG_GET on ICAP_XFERMECH
 ;
 ; Globals
 ;   (none)
@@ -24,21 +24,19 @@
 ; Locals
 ;   name - current test being done
 ;   indent - indent the passfail text
-;   imageinfo - metadata for the current image
 ;   imagememxfer - result of DAT_IMAGEMEMXFER call
 ;   setupmemxfer.preferred - preferred field from DAT_SETUPMEMXFER call
 ;
 ;   image.count - count of images from 1
 ;   image.folder - folder to put the images in
+;   image.folderone - path for CAP_XFERCOUNT=1 test
+;   image.folderall - path for CAP_XFERCOUNT=-1 test
 ;   image.prefix - adf or fb
+;   image.testcount - count of images from 0 for a specific test
 ;
 ;   feederenabled.list - scanner's feederenabled values
 ;   feederenabled.index - index of feederenabled values
 ;   feederenabled.value - current feederenabled value
-;
-;   pixeltype.list - scanner's pixeltype values for this feederenabled
-;   pixeltype.index - index of pixeltype values
-;   pixeltype.value - current pixeltype value
 ;
 ; Returns
 ;   pass or fail
@@ -47,22 +45,36 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If not supported, quietly leave...
+;
+if '${arg:5}' ~contains 'TWSX_MEMFILE' goto MAIN.CONTINUE
+return 'pass'
+:MAIN.CONTINUE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGEMEMXFER v1.0 01-Mar-2020'
+echo.titletest 'DAT_IMAGEMEMFILEXFER v1.0 04-Mar-2020'
 setlocal indent ''
-setlocal image.handle '0'
+setlocal image.pointer '0'
 setlocal image.count '0'
-setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEMEMXFER'
+setlocal image.folder ''
+setlocal image.folderone '${folder:certimages}/${arg:4}/DAT_IMAGEMEMFILEXFER/one'
+setlocal image.folderall '${folder:certimages}/${arg:4}/DAT_IMAGEMEMFILEXFER/all'
 setlocal image.prefix 'fb'
+setlocal image.testcount '1'
 setlocal showui '${arg:3}'
+setlocal xfercount.test '0'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Clean the image folder for this test...
 ;
-image cleanfolder '${get:image.folder}'
+image cleanfolder '${get:image.folderone}'
+image cleanfolder '${get:image.folderall}'
 
 
 
@@ -83,11 +95,11 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'ICAP_XFERMECH MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-if '${ret:}' !~contains 'TWSX_MEMORY' goto MAIN.ERROR.ECHOPASSFAIL
+if '${ret:}' !~contains 'TWSX_MEMFILE' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'ICAP_XFERMECH MSG_SET TWSX_MEMORY'
-dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,TWSX_MEMORY'
+setlocal name 'ICAP_XFERMECH MSG_SET TWSX_MEMFILE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,TWSX_MEMFILE'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
@@ -108,7 +120,7 @@ increment feederenabled.index '${get:feederenabled.index}' -1 ; less 1
 ;
 :MAIN.FEEDERENABLED.NEXT
 setlocal indent ''
-setlocal image.count '0' ; reset count to 0
+setlocal xfercount.test '0' ; reset the tests
 increment feederenabled.index '${get:feederenabled.index}' 1 ; next itemlist
 setlocal feederenabled.value '${getindex:feederenabled.list:${get:feederenabled.index}}' ; get the value
 if '${get:feederenabled.value}' == '' goto MAIN.PASS ; we've passed all tests!!!
@@ -128,29 +140,53 @@ setlocal image.prefix 'fb'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Get ICAP_PIXELTYPE, and loop so we test all values for
-; the current CAP_FEEDERENABLED setting.
+; Dispatch to the CAP_XFERCOUNT test we want to run...
 ;
+:MAIN.XFERCOUNT.NEXT
 setlocal indent '  '
-setlocal name 'ICAP_PIXELTYPE MSG_GET'
-dsmentry src ds dg_control dat_capability msg_get 'ICAP_PIXELTYPE,0,0,0'
+increment xfercount.test '${get:xfercount.test}' 1
+if '${get:xfercount.test}' == '1' goto MAIN.XFERCOUNT.TEST1
+if '${get:xfercount.test}' == '2' goto MAIN.XFERCOUNT.TEST2
+if '${get:xfercount.test}' == '3' goto MAIN.XFERCOUNT.TEST3
+goto MAIN.FEEDERENABLED.NEXT ; we're done test with this paper source, go to the next one
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_XFERCOUNT to 0...
+;
+:MAIN.XFERCOUNT.TEST1
+setlocal name 'CAP_XFERCOUNT == 0'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,0'
+if '${sts:}' == 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.XFERCOUNT.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_XFERCOUNT to 1...
+;
+:MAIN.XFERCOUNT.TEST2
+setlocal name 'CAP_XFERCOUNT == 1'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,1'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal image.folder '${get:image.folderone}'
+goto MAIN.SETUPMEMXFER
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_XFERCOUNT to -1...
 ;
-setlocal pixeltype.list '${ret:}' ; what the scanner told us
-setlocal pixeltype.index '${get:TW_ENUMERATION.ItemList}' ; point to itemlist
-increment pixeltype.index '${get:pixeltype.index}' -1 ; less 1
-;
-:MAIN.PIXELTYPE.NEXT
-setlocal indent '  '
-increment pixeltype.index '${get:pixeltype.index}' 1 ; next itemlist
-setlocal pixeltype.value '${getindex:pixeltype.list:${get:pixeltype.index}}' ; get the value
-if '${get:pixeltype.value}' == '' goto MAIN.FEEDERENABLED.NEXT ; pixeltypes done for this feederenabled
-;
-setlocal name 'ICAP_PIXELTYPE MSG_SET ${get:pixeltype.value}'
-dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:pixeltype.value}'
+:MAIN.XFERCOUNT.TEST3
+setlocal name 'CAP_XFERCOUNT == -1'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,-1'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal image.folder '${get:image.folderall}'
+goto MAIN.SETUPMEMXFER
 
 
 
@@ -158,6 +194,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; Get the preferred size for memory transfers, and allocate
 ; a pointer for the memory transfers...
 ;
+:MAIN.SETUPMEMXFER
 setlocal indent '    '
 setlocal name 'dg_control/dat_setupmemxfer/msg_get'
 dsmentry src ds dg_control dat_setupmemxfer msg_get '0,0,0'
@@ -177,17 +214,10 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If we're a flatbed, we can start scanning...
+; Set DAT_SETUPFILEXFER to TWFF_TIFF
 ;
-if '${get:feederenabled.value}' ~~ 'FALSE' goto MAIN.USERINTERFACE
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; We only need one sheet of paper...
-;
-setlocal name 'CAP_XFERCOUNT MSG_SET 1'
-dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,1'
+setlocal name 'dg_control/dat_setupfilexfer/msg_set TWFF_TIFF'
+dsmentry src null dg_control dat_setupfilexfer msg_set 'file,TWFF_TIFF,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
@@ -197,6 +227,9 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; Start scanning...
 ;
 :MAIN.USERINTERFACE
+setlocal indent '    '
+setlocal name 'dg_control/dat_userinterface/msg_enableds'
+setlocal image.testcount '1' ; reset to 1
 setlocal name 'dg_control/dat_userinterface/msg_enableds'
 wait reset
 dsmentry src null dg_control dat_userinterface msg_enableds '${get:showui},0'
@@ -216,7 +249,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Do a memory transfer...
+; Do a memory file transfer...
 ; This little song and dance with the states is so that we can
 ; start the transfer in state 6 with each new image, but switch
 ; to state 7 if we need multiple calls to capture the current
@@ -226,43 +259,25 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; JPEG (the better form, where a simple TIFF header is added).
 ;
 increment image.count '${get:image.count}' 1
-image free memimage
+image free memfileimage
 ;
-:MAIN.IMAGEMEMXFER.NEXT
+:MAIN.IMAGEMEMFILEXFER.NEXT
 setlocal name 'dg_image/dat_imagememxfer/msg_get'
-dsmentry src ds dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,${get:setupmemxfer.preferred},${get:image.pointer}'
+dsmentry src ds dg_image dat_imagememfilexfer msg_get '0,0,0,0,0,0,0,3,${get:setupmemxfer.preferred},${get:image.pointer}'
 setlocal imagememxfer '${ret:}'
-if '${sts:}' == 'XFERDONE' goto MAIN.IMAGEMEMXFER.XFERDONE
+if '${sts:}' == 'XFERDONE' goto MAIN.IMAGEMEMFILEXFER.XFERDONE
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 ;
 echo.passfail '${get:indent}${get:name} SUCCESS' 'pass'
-image append memimage '${get:imagememxfer}'
-goto MAIN.IMAGEMEMXFER.NEXT
+image append memfileimage '${get:imagememxfer}'
+goto MAIN.IMAGEMEMFILEXFER.NEXT
 ;
-:MAIN.IMAGEMEMXFER.XFERDONE
+:MAIN.IMAGEMEMFILEXFER.XFERDONE
 echo.passfail '${get:indent}${get:name} XFERDONE' 'pass'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; We need image info to make sense of this data...
-;
-setlocal name 'dg_image/dat_imageinfo/msg_get'
-dsmentry src ds dg_image dat_imageinfo msg_get '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
-setlocal imageinfo '${ret:}'
-if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Save the image...
-;
-image append memimage '${get:imagememxfer}'
-image addheader memimage '${get:imageinfo}'
-image save memimage memory '${get:image.folder}/${get:image.prefix}${format:D6|${get:image.count}}'
+image append memfileimage '${get:imagememxfer}'
+image save memfileimage memfile '${get:image.folder}/${get:image.prefix}${format:D6|${get:image.testcount}}'
 echo.passfail '${get:indent}image <${ret:}>' 'pass'
-image free memimage
+image free memfileimage
 
 
 
@@ -273,19 +288,42 @@ setlocal name 'dg_control/dat_pendingxfers/msg_endxfer'
 dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGEINFO.NEXT
+increment image.testcount '${get:image.testcount}' 1 ; count the image
+if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGEMEMFILEXFER.NEXT
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; We're out of images, so disable and go back up to
-; do the next ICAP_PIXELTYPE...
+; We're out of images, so disable...
 ;
 setlocal name 'dg_control/dat_userinterface/msg_disableds'
 dsmentry src ds dg_control dat_userinterface msg_disableds '0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-goto MAIN.PIXELTYPE.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check the results before going up to the next CAP_XFERCOUNT test.
+; Note that flatbeds should always return one image.
+;
+if '${get:feederenabled.value}' ~~ 'FALSE' goto MAIN.XFERCOUNT.CHECKTEST2
+if '${get:xfercount.test}' == '2' goto MAIN.XFERCOUNT.CHECKTEST2
+if '${get:xfercount.test}' == '3' goto MAIN.XFERCOUNT.CHECKTEST3
+echo.passfail '${get:indent}WE SHOULD NOT BE HERE' 'fail - test=${get:xfercount.test}'
+goto MAIN.ERROR.ECHOPASSFAIL
+;
+:MAIN.XFERCOUNT.CHECKTEST2
+setlocal name 'one image transferred'
+if '${get:image.testcount}' != '2' goto MAIN.ERROR.ECHOPASSFAIL ; image.testcount started at 1
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.XFERCOUNT.NEXT
+;
+:MAIN.XFERCOUNT.CHECKTEST3
+setlocal name 'multiple images transferred (${get:image.testcount})'
+if '${get:image.testcount}' < '3' goto MAIN.ERROR.ECHOPASSFAIL ; image.testcount started at 1
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.XFERCOUNT.NEXT
 
 
 
@@ -300,7 +338,7 @@ return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
-image free memimage
+image free memfileimage
 free pointer image.pointer
 echo.passfail '${get:indent}${get:name}' 'fail'
 echo.passfail 'SUMMARY' 'fail'

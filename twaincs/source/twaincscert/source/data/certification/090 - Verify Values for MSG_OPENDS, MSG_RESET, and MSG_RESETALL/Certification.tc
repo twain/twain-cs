@@ -24,7 +24,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialize stuff, load tables if not already done for us..
+; Initialize stuff, load tables if not already done for us...
 ;
 echo.titlesuite 'Verify Values for MSG_OPENDS, MSG_RESET, and MSG_RESETALL v1.0 02-Mar-2020'
 setlocal twidentity.productname '${arg:1}'
@@ -36,7 +36,7 @@ run '${folder:certification}/LoadTables'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Tests...
+; Run the tests...
 ;
 call CERTIFY 'MSG_OPENDS'   '${get:twidentity.productname}' '${get:certifyresult}'
 call CERTIFY 'MSG_RESET'    '${get:twidentity.productname}' '${get:certifyresult}'

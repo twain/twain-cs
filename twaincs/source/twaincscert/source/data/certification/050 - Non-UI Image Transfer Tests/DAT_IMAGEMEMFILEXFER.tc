@@ -30,6 +30,7 @@
 ;
 ;   image.count - count of images from 1
 ;   image.folder - folder to put the images in
+;   image.prefix - adf or fb
 ;
 ;   feederenabled.list - scanner's feederenabled values
 ;   feederenabled.index - index of feederenabled values
@@ -62,6 +63,7 @@ setlocal indent ''
 setlocal image.handle '0'
 setlocal image.count '0'
 setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEMEMFILEXFER'
+setlocal image.prefix 'fb'
 setlocal showui '${arg:3}'
 
 
@@ -115,6 +117,7 @@ increment feederenabled.index '${get:feederenabled.index}' -1 ; less 1
 ;
 :MAIN.FEEDERENABLED.NEXT
 setlocal indent ''
+setlocal image.count '0' ; reset count to 0
 increment feederenabled.index '${get:feederenabled.index}' 1 ; next itemlist
 setlocal feederenabled.value '${getindex:feederenabled.list:${get:feederenabled.index}}' ; get the value
 if '${get:feederenabled.value}' == '' goto MAIN.PASS ; we've passed all tests!!!
@@ -123,6 +126,13 @@ setlocal name 'CAP_FEEDERENABLED MSG_SET ${get:feederenabled.value}'
 dsmentry src ds dg_control dat_capability msg_set 'CAP_FEEDERENABLED,TWON_ONEVALUE,TWTY_BOOL,${get:feederenabled.value}'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+;
+if '${get:feederenabled.value}' ~~ 'FALSE' goto MAIN.FEEDERENABLED.SETFB
+setlocal image.prefix 'adf'
+goto MAIN.FEEDERENABLED.SETDONE
+:MAIN.FEEDERENABLED.SETFB
+setlocal image.prefix 'fb'
+:MAIN.FEEDERENABLED.SETDONE
 
 
 
@@ -217,8 +227,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Wait for MSG_XFERREADY, if we don't see it then scoot...
 ;
-setlocal name 'wait 30 seconds for MSG_XFERREADY'
-wait 30000
+setlocal name 'wait 60 seconds for MSG_XFERREADY'
+wait 60000
 if '${ret:}' !~contains 'msg_xferready' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
@@ -251,7 +261,8 @@ goto MAIN.IMAGEMEMFILEXFER.NEXT
 :MAIN.IMAGEMEMFILEXFER.XFERDONE
 echo.passfail '${get:indent}${get:name} XFERDONE' 'pass'
 image append memfileimage '${get:imagememxfer}'
-image save memfileimage memfile '${get:image.folder}/img${format:D6|${get:image.count}}'
+image save memfileimage memfile '${get:image.folder}/${get:image.prefix}${format:D6|${get:image.count}}'
+echo.passfail '${get:indent}image <${ret:}>' 'pass'
 image free memfileimage
 
 

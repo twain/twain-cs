@@ -2823,9 +2823,12 @@ namespace TWAINWorkingGroup
         /// <returns></returns>
         private string CvtCapValueToEnumHelper<T>(string a_szValue)
         {
-            // Adjust our value, as needed...
+            T t;
+            Int32 i32 = 0;
             UInt32 u32 = 0;
             string szCvt = "";
+
+            // Adjust our value, as needed...
             if (a_szValue.StartsWith(typeof(T).Name + "_"))
             {
                 a_szValue = a_szValue.Substring((typeof(T).Name + "_").Length);
@@ -2834,8 +2837,6 @@ namespace TWAINWorkingGroup
             // Handle enums with negative numbers...
             if (a_szValue.StartsWith("-"))
             {
-                T t;
-                Int32 i32 = 0;
                 if (Int32.TryParse(a_szValue, out i32))
                 {
                     t = (T)Enum.Parse(typeof(T), a_szValue, true);
@@ -2850,7 +2851,7 @@ namespace TWAINWorkingGroup
             // Everybody else...
             else if (UInt32.TryParse(a_szValue, out u32))
             {
-                T t;
+                // Handle bool...
                 if (typeof(T) == typeof(bool))
                 {
                     if ((a_szValue == "1") || (a_szValue.ToLowerInvariant() == "true"))
@@ -2859,6 +2860,8 @@ namespace TWAINWorkingGroup
                     }
                     return ("FALSE");
                 }
+
+                // Handle DAT (which is a weird one)..
                 else if (typeof(T) == typeof(DAT))
                 {
                     UInt32 u32Dg = u32 >> 16;
@@ -2869,27 +2872,37 @@ namespace TWAINWorkingGroup
                     szDat = (szDat != u32Dat.ToString()) ? ("DAT_" + szDat) : string.Format("0x{0:X}", u32Dat);
                     return (szDg + "|" + szDat);
                 }
+
+                // Everybody else is on their own...
                 else
                 {
                     t = (T)Enum.Parse(typeof(T), a_szValue, true);
                 }
+
+                // Check to see if we changed anything...
                 szCvt = t.ToString();
                 if (szCvt != u32.ToString())
                 {
+                    // CAP is in its final form...
                     if (typeof(T) == typeof(CAP))
                     {
                         return (szCvt);
                     }
+                    // Everybody else needs the name decoration removed...
                     else
                     {
                         return (typeof(T).ToString().Replace("TWAINWorkingGroup.TWAIN+", "") + "_" + szCvt);
                     }
                 }
+
+                // We're probably a custom value...
                 else
                 {
                     return (string.Format("0x{0:X}", u32));
                 }
             }
+
+            // We're a string...
             return (a_szValue);
         }
 
@@ -11513,14 +11526,14 @@ namespace TWAINWorkingGroup
                         // We do this to make sure the entire Item value is overwritten...
                         if (a_twcapability.ConType == TWON.ONEVALUE)
                         {
-                            int i32Value = sbyte.Parse(a_szValue);
+                            int i32Value = sbyte.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                             Marshal.StructureToPtr(i32Value, a_intptr, true);
                             return ("");
                         }
                         // These items have to be packed on the type sizes...
                         else
                         {
-                            sbyte i8Value = sbyte.Parse(a_szValue);
+                            sbyte i8Value = sbyte.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                             intptr = (IntPtr)((ulong)a_intptr + (ulong)(1 * a_iIndex));
                             Marshal.StructureToPtr(i8Value, intptr, true);
                             return ("");
@@ -11548,7 +11561,8 @@ namespace TWAINWorkingGroup
 
                 case TWTY.INT32:
                     {
-                        int i32Value = int.Parse(a_szValue);
+                        // Entire value will always be overwritten, so we don't have to get fancy...
+                        int i32Value = int.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                         intptr = (IntPtr)((ulong)a_intptr + (ulong)(4 * a_iIndex));
                         Marshal.StructureToPtr(i32Value, intptr, true);
                         return ("");
@@ -11559,14 +11573,14 @@ namespace TWAINWorkingGroup
                         // We use u32Value to make sure the entire Item value is overwritten...
                         if (a_twcapability.ConType == TWON.ONEVALUE)
                         {
-                            uint u32Value = byte.Parse(a_szValue);
+                            uint u32Value = byte.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                             Marshal.StructureToPtr(u32Value, a_intptr, true);
                             return ("");
                         }
                         // These items have to be packed on the type sizes...
                         else
                         {
-                            byte u8Value = byte.Parse(a_szValue);
+                            byte u8Value = byte.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                             intptr = (IntPtr)((ulong)a_intptr + (ulong)(1 * a_iIndex));
                             Marshal.StructureToPtr(u8Value, intptr, true);
                             return ("");
@@ -11576,17 +11590,16 @@ namespace TWAINWorkingGroup
                 case TWTY.BOOL:
                 case TWTY.UINT16:
                     {
-                        string szNumber = CvtCapValueFromEnum(a_twcapability.Cap, a_szValue);
                         // We use u32Value to make sure the entire Item value is overwritten...
                         if (a_twcapability.ConType == TWON.ONEVALUE)
                         {
-                            uint u32Value = ushort.Parse(CvtCapValueFromEnum(a_twcapability.Cap, szNumber));
+                            uint u32Value = ushort.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                             Marshal.StructureToPtr(u32Value, a_intptr, true);
                             return ("");
                         }
                         else
                         {
-                            ushort u16Value = ushort.Parse(CvtCapValueFromEnum(a_twcapability.Cap, szNumber));
+                            ushort u16Value = ushort.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                             intptr = (IntPtr)((ulong)a_intptr + (ulong)(2 * a_iIndex));
                             Marshal.StructureToPtr(u16Value, intptr, true);
                             return ("");
@@ -11595,7 +11608,8 @@ namespace TWAINWorkingGroup
 
                 case TWTY.UINT32:
                     {
-                        uint u32Value = uint.Parse(a_szValue);
+                        // Entire value will always be overwritten, so we don't have to get fancy...
+                        uint u32Value = uint.Parse(CvtCapValueFromEnum(a_twcapability.Cap, a_szValue));
                         intptr = (IntPtr)((ulong)a_intptr + (ulong)(4 * a_iIndex));
                         Marshal.StructureToPtr(u32Value, intptr, true);
                         return ("");
@@ -11603,6 +11617,7 @@ namespace TWAINWorkingGroup
 
                 case TWTY.FIX32:
                     {
+                        // Entire value will always be overwritten, so we don't have to get fancy...
                         TW_FIX32 twfix32 = default(TW_FIX32);
                         twfix32.Whole = (short)Convert.ToDouble(a_szValue);
                         twfix32.Frac = (ushort)((Convert.ToDouble(a_szValue) - (double)twfix32.Whole) * 65536.0);

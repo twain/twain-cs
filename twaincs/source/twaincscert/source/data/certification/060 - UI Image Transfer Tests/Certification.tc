@@ -23,7 +23,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialize stuff, load tables if not already done for us..
+; Initialize stuff, load tables if not already done for us...
 ;
 echo.titlesuite 'UI Image Transfer Tests v1.0 03-Mar-2020'
 setlocal twidentity.productname '${arg:1}'
@@ -35,7 +35,7 @@ run '${folder:certification}/LoadTables'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; TWAIN Standard Capability Tests...
+; Run the tests...
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'
 

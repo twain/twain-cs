@@ -30,6 +30,7 @@
 ;
 ;   image.count - count of images from 1
 ;   image.folder - folder to put the images in
+;   image.prefix - adf or fb
 ;
 ;   feederenabled.list - scanner's feederenabled values
 ;   feederenabled.index - index of feederenabled values
@@ -62,6 +63,8 @@ setlocal indent ''
 setlocal image.handle '0'
 setlocal image.count '0'
 setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEFILEXFER'
+setlocal image.prefix 'fb'
+setlocal image.showname ''
 setlocal showui '${arg:3}'
 
 
@@ -115,6 +118,7 @@ increment feederenabled.index '${get:feederenabled.index}' -1 ; less 1
 ;
 :MAIN.FEEDERENABLED.NEXT
 setlocal indent ''
+setlocal image.count '0' ; reset count to 0
 increment feederenabled.index '${get:feederenabled.index}' 1 ; next itemlist
 setlocal feederenabled.value '${getindex:feederenabled.list:${get:feederenabled.index}}' ; get the value
 if '${get:feederenabled.value}' == '' goto MAIN.PASS ; we've passed all tests!!!
@@ -123,6 +127,13 @@ setlocal name 'CAP_FEEDERENABLED MSG_SET ${get:feederenabled.value}'
 dsmentry src ds dg_control dat_capability msg_set 'CAP_FEEDERENABLED,TWON_ONEVALUE,TWTY_BOOL,${get:feederenabled.value}'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+;
+if '${get:feederenabled.value}' ~~ 'FALSE' goto MAIN.FEEDERENABLED.SETFB
+setlocal image.prefix 'adf'
+goto MAIN.FEEDERENABLED.SETDONE
+:MAIN.FEEDERENABLED.SETFB
+setlocal image.prefix 'fb'
+:MAIN.FEEDERENABLED.SETDONE
 
 
 
@@ -186,8 +197,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Wait for MSG_XFERREADY, if we don't see it then scoot...
 ;
-setlocal name 'wait 30 seconds for MSG_XFERREADY'
-wait 30000
+setlocal name 'wait 60 seconds for MSG_XFERREADY'
+wait 60000
 if '${ret:}' !~contains 'msg_xferready' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
@@ -210,14 +221,16 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 increment image.count '${get:image.count}' 1
 if '${get:twimageinfo.compression}' == 'JPEG' goto MAIN.SETUPFILEXFER.JPEG
-setlocal twsetupfilexfer.filename '${get:image.folder}/img${format:D6|${get:image.count}}.tif'
+setlocal image.showname 'DAT_IMAGEFILEXFER/${get:image.prefix}${format:D6|${get:image.count}}.tif'
+setlocal twsetupfilexfer.filename '${get:image.folder}/${get:image.prefix}${format:D6|${get:image.count}}.tif'
 setlocal twsetupfilexfer.format 'TWFF_TIFF'
 goto MAIN.SETUPFILEXFER
 :MAIN.SETUPFILEXFER.JPEG
-setlocal twsetupfilexfer.filename '${get:image.folder}/img${format:D6|${get:image.count}}.jpg'
+setlocal image.showname 'DAT_IMAGEFILEXFER/${get:image.prefix}${format:D6|${get:image.count}}.jpg'
+setlocal twsetupfilexfer.filename '${get:image.folder}/${get:image.prefix}${format:D6|${get:image.count}}.jpg'
 setlocal twsetupfilexfer.format 'TWFF_JFIF'
 :MAIN.SETUPFILEXFER
-setlocal namne 'g_control/dat_setupfilexfer/msg_set'
+setlocal name 'dg_control/dat_setupfilexfer/msg_set'
 dsmentry src ds dg_control dat_setupfilexfer msg_set '"${get:twsetupfilexfer.filename}",${get:twsetupfilexfer.format},0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -231,6 +244,7 @@ setlocal name 'dg_image/dat_imagefilexfer/msg_get'
 dsmentry src ds dg_image dat_imagefilexfer msg_get null
 if '${sts:}' != 'XFERDONE' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+echo.passfail '${get:indent}image <${get:image.showname}>' 'pass'
 
 
 
