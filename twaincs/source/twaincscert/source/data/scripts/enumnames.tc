@@ -10,8 +10,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Init stuff...
 ;
-set dsm 'closed'
-set twidentity.productname '11'
+setlocal dsm 'closed'
+setlocal twidentity.productname '11'
 
 
 
@@ -21,7 +21,7 @@ set twidentity.productname '11'
 dsmload
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-set dsm 'opened'
+setlocal dsm 'opened'
 
 
 

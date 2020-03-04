@@ -10,7 +10,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Init stuff...
 ;
-set dsm 'closed'
+setlocal dsm 'closed'
 
 
 
@@ -20,7 +20,7 @@ set dsm 'closed'
 dsmload
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-set dsm 'opened'
+setlocal dsm 'opened'
 
 
 

@@ -23,9 +23,9 @@ goto MAIN.PASS
 ; Figure out which msg to use...
 ;
 :MAIN.GETARGS
-set capget.msg 'msg_get'
+setlocal capget.msg 'msg_get'
 if '${arg:3}' == '' goto MAIN.GET
-set capget.msg '${arg:3}'
+setlocal capget.msg '${arg:3}'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
