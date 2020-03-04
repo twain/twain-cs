@@ -14,12 +14,6 @@ namespace twaincscert
         {
             // Not much going on here, because we never show this form...
             InitializeComponent();
-
-            // We need this for Windows.  This is where we filter for
-            // Windows events.  This is needed for two reasons:  first,
-            // so that events targeting the driver's userinterface can
-            // be properly processed.  And second, so that we can detect
-            // DAT_NULL events and act on them...
             SetMessageFilter(true);
         }
 
@@ -46,9 +40,26 @@ namespace twaincscert
         {
             if (m_terminal != null)
             {
-                return (m_terminal.PreFilterMessage(a_message.HWnd,a_message.Msg,a_message.WParam,a_message.LParam));
+                return (m_terminal.PreFilterMessage(a_message.HWnd, a_message.Msg, a_message.WParam, a_message.LParam));
             }
             return (true);
+        }
+
+        /// <summary>
+        /// TWAIN needs help, if we want it to run stuff in our main
+        /// UI thread...
+        /// </summary>
+        /// <param name="control">the control to run in</param>
+        /// <param name="code">the code to run</param>
+        static public void RunInUiThread(Object a_object, Action a_action)
+        {
+            Control control = (Control)a_object;
+            if (control.InvokeRequired)
+            {
+                control.Invoke(new Terminal.RunInUiThreadDelegate(RunInUiThread), new object[] { a_object, a_action });
+                return;
+            }
+            a_action();
         }
 
         /// <summary>

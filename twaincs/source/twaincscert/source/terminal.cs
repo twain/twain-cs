@@ -1010,6 +1010,12 @@ namespace twaincscert
                 }
             }
 
+            // Decide if we need a delegate...
+            if (m_formmain != null)
+            {
+                runinuithreaddelegate = RunInUiThread;
+            }
+
             // Instantiate TWAIN, and register ourselves...
             m_twain = new TWAIN
             (
@@ -1087,6 +1093,16 @@ namespace twaincscert
 
             // Return a status, in case we ever need it for anything...
             return (TWAIN.STS.SUCCESS);
+        }
+
+        /// <summary>
+        /// TWAIN needs help, if we want it to run stuff in our main
+        /// UI thread...
+        /// </summary>
+        /// <param name="code">the code to run</param>
+        private void RunInUiThread(Action a_action)
+        {
+            RunInUiThread(m_formmain, a_action);
         }
 
         /// <summary>
