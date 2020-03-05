@@ -78,11 +78,16 @@ if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Set ICAP_PIXELTYPE to TWPT_RGB
+; Set ICAP_PIXELTYPE to TWPT_RGB, if we can...
 ;
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_PIXELTYPE,0,0,0'
+echo.progress 'capability/get' '${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+if '${ret:}' !~contains 'TWPT_RGB' goto MAIN.PIXELTYPE.SKIP
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,TWPT_RGB'
 echo.progress 'capability/set' '${sts:} - ${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+:MAIN.PIXELTYPE.SKIP
 
 
 
@@ -158,7 +163,7 @@ goto MAIN.NEXTIMAGEMEMFILEXFER
 setlocal twainstate '7'
 ;
 :MAIN.NEXTIMAGEMEMFILEXFER
-dsmentry src ds dg_image dat_imagememfilexfer msg_get '0,0,0,0,0,0,0,3,${get:twsetupmemxfer.preferred},${get:image.pointer}'
+dsmentry src ds dg_image dat_imagememfilexfer msg_get '0,0,0,0,0,0,0,9,${get:twsetupmemxfer.preferred},${get:image.pointer}'
 echo.progress 'imagememxfer/get' '${sts:} - ${ret:}'
 if '${sts:}' == 'XFERDONE' goto MAIN.NEXTIMAGEMEMFILEXFER.XFERDONE
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL

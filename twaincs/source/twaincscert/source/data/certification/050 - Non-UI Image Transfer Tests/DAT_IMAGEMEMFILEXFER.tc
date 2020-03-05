@@ -249,7 +249,7 @@ image free memfileimage
 ;
 :MAIN.IMAGEMEMFILEXFER.NEXT
 setlocal name 'dg_image/dat_imagememxfer/msg_get'
-dsmentry src ds dg_image dat_imagememfilexfer msg_get '0,0,0,0,0,0,0,3,${get:setupmemxfer.preferred},${get:image.pointer}'
+dsmentry src ds dg_image dat_imagememfilexfer msg_get '0,0,0,0,0,0,0,9,${get:setupmemxfer.preferred},${get:image.pointer}'
 setlocal imagememxfer '${ret:}'
 if '${sts:}' == 'XFERDONE' goto MAIN.IMAGEMEMFILEXFER.XFERDONE
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL

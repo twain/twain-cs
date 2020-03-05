@@ -45,8 +45,8 @@ call SENDANDCHECK SUCCESS  '${get:certifyresult}' discard dg_control dat_userint
 ; Confirm that DAT_IMAGEMEMXFER returns the correct status
 ; in various error conditions.
 ;
-call SENDANDCHECK BADPROTOCOL '${get:certifyresult}' discard dg_image dat_imagememxfer msg_set '0,0,0,0,0,0,0,3,0,0'
-call SENDANDCHECK SEQERROR    '${get:certifyresult}' discard dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,3,0,0'
+call SENDANDCHECK BADPROTOCOL '${get:certifyresult}' discard dg_image dat_imagememxfer msg_set '0,0,0,0,0,0,0,9,0,0'
+call SENDANDCHECK SEQERROR    '${get:certifyresult}' discard dg_image dat_imagememxfer msg_get '0,0,0,0,0,0,0,9,0,0'
 
 
 
