@@ -46,23 +46,6 @@ namespace twaincscert
         }
 
         /// <summary>
-        /// TWAIN needs help, if we want it to run stuff in our main
-        /// UI thread...
-        /// </summary>
-        /// <param name="control">the control to run in</param>
-        /// <param name="code">the code to run</param>
-        static public void RunInUiThread(Object a_object, Action a_action)
-        {
-            Control control = (Control)a_object;
-            if (control.InvokeRequired)
-            {
-                control.Invoke(new Terminal.RunInUiThreadDelegate(RunInUiThread), new object[] { a_object, a_action });
-                return;
-            }
-            a_action();
-        }
-
-        /// <summary>
         /// Turn message filtering on or off, we use this to capture stuff
         /// like MSG_XFERREADY.  If it's off, then it's assumed we're getting
         /// this info through DAT_CALLBACK2...

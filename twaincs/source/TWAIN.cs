@@ -166,6 +166,15 @@ namespace TWAINWorkingGroup
             m_runinuithreaddelegate = a_runinuithreaddelegate;
             m_intptrHwnd = a_intptrHwnd;
 
+            // Help for RunInUiThread...
+            m_threaddataDatAudiofilexfer = default(ThreadData);
+            m_threaddataDatAudionativexfer = default(ThreadData);
+            m_threaddataDatImagefilexfer = default(ThreadData);
+            m_threaddataDatImagememfilexfer = default(ThreadData);
+            m_threaddataDatImagememxfer = default(ThreadData);
+            m_threaddataDatImagenativexfer = default(ThreadData);
+            m_threaddataDatUserinterface = default(ThreadData);
+
             // We always go through a discovery process, even on 32-bit...
             m_linuxdsm = LinuxDsm.Unknown;
 
@@ -3611,41 +3620,31 @@ namespace TWAINWorkingGroup
         /// <returns>TWAIN status</returns>
         private void DatAudiofilexferWindowsTwain32()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatAudiofilexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwain32DsmEntryAudiofilexfer
+            m_threaddataDatAudiofilexfer.sts = (STS)NativeMethods.WindowsTwain32DsmEntryAudiofilexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
+                m_threaddataDatAudiofilexfer.dg,
+                m_threaddataDatAudiofilexfer.dat,
+                m_threaddataDatAudiofilexfer.msg,
                 IntPtr.Zero
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatAudiofilexfer, threaddata);
         }
         private void DatAudiofilexferWindowsTwainDsm()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatAudiofilexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryAudiofilexfer
+            m_threaddataDatAudiofilexfer.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryAudiofilexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
+                m_threaddataDatAudiofilexfer.dg,
+                m_threaddataDatAudiofilexfer.dat,
+                m_threaddataDatAudiofilexfer.msg,
                 IntPtr.Zero
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatAudiofilexfer, threaddata);
         }
         public STS DatAudiofilexfer(DG a_dg, MSG a_msg)
         {
@@ -3691,7 +3690,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (this.m_runinuithreaddelegate == null)
+                    if (m_threaddataDatAudiofilexfer.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
                         if (m_blUseLegacyDSM)
                         {
@@ -3708,28 +3707,28 @@ namespace TWAINWorkingGroup
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.AUDIOFILEXFER;
-                                m_lIndexDatAudiofilexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatAudiofilexfer = default(ThreadData);
+                                m_threaddataDatAudiofilexfer.blIsInuse = true;
+                                m_threaddataDatAudiofilexfer.dg = a_dg;
+                                m_threaddataDatAudiofilexfer.msg = a_msg;
+                                m_threaddataDatAudiofilexfer.dat = DAT.AUDIOFILEXFER;
                                 RunInUiThread(DatAudiofilexferWindowsTwain32);
-                                sts = m_twaincommand.Get(m_lIndexDatAudiofilexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatAudiofilexfer);
+                                sts = m_threaddataDatAudiofilexfer.sts;
+                                m_threaddataDatAudiofilexfer = default(ThreadData);
                             }
                         }
                         else
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.AUDIOFILEXFER;
-                                m_lIndexDatAudiofilexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatAudiofilexfer = default(ThreadData);
+                                m_threaddataDatAudiofilexfer.blIsInuse = true;
+                                m_threaddataDatAudiofilexfer.dg = a_dg;
+                                m_threaddataDatAudiofilexfer.msg = a_msg;
+                                m_threaddataDatAudiofilexfer.dat = DAT.AUDIOFILEXFER;
                                 RunInUiThread(DatAudiofilexferWindowsTwainDsm);
-                                sts = m_twaincommand.Get(m_lIndexDatAudiofilexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatAudiofilexfer);
+                                sts = m_threaddataDatAudiofilexfer.sts;
+                                m_threaddataDatAudiofilexfer = default(ThreadData);
                             }
                         }
                     }
@@ -3980,41 +3979,31 @@ namespace TWAINWorkingGroup
         /// <returns>TWAIN status</returns>
         private void DatAudionativexferWindowsTwain32()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatAudionativexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwain32DsmEntryAudionativexfer
+            m_threaddataDatAudionativexfer.sts = (STS)NativeMethods.WindowsTwain32DsmEntryAudionativexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.intptrAudio
+                m_threaddataDatAudionativexfer.dg,
+                m_threaddataDatAudionativexfer.dat,
+                m_threaddataDatAudionativexfer.msg,
+                ref m_threaddataDatAudionativexfer.intptrAudio
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatAudionativexfer, threaddata);
         }
         private void DatAudionativexferWindowsTwainDsm()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatAudionativexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryAudionativexfer
+            m_threaddataDatAudionativexfer.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryAudionativexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.intptrAudio
+                m_threaddataDatAudionativexfer.dg,
+                m_threaddataDatAudionativexfer.dat,
+                m_threaddataDatAudionativexfer.msg,
+                ref m_threaddataDatAudionativexfer.intptrAudio
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatAudionativexfer, threaddata);
         }
         [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public STS DatAudionativexfer(DG a_dg, MSG a_msg, ref IntPtr a_intptrAudio)
@@ -4063,13 +4052,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
-                    {
-                    }
-                    else
-                    {
-                    }
-                    if (this.m_runinuithreaddelegate == null)
+                    if (m_threaddataDatAudionativexfer.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
                         if (m_blUseLegacyDSM)
                         {
@@ -4086,32 +4069,30 @@ namespace TWAINWorkingGroup
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                a_intptrAudio = IntPtr.Zero;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.AUDIONATIVEXFER;
-                                m_lIndexDatAudionativexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatAudionativexfer = default(ThreadData);
+                                m_threaddataDatAudionativexfer.blIsInuse = true;
+                                m_threaddataDatAudionativexfer.dg = a_dg;
+                                m_threaddataDatAudionativexfer.msg = a_msg;
+                                m_threaddataDatAudionativexfer.dat = DAT.AUDIONATIVEXFER;
                                 RunInUiThread(DatAudionativexferWindowsTwain32);
-                                a_intptrAudio = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrAudio;
-                                sts = m_twaincommand.Get(m_lIndexDatAudionativexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatAudionativexfer);
+                                a_intptrAudio = m_threaddataDatAudionativexfer.intptrAudio;
+                                sts = m_threaddataDatAudionativexfer.sts;
+                                m_threaddataDatAudionativexfer = default(ThreadData);
                             }
                         }
                         else
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                a_intptrAudio = IntPtr.Zero;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.AUDIONATIVEXFER;
-                                m_lIndexDatAudionativexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatAudionativexfer = default(ThreadData);
+                                m_threaddataDatAudionativexfer.blIsInuse = true;
+                                m_threaddataDatAudionativexfer.dg = a_dg;
+                                m_threaddataDatAudionativexfer.msg = a_msg;
+                                m_threaddataDatAudionativexfer.dat = DAT.AUDIONATIVEXFER;
                                 RunInUiThread(DatAudionativexferWindowsTwainDsm);
-                                a_intptrAudio = m_twaincommand.Get(m_lIndexDatAudionativexfer).intptrAudio;
-                                sts = m_twaincommand.Get(m_lIndexDatAudionativexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatAudionativexfer);
+                                a_intptrAudio = m_threaddataDatAudionativexfer.intptrAudio;
+                                sts = m_threaddataDatAudionativexfer.sts;
+                                m_threaddataDatAudionativexfer = default(ThreadData);
                             }
                         }
                     }
@@ -7024,41 +7005,31 @@ namespace TWAINWorkingGroup
         /// <returns>TWAIN status</returns>
         private void DatImagefilexferWindowsTwain32()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagefilexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagefilexfer
+            m_threaddataDatImagefilexfer.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagefilexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
+                m_threaddataDatImagefilexfer.dg,
+                m_threaddataDatImagefilexfer.dat,
+                m_threaddataDatImagefilexfer.msg,
                 IntPtr.Zero
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatImagefilexfer, threaddata);
         }
         private void DatImagefilexferWindowsTwainDsm()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagefilexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagefilexfer
+            m_threaddataDatImagefilexfer.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagefilexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
+                m_threaddataDatImagefilexfer.dg,
+                m_threaddataDatImagefilexfer.dat,
+                m_threaddataDatImagefilexfer.msg,
                 IntPtr.Zero
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatImagefilexfer, threaddata);
         }
         public STS DatImagefilexfer(DG a_dg, MSG a_msg)
         {
@@ -7104,7 +7075,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (this.m_runinuithreaddelegate == null)
+                    if (m_threaddataDatImagefilexfer.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
                         if (m_blUseLegacyDSM)
                         {
@@ -7121,28 +7092,28 @@ namespace TWAINWorkingGroup
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGEFILEXFER;
-                                m_lIndexDatImagefilexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatImagefilexfer = default(ThreadData);
+                                m_threaddataDatImagefilexfer.blIsInuse = true;
+                                m_threaddataDatImagefilexfer.dg = a_dg;
+                                m_threaddataDatImagefilexfer.msg = a_msg;
+                                m_threaddataDatImagefilexfer.dat = DAT.IMAGEFILEXFER;
                                 RunInUiThread(DatImagefilexferWindowsTwain32);
-                                sts = m_twaincommand.Get(m_lIndexDatImagefilexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagefilexfer);
+                                sts = m_threaddataDatImagefilexfer.sts;
+                                m_threaddataDatImagefilexfer = default(ThreadData);
                             }
                         }
                         else
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGEFILEXFER;
-                                m_lIndexDatImagefilexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatImagefilexfer = default(ThreadData);
+                                m_threaddataDatImagefilexfer.blIsInuse = true;
+                                m_threaddataDatImagefilexfer.dg = a_dg;
+                                m_threaddataDatImagefilexfer.msg = a_msg;
+                                m_threaddataDatImagefilexfer.dat = DAT.IMAGEFILEXFER;
                                 RunInUiThread(DatImagefilexferWindowsTwainDsm);
-                                sts = m_twaincommand.Get(m_lIndexDatImagefilexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagefilexfer);
+                                sts = m_threaddataDatImagefilexfer.sts;
+                                m_threaddataDatImagefilexfer = default(ThreadData);
                             }
                         }
                     }
@@ -7248,41 +7219,31 @@ namespace TWAINWorkingGroup
         /// <returns>TWAIN status</returns>
         private void DatImagememfilexferWindowsTwain32()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagememfilexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagememfilexfer
+            m_threaddataDatImagememfilexfer.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagememfilexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.twimagememxfer
+                m_threaddataDatImagememfilexfer.dg,
+                m_threaddataDatImagememfilexfer.dat,
+                m_threaddataDatImagememfilexfer.msg,
+                ref m_threaddataDatImagememfilexfer.twimagememxfer
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatImagememfilexfer, threaddata);
         }
         private void DatImagememfilexferWindowsTwainDsm()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagememfilexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagememfilexfer
+            m_threaddataDatImagememfilexfer.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagememfilexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.twimagememxfer
+                m_threaddataDatImagememfilexfer.dg,
+                m_threaddataDatImagememfilexfer.dat,
+                m_threaddataDatImagememfilexfer.msg,
+                ref m_threaddataDatImagememfilexfer.twimagememxfer
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatImagememfilexfer, threaddata);
         }
         public STS DatImagememfilexfer(DG a_dg, MSG a_msg, ref TW_IMAGEMEMXFER a_twimagememxfer)
         {
@@ -7330,7 +7291,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (this.m_runinuithreaddelegate == null)
+                    if (m_threaddataDatImagememfilexfer.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
                         if (m_blUseLegacyDSM)
                         {
@@ -7347,32 +7308,32 @@ namespace TWAINWorkingGroup
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.twimagememxfer = a_twimagememxfer;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGEMEMFILEXFER;
-                                m_lIndexDatImagememfilexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatImagememfilexfer = default(ThreadData);
+                                m_threaddataDatImagememfilexfer.blIsInuse = true;
+                                m_threaddataDatImagememfilexfer.dg = a_dg;
+                                m_threaddataDatImagememfilexfer.msg = a_msg;
+                                m_threaddataDatImagememfilexfer.dat = DAT.IMAGEMEMFILEXFER;
+                                m_threaddataDatImagememfilexfer.twimagememxfer = a_twimagememxfer;
                                 RunInUiThread(DatImagememfilexferWindowsTwain32);
-                                a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememfilexfer).twimagememxfer;
-                                sts = m_twaincommand.Get(m_lIndexDatImagememfilexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagememfilexfer);
+                                a_twimagememxfer = m_threaddataDatImagememfilexfer.twimagememxfer;
+                                sts = m_threaddataDatImagememfilexfer.sts;
+                                m_threaddataDatImagememfilexfer = default(ThreadData);
                             }
                         }
                         else
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.twimagememxfer = a_twimagememxfer;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGEMEMFILEXFER;
-                                m_lIndexDatImagememfilexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatImagememfilexfer = default(ThreadData);
+                                m_threaddataDatImagememfilexfer.blIsInuse = true;
+                                m_threaddataDatImagememfilexfer.dg = a_dg;
+                                m_threaddataDatImagememfilexfer.msg = a_msg;
+                                m_threaddataDatImagememfilexfer.dat = DAT.IMAGEMEMFILEXFER;
+                                m_threaddataDatImagememfilexfer.twimagememxfer = a_twimagememxfer;
                                 RunInUiThread(DatImagememfilexferWindowsTwainDsm);
-                                a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememfilexfer).twimagememxfer;
-                                sts = m_twaincommand.Get(m_lIndexDatImagememfilexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagememfilexfer);
+                                a_twimagememxfer = m_threaddataDatImagememfilexfer.twimagememxfer;
+                                sts = m_threaddataDatImagememfilexfer.sts;
+                                m_threaddataDatImagememfilexfer = default(ThreadData);
                             }
                         }
                     }
@@ -7520,41 +7481,31 @@ namespace TWAINWorkingGroup
         /// <returns>TWAIN status</returns>
         private void DatImagememxferWindowsTwain32()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagememxfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagememxfer
+            m_threaddataDatImagememxfer.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagememxfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.twimagememxfer
+                m_threaddataDatImagememxfer.dg,
+                m_threaddataDatImagememxfer.dat,
+                m_threaddataDatImagememxfer.msg,
+                ref m_threaddataDatImagememxfer.twimagememxfer
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatImagememxfer, threaddata);
         }
         private void DatImagememxferWindowsTwainDsm()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagememxfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagememxfer
+            m_threaddataDatImagememxfer.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagememxfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.twimagememxfer
+                m_threaddataDatImagememxfer.dg,
+                m_threaddataDatImagememxfer.dat,
+                m_threaddataDatImagememxfer.msg,
+                ref m_threaddataDatImagememxfer.twimagememxfer
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatImagememxfer, threaddata);
         }
         public STS DatImagememxfer(DG a_dg, MSG a_msg, ref TW_IMAGEMEMXFER a_twimagememxfer)
         {
@@ -7573,18 +7524,18 @@ namespace TWAINWorkingGroup
                         threaddata.dg = a_dg;
                         threaddata.msg = a_msg;
                         threaddata.dat = DAT.IMAGEMEMXFER;
-                        m_lIndexDatImagememxfer = m_twaincommand.Submit(threaddata);
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
                         // Submit the command and wait for the reply...
                         CallerToThreadSet();
                         ThreadToCallerWaitOne();
 
                         // Return the result...
-                        a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememxfer).twimagememxfer;
-                        sts = m_twaincommand.Get(m_lIndexDatImagememxfer).sts;
+                        a_twimagememxfer = m_twaincommand.Get(lIndex).twimagememxfer;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
                         // Clear the command variables...
-                        m_twaincommand.Delete(m_lIndexDatImagememxfer);
+                        m_twaincommand.Delete(lIndex);
                     }
                     return (sts);
                 }
@@ -7602,7 +7553,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (this.m_runinuithreaddelegate == null)
+                    if (m_threaddataDatImagememxfer.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
                         if (m_blUseLegacyDSM)
                         {
@@ -7619,32 +7570,32 @@ namespace TWAINWorkingGroup
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.twimagememxfer = a_twimagememxfer;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGEMEMXFER;
-                                m_lIndexDatImagememxfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatImagememxfer = default(ThreadData);
+                                m_threaddataDatImagememxfer.blIsInuse = true;
+                                m_threaddataDatImagememxfer.dg = a_dg;
+                                m_threaddataDatImagememxfer.msg = a_msg;
+                                m_threaddataDatImagememxfer.dat = DAT.IMAGEMEMXFER;
+                                m_threaddataDatImagememxfer.twimagememxfer = a_twimagememxfer;
                                 RunInUiThread(DatImagememxferWindowsTwain32);
-                                a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememxfer).twimagememxfer;
-                                sts = m_twaincommand.Get(m_lIndexDatImagememxfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagememxfer);
+                                a_twimagememxfer = m_threaddataDatImagememxfer.twimagememxfer;
+                                sts = m_threaddataDatImagememxfer.sts;
+                                m_threaddataDatImagememxfer = default(ThreadData);
                             }
                         }
                         else
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.twimagememxfer = a_twimagememxfer;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGEMEMXFER;
-                                m_lIndexDatImagememxfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatImagememxfer = default(ThreadData);
+                                m_threaddataDatImagememxfer.blIsInuse = true;
+                                m_threaddataDatImagememxfer.dg = a_dg;
+                                m_threaddataDatImagememxfer.msg = a_msg;
+                                m_threaddataDatImagememxfer.dat = DAT.IMAGEMEMXFER;
+                                m_threaddataDatImagememxfer.twimagememxfer = a_twimagememxfer;
                                 RunInUiThread(DatImagememxferWindowsTwainDsm);
-                                a_twimagememxfer = m_twaincommand.Get(m_lIndexDatImagememxfer).twimagememxfer;
-                                sts = m_twaincommand.Get(m_lIndexDatImagememxfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagememxfer);
+                                a_twimagememxfer = m_threaddataDatImagememxfer.twimagememxfer;
+                                sts = m_threaddataDatImagememxfer.sts;
+                                m_threaddataDatImagememxfer = default(ThreadData);
                             }
                         }
                     }
@@ -7792,41 +7743,31 @@ namespace TWAINWorkingGroup
         /// <returns>TWAIN status</returns>
         private void DatImagenativexferWindowsTwain32()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagenativexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagenativexfer
+            m_threaddataDatImagenativexfer.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagenativexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.intptrBitmap
+                m_threaddataDatImagenativexfer.dg,
+                m_threaddataDatImagenativexfer.dat,
+                m_threaddataDatImagenativexfer.msg,
+                ref m_threaddataDatImagenativexfer.intptrBitmap
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatImagenativexfer, threaddata);
         }
         private void DatImagenativexferWindowsTwainDsm()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatImagenativexfer);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagenativexfer
+            m_threaddataDatImagenativexfer.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagenativexfer
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.intptrBitmap
+                m_threaddataDatImagenativexfer.dg,
+                m_threaddataDatImagenativexfer.dat,
+                m_threaddataDatImagenativexfer.msg,
+                ref m_threaddataDatImagenativexfer.intptrBitmap
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatImagenativexfer, threaddata);
         }
         [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public STS DatImagenativexfer(DG a_dg, MSG a_msg, ref Bitmap a_bitmap)
@@ -7890,13 +7831,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
-                    {
-                    }
-                    else
-                    {
-                    }
-                    if (this.m_runinuithreaddelegate == null)
+                    if (m_threaddataDatImagenativexfer.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
                         if (m_blUseLegacyDSM)
                         {
@@ -7913,32 +7848,30 @@ namespace TWAINWorkingGroup
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.intptrBitmap = IntPtr.Zero;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGENATIVEXFER;
-                                m_lIndexDatImagenativexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatImagenativexfer = default(ThreadData);
+                                m_threaddataDatImagenativexfer.blIsInuse = true;
+                                m_threaddataDatImagenativexfer.dg = a_dg;
+                                m_threaddataDatImagenativexfer.msg = a_msg;
+                                m_threaddataDatImagenativexfer.dat = DAT.IMAGENATIVEXFER;
                                 RunInUiThread(DatImagenativexferWindowsTwain32);
-                                intptrBitmap = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrBitmap;
-                                sts = m_twaincommand.Get(m_lIndexDatImagenativexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagenativexfer);
+                                intptrBitmap = a_intptrBitmapHandle = m_threaddataDatImagenativexfer.intptrBitmap;
+                                sts = m_threaddataDatImagenativexfer.sts;
+                                m_threaddataDatImagenativexfer = default(ThreadData);
                             }
                         }
                         else
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.intptrBitmap = IntPtr.Zero;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.IMAGENATIVEXFER;
-                                m_lIndexDatImagenativexfer = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatImagenativexfer = default(ThreadData);
+                                m_threaddataDatImagenativexfer.blIsInuse = true;
+                                m_threaddataDatImagenativexfer.dg = a_dg;
+                                m_threaddataDatImagenativexfer.msg = a_msg;
+                                m_threaddataDatImagenativexfer.dat = DAT.IMAGENATIVEXFER;
                                 RunInUiThread(DatImagenativexferWindowsTwainDsm);
-                                intptrBitmap = m_twaincommand.Get(m_lIndexDatImagenativexfer).intptrBitmap;
-                                sts = m_twaincommand.Get(m_lIndexDatImagenativexfer).sts;
-                                m_twaincommand.Delete(m_lIndexDatImagenativexfer);
+                                intptrBitmap = a_intptrBitmapHandle = m_threaddataDatImagenativexfer.intptrBitmap;
+                                sts = m_threaddataDatImagenativexfer.sts;
+                                m_threaddataDatImagenativexfer = default(ThreadData);
                             }
                         }
                     }
@@ -9876,41 +9809,31 @@ namespace TWAINWorkingGroup
         /// <returns>TWAIN status</returns>
         private void DatUserinterfaceWindowsTwain32()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatUserinterface);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwain32DsmEntryUserinterface
+            m_threaddataDatUserinterface.sts = (STS)NativeMethods.WindowsTwain32DsmEntryUserinterface
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.twuserinterface
+                m_threaddataDatUserinterface.dg,
+                m_threaddataDatUserinterface.dat,
+                m_threaddataDatUserinterface.msg,
+                ref m_threaddataDatUserinterface.twuserinterface
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatUserinterface, threaddata);
         }
         private void DatUserinterfaceWindowsTwainDsm()
         {
-            ThreadData threaddata = m_twaincommand.Get(m_lIndexDatUserinterface);
-
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            threaddata.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryUserinterface
+            m_threaddataDatUserinterface.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryUserinterface
             (
                 ref m_twidentitylegacyApp,
                 ref m_twidentitylegacyDs,
-                threaddata.dg,
-                threaddata.dat,
-                threaddata.msg,
-                ref threaddata.twuserinterface
+                m_threaddataDatUserinterface.dg,
+                m_threaddataDatUserinterface.dat,
+                m_threaddataDatUserinterface.msg,
+                ref m_threaddataDatUserinterface.twuserinterface
             );
-
-            // Update the data block...
-            m_twaincommand.Update(m_lIndexDatUserinterface, threaddata);
         }
         public STS DatUserinterface(DG a_dg, MSG a_msg, ref TW_USERINTERFACE a_twuserinterface)
         {
@@ -9930,18 +9853,18 @@ namespace TWAINWorkingGroup
                         threaddata.dg = a_dg;
                         threaddata.msg = a_msg;
                         threaddata.dat = DAT.USERINTERFACE;
-                        m_lIndexDatUserinterface = m_twaincommand.Submit(threaddata);
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
                         // Submit the command and wait for the reply...
                         CallerToThreadSet();
                         ThreadToCallerWaitOne();
 
                         // Return the result...
-                        a_twuserinterface = m_twaincommand.Get(m_lIndexDatUserinterface).twuserinterface;
-                        sts = m_twaincommand.Get(m_lIndexDatUserinterface).sts;
+                        a_twuserinterface = m_twaincommand.Get(lIndex).twuserinterface;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
                         // Clear the command variables...
-                        m_twaincommand.Delete(m_lIndexDatUserinterface);
+                        m_twaincommand.Delete(lIndex);
                     }
                     return (sts);
                 }
@@ -9983,7 +9906,7 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (this.m_runinuithreaddelegate == null)
+                    if (m_threaddataDatUserinterface.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
                         if (m_blUseLegacyDSM)
                         {
@@ -10000,34 +9923,32 @@ namespace TWAINWorkingGroup
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.twuserinterface = a_twuserinterface;
-                                threaddata.twuserinterface.hParent = m_intptrHwnd;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.USERINTERFACE;
-                                m_lIndexDatUserinterface = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatUserinterface = default(ThreadData);
+                                m_threaddataDatUserinterface.blIsInuse = true;
+                                m_threaddataDatUserinterface.dg = a_dg;
+                                m_threaddataDatUserinterface.msg = a_msg;
+                                m_threaddataDatUserinterface.dat = DAT.USERINTERFACE;
+                                m_threaddataDatUserinterface.twuserinterface = a_twuserinterface;
                                 RunInUiThread(DatUserinterfaceWindowsTwain32);
-                                a_twuserinterface = m_twaincommand.Get(m_lIndexDatUserinterface).twuserinterface;
-                                sts = m_twaincommand.Get(m_lIndexDatUserinterface).sts;
-                                m_twaincommand.Delete(m_lIndexDatUserinterface);
+                                a_twuserinterface = m_threaddataDatUserinterface.twuserinterface;
+                                sts = m_threaddataDatUserinterface.sts;
+                                m_threaddataDatUserinterface = default(ThreadData);
                             }
                         }
                         else
                         {
                             lock (m_lockTwain)
                             {
-                                ThreadData threaddata = default(ThreadData);
-                                threaddata.twuserinterface = a_twuserinterface;
-                                threaddata.twuserinterface.hParent = m_intptrHwnd;
-                                threaddata.dg = a_dg;
-                                threaddata.msg = a_msg;
-                                threaddata.dat = DAT.USERINTERFACE;
-                                m_lIndexDatUserinterface = m_twaincommand.Submit(threaddata);
+                                m_threaddataDatUserinterface = default(ThreadData);
+                                m_threaddataDatUserinterface.blIsInuse = true;
+                                m_threaddataDatUserinterface.dg = a_dg;
+                                m_threaddataDatUserinterface.msg = a_msg;
+                                m_threaddataDatUserinterface.dat = DAT.USERINTERFACE;
+                                m_threaddataDatUserinterface.twuserinterface = a_twuserinterface;
                                 RunInUiThread(DatUserinterfaceWindowsTwainDsm);
-                                a_twuserinterface = m_twaincommand.Get(m_lIndexDatUserinterface).twuserinterface;
-                                sts = m_twaincommand.Get(m_lIndexDatUserinterface).sts;
-                                m_twaincommand.Delete(m_lIndexDatUserinterface);
+                                a_twuserinterface = m_threaddataDatUserinterface.twuserinterface;
+                                sts = m_threaddataDatUserinterface.sts;
+                                m_threaddataDatUserinterface = default(ThreadData);
                             }
                         }
                     }
@@ -12800,15 +12721,16 @@ namespace TWAINWorkingGroup
         /// <summary>
         ///  Indecies for commands that have to do something a
         ///  bit more fancy, such as running the command in the
-        ///  context of a GUI thread...
+        ///  context of a GUI thread.  And flags to help know
+        ///  when we are doing this...
         /// </summary>
-        private long m_lIndexDatAudiofilexfer;
-        private long m_lIndexDatAudionativexfer;
-        private long m_lIndexDatImagefilexfer;
-        private long m_lIndexDatImagememfilexfer;
-        private long m_lIndexDatImagememxfer;
-        private long m_lIndexDatImagenativexfer;
-        private long m_lIndexDatUserinterface;
+        private ThreadData m_threaddataDatAudiofilexfer;
+        private ThreadData m_threaddataDatAudionativexfer;
+        private ThreadData m_threaddataDatImagefilexfer;
+        private ThreadData m_threaddataDatImagememfilexfer;
+        private ThreadData m_threaddataDatImagememxfer;
+        private ThreadData m_threaddataDatImagenativexfer;
+        private ThreadData m_threaddataDatUserinterface;
 
         /// <summary>
         /// Our helper functions from the DSM...

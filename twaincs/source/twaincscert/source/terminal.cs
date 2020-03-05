@@ -1571,7 +1571,7 @@ namespace twaincscert
             }
 
             // Build the string...
-            szLine = a_functionarguments.aszCmd[1];
+            szLine = a_functionarguments.aszCmd[1].TrimEnd();
             if ((szDots.Length - szLine.Length) > 0)
             {
                 szLine += szDots.Substring(0, szDots.Length - szLine.Length);
@@ -1618,7 +1618,7 @@ namespace twaincscert
             }
 
             // Build the string...
-            szLine = a_functionarguments.aszCmd[1];
+            szLine = a_functionarguments.aszCmd[1].TrimEnd();
             if ((szDots.Length - szLine.Length) > 0)
             {
                 szLine += szDots.Substring(0, szDots.Length - szLine.Length);
@@ -3799,6 +3799,13 @@ namespace twaincscert
             int iCallStackCount;
             CallStack callstack;
             Interpreter interpreter;
+            bool blVerboseRestore = m_blVerbose;
+
+            // Be noisy...
+            if (a_functionarguments.aszCmd[0].ToLowerInvariant() == "runv")
+            {
+                m_blVerbose = true;
+            }
 
             // List...
             if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[1] == null))
@@ -3818,6 +3825,7 @@ namespace twaincscert
                 }
 
                 // All done...
+                m_blVerbose = blVerboseRestore;
                 return (false);
             }
 
@@ -3829,6 +3837,7 @@ namespace twaincscert
                 if (!File.Exists(szScriptFile))
                 {
                     DisplayError("script not found...<" + szScriptFile + ">", a_functionarguments);
+                    m_blVerbose = blVerboseRestore;
                     return (false);
                 }
             }
@@ -3841,6 +3850,7 @@ namespace twaincscert
             catch (Exception exception)
             {
                 DisplayError("failed to read script...<" + szScriptFile + ">" + exception.Message, a_functionarguments);
+                m_blVerbose = blVerboseRestore;
                 return (false);
             }
 
@@ -3979,6 +3989,7 @@ namespace twaincscert
 
             // All done...
             m_blRunningScript = false;
+            m_blVerbose = blVerboseRestore;
             return (false);
         }
 
@@ -9048,13 +9059,13 @@ namespace twaincscert
         [DllImport("libc.so", CharSet = CharSet.Ansi, SetLastError = true, BestFitMapping=false, ThrowOnUnmappableChar = true)]
         private static extern IntPtr fopen([MarshalAs(UnmanagedType.LPStr)] string filename, [MarshalAs(UnmanagedType.LPStr)] string mode);
 
-        [DllImport("msvcrt.dll", EntryPoint = "fwrite", SetLastError = true)]
+        [DllImport("msvcrt.dll", EntryPoint = "fwrite", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
         private static extern IntPtr fwriteWin(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
 
         [DllImport("libc.so", EntryPoint = "fwrite", SetLastError = true)]
         private static extern IntPtr fwrite(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
 
-        [DllImport("msvcrt.dll", EntryPoint = "fclose", SetLastError = true)]
+        [DllImport("msvcrt.dll", EntryPoint = "fclose", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
         private static extern IntPtr fcloseWin(IntPtr file);
 
         [DllImport("libc.so", EntryPoint = "fclose", SetLastError = true)]
@@ -9102,12 +9113,13 @@ namespace twaincscert
                 if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
                 {
                     IntPtr intptrFile;
-                    IntPtr intptrBytes;
+                    IntPtr intptrBytes = (IntPtr)a_iBytes;
+                    IntPtr intptrCount = (IntPtr)1;
                     if (_wfopen_s(out intptrFile, a_szFilename, "wb") != 0)
                     {
                         return (-1);
                     }
-                    intptrBytes = fwriteWin(a_intptrPtr, (IntPtr)a_iBytes, (IntPtr)1, intptrFile);
+                    intptrBytes = fwriteWin(a_intptrPtr, intptrBytes, intptrCount, intptrFile);
                     fcloseWin(intptrFile);
                     return ((int)intptrBytes);
                 }

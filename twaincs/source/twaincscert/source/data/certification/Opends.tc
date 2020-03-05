@@ -1,17 +1,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Opends
-;   Open the requested TWAIN driver...
+;   Open the requested TWAIN driver, with additional dsmload options
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
 ;   arg:2 - set to 'embedded', to limit messages
 ;   arg:3 - indent padding for embedded
+;   arg:4 - dsmoption #1
+;   arg:5 - dsmoption #2
+;   arg:6 - dsmoption #3
+;   arg:7 - dsmoption #4
+;   arg:8 - dsmoption #5
+;   arg:9 - dsmoption #6
+;   arg:10 - dsmoption #7
+;   arg:11 - dsmoption #8
+;   arg:12 - dsmoption #9
+;   arg:13 - dsmoption #10
+;   arg:14 - dsmoption #11
+;   arg:15 - dsmoption #12
+;   arg:16 - dsmoption #13
 ;
 ; Globals
 ;   (none)
 ;
 ; Locals
-;   (none)
+;   embedded - try to fit into the flow of other echo.passfail stuff
+;   indent - indenting for echo.passfail
 ;
 ; Returns
 ;   pass or fail
@@ -22,22 +36,29 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-call INITIALIZE 'Opends v1.0 22-Feb-2020' '${arg:2}'
+if '${arg:2}' == 'embedded' goto MAIN.TITLE.SKIP
+echo.titletest 'Opends v1.0 05-Mar-2020'
+:MAIN.TITLE.SKIP
+setlocal embedded '${arg:2}'
+setlocal indent '${arg:3}'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Load and open the DSM...
 ;
-dsmload
+setlocal name 'dsmload ${arg:4} ${arg:5} ${arg:6} ${arg:7} ${arg:8} ${arg:9} ${arg:10} ${arg:11} ${arg:12} ${arg:13} ${arg:14} ${arg:15} ${arg:16}'
+dsmload '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}' '${arg:8}' '${arg:9}' '${arg:10}' '${arg:11}' '${arg:12}' '${arg:13}' '${arg:14}' '${arg:15}' '${arg:16}'
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
+echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Open the driver...
 ;
+setlocal name 'dg_control/dat_identity/msg_opends'
 dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 
@@ -46,15 +67,15 @@ if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-if '${arg:2}' == 'embedded' goto MAIN.PASS.EMBEDDED
-echo.passfail 'dg_control/dat_identity/msg_opends' 'pass'
+if '${get:embedded}' == 'embedded' goto MAIN.PASS.EMBEDDED
+echo.passfail '${get:name}' 'pass'
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR
-if '${arg:2}' == 'embedded' goto MAIN.ERROR.EMBEDDED
-echo.passfail 'dg_control/dat_identity/msg_opends' 'fail'
+if '${get:embedded}' == 'embedded' goto MAIN.ERROR.EMBEDDED
+echo.passfail '${get:name}' 'fail'
 echo.passfail 'SUMMARY' 'fail'
 return 'fail'
 
@@ -64,25 +85,10 @@ return 'fail'
 ; Enbedded summary and cleanup...
 ;
 :MAIN.PASS.EMBEDDED
-echo.passfail '${arg:3}dg_control/dat_identity/msg_opends' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.EMBEDDED
-echo.passfail '${arg:3}dg_control/dat_identity/msg_opends' 'fail'
+echo.passfail '${get:indent}${get:name}' 'fail'
 return 'fail'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Function: Initialize
-; arg:1 - name of this test suite
-; arg:2 - set to 'embedded', to limit messages
-; returns: (none)
-;
-:INITIALIZE
-;
-if '${arg:2}' == 'embedded' goto INITIALIZE.SKIP
-echo.titletest '${arg:1}'
-:INITIALIZE.SKIP
-return
