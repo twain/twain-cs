@@ -161,7 +161,13 @@ if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 setlocal name '${get:supportedcaps.value} ${getindex:capability:${get:TW_ONEVALUE.Item}} == ${get:valueafterreset}'
 if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' == 'TWON_ARRAY' goto MAIN.COMPARE.ARRAY.EMPTY
 if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MAIN.ERROR.ECHOPASSFAIL
+if '${get:valueafterreset}' contains '|' goto MAIN.MULTIPLE.VALUES
 if '${getindex:capability:${get:TW_ONEVALUE.Item}}' != '${get:valueafterreset}' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.SUPPORTEDCAPS.NEXT
+;
+:MAIN.MULTIPLE.VALUES
+if '|${get:valueafterreset}|' !~contains '|${getindex:capability:${get:TW_ONEVALUE.Item}}|' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 goto MAIN.SUPPORTEDCAPS.NEXT
 

@@ -2914,6 +2914,15 @@ namespace TWAINWorkingGroup
                 // Everybody else is on their own...
                 else
                 {
+                    // mono hurls on this, .net doesn't, so gonna help...
+                    switch (a_szValue)
+                    {
+                        default: break;
+                        case "65535": a_szValue = "-1"; break;
+                        case "65534": a_szValue = "-2"; break;
+                        case "65533": a_szValue = "-3"; break;
+                        case "65532": a_szValue = "-4"; break;
+                    }
                     t = (T)Enum.Parse(typeof(T), a_szValue, true);
                 }
 
@@ -2956,6 +2965,13 @@ namespace TWAINWorkingGroup
             if ((typeof(T).Name == "bool") || (typeof(T).Name == "Boolean"))
             {
                 return (((a_szValue.ToLowerInvariant() == "true") || (a_szValue == "1")) ? "1" : "0");
+            }
+
+            // Stuff that makes mono go "hork"...
+            switch (a_szValue.ToLowerInvariant())
+            {
+                default: break;
+                case "twlg_userlocale": return (((int)TWLG.USERLOCALE).ToString());
             }
 
             // Look for the enum prefix...

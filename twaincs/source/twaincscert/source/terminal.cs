@@ -9018,8 +9018,8 @@ namespace twaincscert
         [DllImport("kernel32.dll", EntryPoint = "CopyMemory", SetLastError = false)]
         private static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
 
-        [DllImport("libc.so", EntryPoint = "memcpy", SetLastError = false)]
-        private static extern void memcpy(IntPtr dest, IntPtr src, int count);
+        [DllImport("libc", EntryPoint = "memcpy", SetLastError = false)]
+        private static extern void memcpy(IntPtr dest, IntPtr src, IntPtr count);
 
         /// <summary>
         /// Copy intptr to intptr...
@@ -9035,15 +9035,15 @@ namespace twaincscert
             }
             else
             {
-                memcpy(dest, src, count);
+                memcpy(dest, src, (IntPtr)count);
             }
         }
 
         [DllImport("kernel32.dll", EntryPoint = "MoveMemory", SetLastError = false)]
         private static extern void MoveMemory(IntPtr dest, IntPtr src, uint count);
 
-        [DllImport("libc.so", EntryPoint = "memmove", SetLastError = false)]
-        private static extern void memmove(IntPtr dest, IntPtr src, int count);
+        [DllImport("libc", EntryPoint = "memmove", SetLastError = false)]
+        private static extern void memmove(IntPtr dest, IntPtr src, IntPtr count);
 
         /// <summary>
         /// Safely move intptr to intptr...
@@ -9059,26 +9059,26 @@ namespace twaincscert
             }
             else
             {
-                memmove(dest, src, count);
+                memmove(dest, src, (IntPtr)count);
             }
         }
 
         [DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern Int32 _wfopen_s(out IntPtr pFile, string filename, string mode);
 
-        [DllImport("libc.so", CharSet = CharSet.Ansi, SetLastError = true, BestFitMapping=false, ThrowOnUnmappableChar = true)]
+        [DllImport("libc", CharSet = CharSet.Ansi, SetLastError = true, BestFitMapping=false, ThrowOnUnmappableChar = true)]
         private static extern IntPtr fopen([MarshalAs(UnmanagedType.LPStr)] string filename, [MarshalAs(UnmanagedType.LPStr)] string mode);
 
         [DllImport("msvcrt.dll", EntryPoint = "fwrite", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
         private static extern IntPtr fwriteWin(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
 
-        [DllImport("libc.so", EntryPoint = "fwrite", SetLastError = true)]
+        [DllImport("libc", EntryPoint = "fwrite", SetLastError = true)]
         private static extern IntPtr fwrite(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
 
         [DllImport("msvcrt.dll", EntryPoint = "fclose", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
         private static extern IntPtr fcloseWin(IntPtr file);
 
-        [DllImport("libc.so", EntryPoint = "fclose", SetLastError = true)]
+        [DllImport("libc", EntryPoint = "fclose", SetLastError = true)]
         private static extern IntPtr fclose(IntPtr file);
 
         /// <summary>

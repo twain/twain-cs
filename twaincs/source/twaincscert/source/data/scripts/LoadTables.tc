@@ -812,7 +812,7 @@ setglobal ICAP_NOISEFILTER.ValueAfterReset                   UNDEFINED
 setglobal ICAP_ORIENTATION.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
 setglobal ICAP_ORIENTATION.ItemType                          TWTY_UINT16
 setglobal ICAP_ORIENTATION.ValueAfterOpen                    UNDEFINED
-setglobal ICAP_ORIENTATION.ValueAfterReset                   TWOR_ROT0
+setglobal ICAP_ORIENTATION.ValueAfterReset                   TWOR_ROT0|TWOR_PORTRAIT
 ;
 setglobal ICAP_OVERSCAN.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
 setglobal ICAP_OVERSCAN.ItemType                             TWTY_UINT16
