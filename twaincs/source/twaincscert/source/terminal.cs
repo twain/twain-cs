@@ -154,6 +154,12 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSleep,                        new string[] { "sleep" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdWait,                         new string[] { "wait" }));
 
+            // If we see a data folder, drop into it to make life a little easier for our user...
+            if (Directory.Exists("data"))
+            {
+                Directory.SetCurrentDirectory("data");
+            }
+
             // Say hi...
             Assembly assembly = typeof(Terminal).Assembly;
             AssemblyName assemblyname = assembly.GetName();
@@ -662,6 +668,10 @@ namespace twaincscert
                     {
                         TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
                         m_twain.CsvToIdentity(ref twidentity, a_functionarguments.aszCmd[6]);
+                        if ((TWAIN.MSG)a_functionarguments.iMsg == TWAIN.MSG.CLOSEDS)
+                        {
+                            a_functionarguments.iMsg = (int)TWAIN.MSG.CLOSEDS;
+                        }
                         a_functionarguments.sts = m_twain.DatIdentity((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twidentity);
                         a_functionarguments.szReturnValue = m_twain.IdentityToCsv(twidentity);
                         callstack.functionarguments.sts = a_functionarguments.sts;

@@ -250,7 +250,7 @@ setlocal twainstate '2'
 :REWIND.2
 if '${get:twainstate}' < '2' goto REWIND.1
 dsmunload
-echo.progress 'dsmunload'
+echo 'dsmunload'
 setlocal twainstate '1'
 :REWIND.1
 return ${get:twainstate}'

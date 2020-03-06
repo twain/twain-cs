@@ -1,8 +1,28 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Enumnames v1.0 14-Jan-2020
+; Opends
+;   List all of the TWAIN drivers on the system for the current machine word,
+;   returning just the ProductName's...
+;
+; Arguments
+;   arg:1 - if set to full, the entire TW_IDENTITY is displayed
+;
+; Globals
+;   (none)
+;
+; Locals
+;   TW_IDENTITY.ProductName - index of the product name
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; List v1.0 06-Mar-2020
 ; returns: pass or fail
 ;
-; Enumerate all of the TWAIN drivers on the system, returning just the ProductName's...
+; List all of the TWAIN drivers on the system, returning just the ProductName's...
 ;
 
 
@@ -10,8 +30,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Init stuff...
 ;
-setlocal dsm 'closed'
-setlocal twidentity.productname '11'
+setlocal TW_IDENTITY.ProductName 11
 
 
 
@@ -21,7 +40,6 @@ setlocal twidentity.productname '11'
 dsmload
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-setlocal dsm 'opened'
 
 
 
@@ -31,7 +49,8 @@ setlocal dsm 'opened'
 dsmentry src null dg_control dat_identity msg_getfirst '0,0,0,ENGLISH_USA,USA,,0,0,0x0,,,'
 if '${sts:}' == 'ENDOFLIST' goto MAIN.CLOSE
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-echo '${ret:${get:twidentity.productname}}'
+if '${arg:1}' == 'full' goto MAIN.LISTFULL
+echo '${ret:${get:TW_IDENTITY.ProductName}}'
 
 
 
@@ -42,8 +61,14 @@ echo '${ret:${get:twidentity.productname}}'
 dsmentry src null dg_control dat_identity msg_getnext '0,0,0,ENGLISH_USA,USA,,0,0,0x0,,,'
 if '${sts:}' == 'ENDOFLIST' goto MAIN.CLOSE
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
-echo '${ret:${get:twidentity.productname}}'
+if '${arg:1}' == 'full' goto MAIN.LISTFULL
+echo '${ret:${get:TW_IDENTITY.ProductName}}'
 goto MAIN.GETNEXT
+;
+:MAIN.LISTFULL
+echo '${ret:}'
+goto MAIN.GETNEXT
+
 
 
 
@@ -68,7 +93,7 @@ return pass
 ; Bye-bye...
 ;
 :MAIN.FAIL
-if '${get:dsm}' == 'closed' goto MAIN.SKIPCLOSE
+if '${state:}' < '2' goto MAIN.SKIPCLOSE
 dsmentry src null dg_control dat_parent msg_closedsm hwnd
 dsmunload
 :MAIN.SKIPCLOSE 

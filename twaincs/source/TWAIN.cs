@@ -169,10 +169,21 @@ namespace TWAINWorkingGroup
             // Help for RunInUiThread...
             m_threaddataDatAudiofilexfer = default(ThreadData);
             m_threaddataDatAudionativexfer = default(ThreadData);
+            m_threaddataDatCapability = default(ThreadData);
+            m_threaddataDatEvent = default(ThreadData);
+            m_threaddataDatExtimageinfo = default(ThreadData);
+            m_threaddataDatIdentity = default(ThreadData);
             m_threaddataDatImagefilexfer = default(ThreadData);
+            m_threaddataDatImageinfo = default(ThreadData);
+            m_threaddataDatImagelayout = default(ThreadData);
             m_threaddataDatImagememfilexfer = default(ThreadData);
             m_threaddataDatImagememxfer = default(ThreadData);
             m_threaddataDatImagenativexfer = default(ThreadData);
+            m_threaddataDatParent = default(ThreadData);
+            m_threaddataDatPendingxfers = default(ThreadData);
+            m_threaddataDatSetupfilexfer = default(ThreadData);
+            m_threaddataDatSetupmemxfer = default(ThreadData);
+            m_threaddataDatStatus = default(ThreadData);
             m_threaddataDatUserinterface = default(ThreadData);
 
             // We always go through a discovery process, even on 32-bit...
@@ -355,6 +366,17 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Cleanup...
+        /// </summary>
+        [SuppressMessage("Microsoft.Security", "CA2123:OverrideLinkDemandsShouldBeIdenticalToBase")]
+        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
         /// Report the path to the DSM we're using...
         /// </summary>
         /// <returns>full path to the DSM</returns>
@@ -432,17 +454,6 @@ namespace TWAINWorkingGroup
                 return (IdentityToCsv(default(TW_IDENTITY)));
             }
             return (IdentityToCsv(m_twidentityDs));
-        }
-
-        /// <summary>
-        /// Cleanup...
-        /// </summary>
-        [SuppressMessage("Microsoft.Security", "CA2123:OverrideLinkDemandsShouldBeIdenticalToBase")]
-        [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         /// <summary>
@@ -758,14 +769,11 @@ namespace TWAINWorkingGroup
 
             // See if the driver wants the event...
             m_tweventPreFilterMessage.TWMessage = 0;
-            sts = DatEvent(DG.CONTROL, MSG.PROCESSEVENT, ref m_tweventPreFilterMessage);
+            sts = DatEvent(DG.CONTROL, MSG.PROCESSEVENT, ref m_tweventPreFilterMessage, true);
             if ((sts != STS.DSEVENT) && (sts != STS.NOTDSEVENT))
             {
                 return (false);
             }
-
-            // Handle messages...
-            ProcessEvent((MSG)m_tweventPreFilterMessage.TWMessage);
 
             // All done, tell the app we consumed the event if we
             // got back a status telling us that...
@@ -786,7 +794,28 @@ namespace TWAINWorkingGroup
             STATE stateStart;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate != null)
+            {
+                lock (m_lockTwain)
+                {
+                    // Set the command variables...
+                    ThreadData threaddata = default(ThreadData);
+                    threaddata.blExitThread = true;
+                    long lIndex = m_twaincommand.Submit(threaddata);
+
+                    // Submit the command and wait for the reply, the delay
+                    // is needed because Mac OS X doesn't gracefully handle
+                    // the loss of a mutex...
+                    s_iCloseDsmDelay = 0;
+                    CallerToThreadSet();
+                    ThreadToRollbackWaitOne();
+                    Thread.Sleep(s_iCloseDsmDelay);
+
+                    // Clear the command variables...
+                    m_twaincommand.Delete(lIndex);
+                }
+            }
+            else if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
             {
                 lock (m_lockTwain)
                 {
@@ -802,7 +831,7 @@ namespace TWAINWorkingGroup
                     s_iCloseDsmDelay = 0;
                     CallerToThreadSet();
                     ThreadToRollbackWaitOne();
-                    System.Threading.Thread.Sleep(s_iCloseDsmDelay);
+                    Thread.Sleep(s_iCloseDsmDelay);
 
                     // Clear the command variables...
                     m_twaincommand.Delete(lIndex);
@@ -4490,56 +4519,87 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcapability">CAPABILITY structure</param>
         /// <returns>TWAIN status</returns>
         [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
+        private void DatCapabilityWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatCapability.sts = (STS)NativeMethods.WindowsTwain32DsmEntryCapability
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatCapability.dg,
+                m_threaddataDatCapability.dat,
+                m_threaddataDatCapability.msg,
+                ref m_threaddataDatCapability.twcapability
+            );
+        }
+        private void DatCapabilityWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatCapability.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryCapability
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatCapability.dg,
+                m_threaddataDatCapability.dat,
+                m_threaddataDatCapability.msg,
+                ref m_threaddataDatCapability.twcapability
+            );
+        }
         public STS DatCapability(DG a_dg, MSG a_msg, ref TW_CAPABILITY a_twcapability)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    ThreadData threaddata = default(ThreadData);
-                    long lIndex = 0;
-
-                    // TBD: sometimes this doesn't work!  Not sure why
-                    // yet, but a retry takes care of it.
-                    for (int ii = 0; ii < 5; ii++)
+                    lock (m_lockTwain)
                     {
-                        // Set our command variables...
-                        threaddata = default(ThreadData);
-                        threaddata.twcapability = a_twcapability;
-                        threaddata.dg = a_dg;
-                        threaddata.msg = a_msg;
-                        threaddata.dat = DAT.CAPABILITY;
-                        lIndex = m_twaincommand.Submit(threaddata);
+                        ThreadData threaddata = default(ThreadData);
+                        long lIndex = 0;
 
-                        // Submit the command and wait for the reply...
-                        CallerToThreadSet();
-                        ThreadToCallerWaitOne();
-
-                        // Hmmm...
-                        if (   (a_msg == MSG.GETCURRENT)
-                            && (m_twaincommand.Get(lIndex).sts == STS.SUCCESS)
-                            && (m_twaincommand.Get(lIndex).twcapability.ConType == (TWON)0)
-                            && (m_twaincommand.Get(lIndex).twcapability.hContainer == IntPtr.Zero))
+                        // TBD: sometimes this doesn't work!  Not sure why
+                        // yet, but a retry takes care of it.
+                        for (int ii = 0; ii < 5; ii++)
                         {
-                            Thread.Sleep(1000);
-                            continue;
+                            // Set our command variables...
+                            threaddata = default(ThreadData);
+                            threaddata.twcapability = a_twcapability;
+                            threaddata.dg = a_dg;
+                            threaddata.msg = a_msg;
+                            threaddata.dat = DAT.CAPABILITY;
+                            lIndex = m_twaincommand.Submit(threaddata);
+
+                            // Submit the command and wait for the reply...
+                            CallerToThreadSet();
+                            ThreadToCallerWaitOne();
+
+                            // Hmmm...
+                            if (   (a_msg == MSG.GETCURRENT)
+                                && (m_twaincommand.Get(lIndex).sts == STS.SUCCESS)
+                                && (m_twaincommand.Get(lIndex).twcapability.ConType == (TWON)0)
+                                && (m_twaincommand.Get(lIndex).twcapability.hContainer == IntPtr.Zero))
+                            {
+                                Thread.Sleep(1000);
+                                continue;
+                            }
+
+                            // We're done...
+                            break;
                         }
 
-                        // We're done...
-                        break;
+                        // Return the result...
+                        a_twcapability = m_twaincommand.Get(lIndex).twcapability;
+                        sts = m_twaincommand.Get(lIndex).sts;
+
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
                     }
-
-                    // Return the result...
-                    a_twcapability = m_twaincommand.Get(lIndex).twcapability;
-                    sts = m_twaincommand.Get(lIndex).sts;
-
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -4566,13 +4626,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatCapability.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryCapability(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryCapability(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryCapability(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryCapability(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.CAPABILITY, a_msg, ref a_twcapability);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatCapability = default(ThreadData);
+                                m_threaddataDatCapability.blIsInuse = true;
+                                m_threaddataDatCapability.dg = a_dg;
+                                m_threaddataDatCapability.msg = a_msg;
+                                m_threaddataDatCapability.dat = DAT.CAPABILITY;
+                                m_threaddataDatCapability.twcapability = a_twcapability;
+                                RunInUiThread(DatCapabilityWindowsTwain32);
+                                a_twcapability = m_threaddataDatCapability.twcapability;
+                                sts = m_threaddataDatCapability.sts;
+                                m_threaddataDatCapability = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatCapability = default(ThreadData);
+                                m_threaddataDatCapability.blIsInuse = true;
+                                m_threaddataDatCapability.dg = a_dg;
+                                m_threaddataDatCapability.msg = a_msg;
+                                m_threaddataDatCapability.dat = DAT.CAPABILITY;
+                                m_threaddataDatCapability.twcapability = a_twcapability;
+                                RunInUiThread(DatCapabilityWindowsTwainDsm);
+                                a_twcapability = m_threaddataDatCapability.twcapability;
+                                sts = m_threaddataDatCapability.sts;
+                                m_threaddataDatCapability = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -5349,7 +5447,35 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twevent">EVENT structure</param>
         /// <returns>TWAIN status</returns>
-        public STS DatEvent(DG a_dg, MSG a_msg, ref TW_EVENT a_twevent)
+        private void DatEventWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatEvent.sts = (STS)NativeMethods.WindowsTwain32DsmEntryEvent
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatEvent.dg,
+                m_threaddataDatEvent.dat,
+                m_threaddataDatEvent.msg,
+                ref m_threaddataDatEvent.twevent
+            );
+        }
+        private void DatEventWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatEvent.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryEvent
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatEvent.dg,
+                m_threaddataDatEvent.dat,
+                m_threaddataDatEvent.msg,
+                ref m_threaddataDatEvent.twevent
+            );
+        }
+        public STS DatEvent(DG a_dg, MSG a_msg, ref TW_EVENT a_twevent, bool a_blInPreFilter = false)
         {
             STS sts;
 
@@ -5365,13 +5491,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (a_blInPreFilter || m_threaddataDatEvent.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryEvent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryEvent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryEvent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryEvent(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EVENT, a_msg, ref a_twevent);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatEvent = default(ThreadData);
+                                m_threaddataDatEvent.blIsInuse = true;
+                                m_threaddataDatEvent.dg = a_dg;
+                                m_threaddataDatEvent.msg = a_msg;
+                                m_threaddataDatEvent.dat = DAT.EVENT;
+                                m_threaddataDatEvent.twevent = a_twevent;
+                                RunInUiThread(DatEventWindowsTwain32);
+                                a_twevent = m_threaddataDatEvent.twevent;
+                                sts = m_threaddataDatEvent.sts;
+                                m_threaddataDatEvent = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatEvent = default(ThreadData);
+                                m_threaddataDatEvent.blIsInuse = true;
+                                m_threaddataDatEvent.dg = a_dg;
+                                m_threaddataDatEvent.msg = a_msg;
+                                m_threaddataDatEvent.dat = DAT.EVENT;
+                                m_threaddataDatEvent.twevent = a_twevent;
+                                RunInUiThread(DatEventWindowsTwainDsm);
+                                a_twevent = m_threaddataDatEvent.twevent;
+                                sts = m_threaddataDatEvent.sts;
+                                m_threaddataDatEvent = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -5473,35 +5637,66 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twextimageinfo">EXTIMAGEINFO structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatExtimageinfoWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatExtimageinfo.sts = (STS)NativeMethods.WindowsTwain32DsmEntryExtimageinfo
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatExtimageinfo.dg,
+                m_threaddataDatExtimageinfo.dat,
+                m_threaddataDatExtimageinfo.msg,
+                ref m_threaddataDatExtimageinfo.twextimageinfo
+            );
+        }
+        private void DatExtimageinfoWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatExtimageinfo.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryExtimageinfo
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatExtimageinfo.dg,
+                m_threaddataDatExtimageinfo.dat,
+                m_threaddataDatExtimageinfo.msg,
+                ref m_threaddataDatExtimageinfo.twextimageinfo
+            );
+        }
         public STS DatExtimageinfo(DG a_dg, MSG a_msg, ref TW_EXTIMAGEINFO a_twextimageinfo)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.twextimageinfo = a_twextimageinfo;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.EXTIMAGEINFO;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twextimageinfo = a_twextimageinfo;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.EXTIMAGEINFO;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twextimageinfo = m_twaincommand.Get(lIndex).twextimageinfo;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_twextimageinfo = m_twaincommand.Get(lIndex).twextimageinfo;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -5516,13 +5711,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatExtimageinfo.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryExtimageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryExtimageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryExtimageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryExtimageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.EXTIMAGEINFO, a_msg, ref a_twextimageinfo);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatExtimageinfo = default(ThreadData);
+                                m_threaddataDatExtimageinfo.blIsInuse = true;
+                                m_threaddataDatExtimageinfo.dg = a_dg;
+                                m_threaddataDatExtimageinfo.msg = a_msg;
+                                m_threaddataDatExtimageinfo.dat = DAT.EXTIMAGEINFO;
+                                m_threaddataDatExtimageinfo.twextimageinfo = a_twextimageinfo;
+                                RunInUiThread(DatExtimageinfoWindowsTwain32);
+                                a_twextimageinfo = m_threaddataDatExtimageinfo.twextimageinfo;
+                                sts = m_threaddataDatExtimageinfo.sts;
+                                m_threaddataDatExtimageinfo = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatExtimageinfo = default(ThreadData);
+                                m_threaddataDatExtimageinfo.blIsInuse = true;
+                                m_threaddataDatExtimageinfo.dg = a_dg;
+                                m_threaddataDatExtimageinfo.msg = a_msg;
+                                m_threaddataDatExtimageinfo.dat = DAT.EXTIMAGEINFO;
+                                m_threaddataDatExtimageinfo.twextimageinfo = a_twextimageinfo;
+                                RunInUiThread(DatExtimageinfoWindowsTwainDsm);
+                                a_twextimageinfo = m_threaddataDatExtimageinfo.twextimageinfo;
+                                sts = m_threaddataDatExtimageinfo.sts;
+                                m_threaddataDatExtimageinfo = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -6198,36 +6431,67 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twidentity">IDENTITY structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatIdentityWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatIdentity.sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentity
+            (
+                ref m_twidentitylegacyApp,
+                IntPtr.Zero,
+                m_threaddataDatIdentity.dg,
+                m_threaddataDatIdentity.dat,
+                m_threaddataDatIdentity.msg,
+                ref m_threaddataDatIdentity.twidentitylegacy
+            );
+        }
+        private void DatIdentityWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatIdentity.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryIdentity
+            (
+                ref m_twidentitylegacyApp,
+                IntPtr.Zero,
+                m_threaddataDatIdentity.dg,
+                m_threaddataDatIdentity.dat,
+                m_threaddataDatIdentity.msg,
+                ref m_threaddataDatIdentity.twidentitylegacy
+            );
+        }
         [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public STS DatIdentity(DG a_dg, MSG a_msg, ref TW_IDENTITY a_twidentity)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.twidentity = a_twidentity;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.IDENTITY;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twidentity = a_twidentity;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.IDENTITY;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twidentity = m_twaincommand.Get(lIndex).twidentity;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_twidentity = m_twaincommand.Get(lIndex).twidentity;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -6239,17 +6503,57 @@ namespace TWAINWorkingGroup
             // Windows...
             if (ms_platform == Platform.WINDOWS)
             {
+                // Convert the identity structure...
                 TW_IDENTITY_LEGACY twidentitylegacy = TwidentityToTwidentitylegacy(a_twidentity);
+
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatIdentity.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatIdentity = default(ThreadData);
+                                m_threaddataDatIdentity.blIsInuse = true;
+                                m_threaddataDatIdentity.dg = a_dg;
+                                m_threaddataDatIdentity.msg = a_msg;
+                                m_threaddataDatIdentity.dat = DAT.IDENTITY;
+                                m_threaddataDatIdentity.twidentitylegacy = twidentitylegacy;
+                                RunInUiThread(DatIdentityWindowsTwain32);
+                                twidentitylegacy = m_threaddataDatIdentity.twidentitylegacy;
+                                sts = m_threaddataDatIdentity.sts;
+                                m_threaddataDatIdentity = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatIdentity = default(ThreadData);
+                                m_threaddataDatIdentity.blIsInuse = true;
+                                m_threaddataDatIdentity.dg = a_dg;
+                                m_threaddataDatIdentity.msg = a_msg;
+                                m_threaddataDatIdentity.dat = DAT.IDENTITY;
+                                m_threaddataDatIdentity.twidentitylegacy = twidentitylegacy;
+                                RunInUiThread(DatIdentityWindowsTwainDsm);
+                                twidentitylegacy = m_threaddataDatIdentity.twidentitylegacy;
+                                sts = m_threaddataDatIdentity.sts;
+                                m_threaddataDatIdentity = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -6696,35 +7000,66 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twimageinfo">IMAGEINFO structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatImageinfoWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatImageinfo.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImageinfo
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatImageinfo.dg,
+                m_threaddataDatImageinfo.dat,
+                m_threaddataDatImageinfo.msg,
+                ref m_threaddataDatImageinfo.twimageinfo
+            );
+        }
+        private void DatImageinfoWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatImageinfo.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImageinfo
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatImageinfo.dg,
+                m_threaddataDatImageinfo.dat,
+                m_threaddataDatImageinfo.msg,
+                ref m_threaddataDatImageinfo.twimageinfo
+            );
+        }
         public STS DatImageinfo(DG a_dg, MSG a_msg, ref TW_IMAGEINFO a_twimageinfo)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.twimageinfo = a_twimageinfo;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.IMAGEINFO;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twimageinfo = a_twimageinfo;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.IMAGEINFO;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twimageinfo = m_twaincommand.Get(lIndex).twimageinfo;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_twimageinfo = m_twaincommand.Get(lIndex).twimageinfo;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -6739,13 +7074,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatImageinfo.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryImageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryImageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImageinfo(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGEINFO, a_msg, ref a_twimageinfo);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatImageinfo = default(ThreadData);
+                                m_threaddataDatImageinfo.blIsInuse = true;
+                                m_threaddataDatImageinfo.dg = a_dg;
+                                m_threaddataDatImageinfo.msg = a_msg;
+                                m_threaddataDatImageinfo.dat = DAT.IMAGEINFO;
+                                m_threaddataDatImageinfo.twimageinfo = a_twimageinfo;
+                                RunInUiThread(DatImageinfoWindowsTwain32);
+                                a_twimageinfo = m_threaddataDatImageinfo.twimageinfo;
+                                sts = m_threaddataDatImageinfo.sts;
+                                m_threaddataDatImageinfo = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatImageinfo = default(ThreadData);
+                                m_threaddataDatImageinfo.blIsInuse = true;
+                                m_threaddataDatImageinfo.dg = a_dg;
+                                m_threaddataDatImageinfo.msg = a_msg;
+                                m_threaddataDatImageinfo.dat = DAT.IMAGEINFO;
+                                m_threaddataDatImageinfo.twimageinfo = a_twimageinfo;
+                                RunInUiThread(DatImageinfoWindowsTwainDsm);
+                                a_twimageinfo = m_threaddataDatImageinfo.twimageinfo;
+                                sts = m_threaddataDatImageinfo.sts;
+                                m_threaddataDatImageinfo = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -6859,35 +7232,66 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twimagelayout">IMAGELAYOUT structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatImagelayoutWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatImagelayout.sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagelayout
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatImagelayout.dg,
+                m_threaddataDatImagelayout.dat,
+                m_threaddataDatImagelayout.msg,
+                ref m_threaddataDatImagelayout.twimagelayout
+            );
+        }
+        private void DatImagelayoutWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatImagelayout.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagelayout
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatImagelayout.dg,
+                m_threaddataDatImagelayout.dat,
+                m_threaddataDatImagelayout.msg,
+                ref m_threaddataDatImagelayout.twimagelayout
+            );
+        }
         public STS DatImagelayout(DG a_dg, MSG a_msg, ref TW_IMAGELAYOUT a_twimagelayout)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.twimagelayout = a_twimagelayout;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.IMAGELAYOUT;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twimagelayout = a_twimagelayout;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.IMAGELAYOUT;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twimagelayout = m_twaincommand.Get(lIndex).twimagelayout;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_twimagelayout = m_twaincommand.Get(lIndex).twimagelayout;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -6902,13 +7306,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatImagelayout.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagelayout(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryImagelayout(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagelayout(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryImagelayout(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IMAGELAYOUT, a_msg, ref a_twimagelayout);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatImagelayout = default(ThreadData);
+                                m_threaddataDatImagelayout.blIsInuse = true;
+                                m_threaddataDatImagelayout.dg = a_dg;
+                                m_threaddataDatImagelayout.msg = a_msg;
+                                m_threaddataDatImagelayout.dat = DAT.IMAGELAYOUT;
+                                m_threaddataDatImagelayout.twimagelayout = a_twimagelayout;
+                                RunInUiThread(DatImagelayoutWindowsTwain32);
+                                a_twimagelayout = m_threaddataDatImagelayout.twimagelayout;
+                                sts = m_threaddataDatImagelayout.sts;
+                                m_threaddataDatImagelayout = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatImagelayout = default(ThreadData);
+                                m_threaddataDatImagelayout.blIsInuse = true;
+                                m_threaddataDatImagelayout.dg = a_dg;
+                                m_threaddataDatImagelayout.msg = a_msg;
+                                m_threaddataDatImagelayout.dat = DAT.IMAGELAYOUT;
+                                m_threaddataDatImagelayout.twimagelayout = a_twimagelayout;
+                                RunInUiThread(DatImagelayoutWindowsTwainDsm);
+                                a_twimagelayout = m_threaddataDatImagelayout.twimagelayout;
+                                sts = m_threaddataDatImagelayout.sts;
+                                m_threaddataDatImagelayout = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -8426,36 +8868,67 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_intptrHwnd">PARENT structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatParentWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatParent.sts = (STS)NativeMethods.WindowsTwain32DsmEntryParent
+            (
+                ref m_twidentitylegacyApp,
+                IntPtr.Zero,
+                m_threaddataDatParent.dg,
+                m_threaddataDatParent.dat,
+                m_threaddataDatParent.msg,
+                ref m_threaddataDatParent.intptrHwnd
+            );
+        }
+        private void DatParentWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatParent.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryParent
+            (
+                ref m_twidentitylegacyApp,
+                IntPtr.Zero,
+                m_threaddataDatParent.dg,
+                m_threaddataDatParent.dat,
+                m_threaddataDatParent.msg,
+                ref m_threaddataDatParent.intptrHwnd
+            );
+        }
         [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
         public STS DatParent(DG a_dg, MSG a_msg, ref IntPtr a_intptrHwnd)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.intptrHwnd = a_intptrHwnd;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.PARENT;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.intptrHwnd = a_intptrHwnd;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.PARENT;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_intptrHwnd = m_twaincommand.Get(lIndex).intptrHwnd;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_intptrHwnd = m_twaincommand.Get(lIndex).intptrHwnd;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -8470,13 +8943,49 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatParent.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatParent = default(ThreadData);
+                                m_threaddataDatParent.blIsInuse = true;
+                                m_threaddataDatParent.dg = a_dg;
+                                m_threaddataDatParent.msg = a_msg;
+                                m_threaddataDatParent.dat = DAT.PARENT;
+                                m_threaddataDatParent.intptrHwnd = a_intptrHwnd;
+                                RunInUiThread(DatParentWindowsTwain32);
+                                sts = m_threaddataDatParent.sts;
+                                m_threaddataDatParent = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatParent = default(ThreadData);
+                                m_threaddataDatParent.blIsInuse = true;
+                                m_threaddataDatParent.dg = a_dg;
+                                m_threaddataDatParent.msg = a_msg;
+                                m_threaddataDatParent.dat = DAT.PARENT;
+                                m_threaddataDatParent.intptrHwnd = a_intptrHwnd;
+                                RunInUiThread(DatParentWindowsTwainDsm);
+                                sts = m_threaddataDatParent.sts;
+                                m_threaddataDatParent = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -8765,35 +9274,66 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twpendingxfers">PENDINGXFERS structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatPendingxfersWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatPendingxfers.sts = (STS)NativeMethods.WindowsTwain32DsmEntryPendingxfers
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatPendingxfers.dg,
+                m_threaddataDatPendingxfers.dat,
+                m_threaddataDatPendingxfers.msg,
+                ref m_threaddataDatPendingxfers.twpendingxfers
+            );
+        }
+        private void DatPendingxfersWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatPendingxfers.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryPendingxfers
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatPendingxfers.dg,
+                m_threaddataDatPendingxfers.dat,
+                m_threaddataDatPendingxfers.msg,
+                ref m_threaddataDatPendingxfers.twpendingxfers
+            );
+        }
         public STS DatPendingxfers(DG a_dg, MSG a_msg, ref TW_PENDINGXFERS a_twpendingxfers)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.twpendingxfers = a_twpendingxfers;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.PENDINGXFERS;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twpendingxfers = a_twpendingxfers;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.PENDINGXFERS;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twpendingxfers = m_twaincommand.Get(lIndex).twpendingxfers;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_twpendingxfers = m_twaincommand.Get(lIndex).twpendingxfers;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -8808,13 +9348,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatPendingxfers.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryPendingxfers(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryPendingxfers(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryPendingxfers(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryPendingxfers(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.PENDINGXFERS, a_msg, ref a_twpendingxfers);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatPendingxfers = default(ThreadData);
+                                m_threaddataDatPendingxfers.blIsInuse = true;
+                                m_threaddataDatPendingxfers.dg = a_dg;
+                                m_threaddataDatPendingxfers.msg = a_msg;
+                                m_threaddataDatPendingxfers.dat = DAT.PENDINGXFERS;
+                                m_threaddataDatPendingxfers.twpendingxfers = a_twpendingxfers;
+                                RunInUiThread(DatPendingxfersWindowsTwain32);
+                                a_twpendingxfers = m_threaddataDatPendingxfers.twpendingxfers;
+                                sts = m_threaddataDatPendingxfers.sts;
+                                m_threaddataDatPendingxfers = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatPendingxfers = default(ThreadData);
+                                m_threaddataDatPendingxfers.blIsInuse = true;
+                                m_threaddataDatPendingxfers.dg = a_dg;
+                                m_threaddataDatPendingxfers.msg = a_msg;
+                                m_threaddataDatPendingxfers.dat = DAT.PENDINGXFERS;
+                                m_threaddataDatPendingxfers.twpendingxfers = a_twpendingxfers;
+                                RunInUiThread(DatPendingxfersWindowsTwainDsm);
+                                a_twpendingxfers = m_threaddataDatPendingxfers.twpendingxfers;
+                                sts = m_threaddataDatPendingxfers.sts;
+                                m_threaddataDatPendingxfers = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -9082,35 +9660,66 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twsetupfilexfer">SETUPFILEXFER structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatSetupfilexferWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatSetupfilexfer.sts = (STS)NativeMethods.WindowsTwain32DsmEntrySetupfilexfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatSetupfilexfer.dg,
+                m_threaddataDatSetupfilexfer.dat,
+                m_threaddataDatSetupfilexfer.msg,
+                ref m_threaddataDatSetupfilexfer.twsetupfilexfer
+            );
+        }
+        private void DatSetupfilexferWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatSetupfilexfer.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntrySetupfilexfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatSetupfilexfer.dg,
+                m_threaddataDatSetupfilexfer.dat,
+                m_threaddataDatSetupfilexfer.msg,
+                ref m_threaddataDatSetupfilexfer.twsetupfilexfer
+            );
+        }
         public STS DatSetupfilexfer(DG a_dg, MSG a_msg, ref TW_SETUPFILEXFER a_twsetupfilexfer)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.twsetupfilexfer = a_twsetupfilexfer;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.SETUPFILEXFER;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twsetupfilexfer = a_twsetupfilexfer;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.SETUPFILEXFER;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twsetupfilexfer = m_twaincommand.Get(lIndex).twsetupfilexfer;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_twsetupfilexfer = m_twaincommand.Get(lIndex).twsetupfilexfer;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -9125,13 +9734,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatSetupfilexfer.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntrySetupfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntrySetupfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntrySetupfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntrySetupfilexfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPFILEXFER, a_msg, ref a_twsetupfilexfer);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatSetupfilexfer = default(ThreadData);
+                                m_threaddataDatSetupfilexfer.blIsInuse = true;
+                                m_threaddataDatSetupfilexfer.dg = a_dg;
+                                m_threaddataDatSetupfilexfer.msg = a_msg;
+                                m_threaddataDatSetupfilexfer.dat = DAT.SETUPFILEXFER;
+                                m_threaddataDatSetupfilexfer.twsetupfilexfer = a_twsetupfilexfer;
+                                RunInUiThread(DatSetupfilexferWindowsTwain32);
+                                a_twsetupfilexfer = m_threaddataDatSetupfilexfer.twsetupfilexfer;
+                                sts = m_threaddataDatSetupfilexfer.sts;
+                                m_threaddataDatSetupfilexfer = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatSetupfilexfer = default(ThreadData);
+                                m_threaddataDatSetupfilexfer.blIsInuse = true;
+                                m_threaddataDatSetupfilexfer.dg = a_dg;
+                                m_threaddataDatSetupfilexfer.msg = a_msg;
+                                m_threaddataDatSetupfilexfer.dat = DAT.SETUPFILEXFER;
+                                m_threaddataDatSetupfilexfer.twsetupfilexfer = a_twsetupfilexfer;
+                                RunInUiThread(DatSetupfilexferWindowsTwainDsm);
+                                a_twsetupfilexfer = m_threaddataDatSetupfilexfer.twsetupfilexfer;
+                                sts = m_threaddataDatSetupfilexfer.sts;
+                                m_threaddataDatSetupfilexfer = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -9227,35 +9874,66 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twsetupmemxfer">SETUPMEMXFER structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatSetupmemxferWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatSetupmemxfer.sts = (STS)NativeMethods.WindowsTwain32DsmEntrySetupmemxfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatSetupmemxfer.dg,
+                m_threaddataDatSetupmemxfer.dat,
+                m_threaddataDatSetupmemxfer.msg,
+                ref m_threaddataDatSetupmemxfer.twsetupmemxfer
+            );
+        }
+        private void DatSetupmemxferWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatSetupmemxfer.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntrySetupmemxfer
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatSetupmemxfer.dg,
+                m_threaddataDatSetupmemxfer.dat,
+                m_threaddataDatSetupmemxfer.msg,
+                ref m_threaddataDatSetupmemxfer.twsetupmemxfer
+            );
+        }
         public STS DatSetupmemxfer(DG a_dg, MSG a_msg, ref TW_SETUPMEMXFER a_twsetupmemxfer)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.twsetupmemxfer = a_twsetupmemxfer;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.SETUPMEMXFER;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twsetupmemxfer = a_twsetupmemxfer;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.SETUPMEMXFER;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twsetupmemxfer = m_twaincommand.Get(lIndex).twsetupmemxfer;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_twsetupmemxfer = m_twaincommand.Get(lIndex).twsetupmemxfer;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -9270,13 +9948,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatSetupmemxfer.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntrySetupmemxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntrySetupmemxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntrySetupmemxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntrySetupmemxfer(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.SETUPMEMXFER, a_msg, ref a_twsetupmemxfer);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatSetupmemxfer = default(ThreadData);
+                                m_threaddataDatSetupmemxfer.blIsInuse = true;
+                                m_threaddataDatSetupmemxfer.dg = a_dg;
+                                m_threaddataDatSetupmemxfer.msg = a_msg;
+                                m_threaddataDatSetupmemxfer.dat = DAT.SETUPMEMXFER;
+                                m_threaddataDatSetupmemxfer.twsetupmemxfer = a_twsetupmemxfer;
+                                RunInUiThread(DatSetupmemxferWindowsTwain32);
+                                a_twsetupmemxfer = m_threaddataDatSetupmemxfer.twsetupmemxfer;
+                                sts = m_threaddataDatSetupmemxfer.sts;
+                                m_threaddataDatSetupmemxfer = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatSetupmemxfer = default(ThreadData);
+                                m_threaddataDatSetupmemxfer.blIsInuse = true;
+                                m_threaddataDatSetupmemxfer.dg = a_dg;
+                                m_threaddataDatSetupmemxfer.msg = a_msg;
+                                m_threaddataDatSetupmemxfer.dat = DAT.SETUPMEMXFER;
+                                m_threaddataDatSetupmemxfer.twsetupmemxfer = a_twsetupmemxfer;
+                                RunInUiThread(DatSetupmemxferWindowsTwainDsm);
+                                a_twsetupmemxfer = m_threaddataDatSetupmemxfer.twsetupmemxfer;
+                                sts = m_threaddataDatSetupmemxfer.sts;
+                                m_threaddataDatSetupmemxfer = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -9372,35 +10088,66 @@ namespace TWAINWorkingGroup
         /// <param name="a_msg">Operation</param>
         /// <param name="a_twstatus">STATUS structure</param>
         /// <returns>TWAIN status</returns>
+        private void DatStatusWindowsTwain32()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatStatus.sts = (STS)NativeMethods.WindowsTwain32DsmEntryStatus
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatStatus.dg,
+                m_threaddataDatStatus.dat,
+                m_threaddataDatStatus.msg,
+                ref m_threaddataDatStatus.twstatus
+            );
+        }
+        private void DatStatusWindowsTwainDsm()
+        {
+            // If you get a first chance exception, be aware that some drivers
+            // will do that to you, you can ignore it and they'll keep going...
+            m_threaddataDatStatus.sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryStatus
+            (
+                ref m_twidentitylegacyApp,
+                ref m_twidentitylegacyDs,
+                m_threaddataDatStatus.dg,
+                m_threaddataDatStatus.dat,
+                m_threaddataDatStatus.msg,
+                ref m_threaddataDatStatus.twstatus
+            );
+        }
         public STS DatStatus(DG a_dg, MSG a_msg, ref TW_STATUS a_twstatus)
         {
             STS sts;
 
             // Submit the work to the TWAIN thread...
-            if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
+            if (m_runinuithreaddelegate == null)
             {
-                lock (m_lockTwain)
+                if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // Set our command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.twstatus = a_twstatus;
-                    threaddata.dg = a_dg;
-                    threaddata.msg = a_msg;
-                    threaddata.dat = DAT.STATUS;
-                    long lIndex = m_twaincommand.Submit(threaddata);
+                    lock (m_lockTwain)
+                    {
+                        // Set our command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.twstatus = a_twstatus;
+                        threaddata.dg = a_dg;
+                        threaddata.msg = a_msg;
+                        threaddata.dat = DAT.STATUS;
+                        long lIndex = m_twaincommand.Submit(threaddata);
 
-                    // Submit the command and wait for the reply...
-                    CallerToThreadSet();
-                    ThreadToCallerWaitOne();
+                        // Submit the command and wait for the reply...
+                        CallerToThreadSet();
+                        ThreadToCallerWaitOne();
 
-                    // Return the result...
-                    a_twstatus = m_twaincommand.Get(lIndex).twstatus;
-                    sts = m_twaincommand.Get(lIndex).sts;
+                        // Return the result...
+                        a_twstatus = m_twaincommand.Get(lIndex).twstatus;
+                        sts = m_twaincommand.Get(lIndex).sts;
 
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
+                    }
+                    return (sts);
                 }
-                return (sts);
             }
 
             // Log it...
@@ -9415,13 +10162,51 @@ namespace TWAINWorkingGroup
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (m_threaddataDatStatus.blIsInuse || (this.m_runinuithreaddelegate == null))
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.STATUS, a_msg, ref a_twstatus);
+                        if (m_blUseLegacyDSM)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.STATUS, a_msg, ref a_twstatus);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.STATUS, a_msg, ref a_twstatus);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.STATUS, a_msg, ref a_twstatus);
+                        if (m_blUseLegacyDSM)
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatStatus = default(ThreadData);
+                                m_threaddataDatStatus.blIsInuse = true;
+                                m_threaddataDatStatus.dg = a_dg;
+                                m_threaddataDatStatus.msg = a_msg;
+                                m_threaddataDatStatus.dat = DAT.STATUS;
+                                m_threaddataDatStatus.twstatus = a_twstatus;
+                                RunInUiThread(DatStatusWindowsTwain32);
+                                a_twstatus = m_threaddataDatStatus.twstatus;
+                                sts = m_threaddataDatStatus.sts;
+                                m_threaddataDatStatus = default(ThreadData);
+                            }
+                        }
+                        else
+                        {
+                            lock (m_lockTwain)
+                            {
+                                m_threaddataDatStatus = default(ThreadData);
+                                m_threaddataDatStatus.blIsInuse = true;
+                                m_threaddataDatStatus.dg = a_dg;
+                                m_threaddataDatStatus.msg = a_msg;
+                                m_threaddataDatStatus.dat = DAT.STATUS;
+                                m_threaddataDatStatus.twstatus = a_twstatus;
+                                RunInUiThread(DatStatusWindowsTwainDsm);
+                                a_twstatus = m_threaddataDatStatus.twstatus;
+                                sts = m_threaddataDatStatus.sts;
+                                m_threaddataDatStatus = default(ThreadData);
+                            }
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -10050,11 +10835,6 @@ namespace TWAINWorkingGroup
                     {
                         m_blAcceptXferReady = false;
                         m_state = STATE.S6;
-                        // TBD
-                        //lock (m_lockTwain)
-                        //{
-                        //    m_threaddata = default(ThreadData);
-                        //}
                         CallerToThreadSet();
                     }
                 }
@@ -10681,6 +11461,16 @@ namespace TWAINWorkingGroup
                     }
                 }
 
+                // Leave...now...
+                if (threaddata.blExitThread)
+                {
+                    m_twaincommand.Complete(lIndex, threaddata);
+                    m_scancallback(true);
+                    ThreadToCallerSet();
+                    ThreadToRollbackSet();
+                    return;
+                }
+
                 // Process device events...
                 if (IsMsgDeviceEvent())
                 {
@@ -10936,6 +11726,7 @@ namespace TWAINWorkingGroup
             // Some insurance to make sure we loosen up the caller...
             m_scancallback(true);
             ThreadToCallerSet();
+            return;
         }
 
         /// <summary>
@@ -10977,11 +11768,6 @@ namespace TWAINWorkingGroup
 
                             m_state = STATE.S6;
                             m_blIsMsgxferready = true;
-                            // TBD
-                            //lock (m_lockTwain)
-                            //{
-                            //    m_threaddata = default(ThreadData);
-                            //}
                             CallerToThreadSet();
                         }
                     }
@@ -12427,6 +13213,7 @@ namespace TWAINWorkingGroup
             // The state of the structure...
             public bool blIsInuse;
             public bool blIsComplete;
+            public bool blExitThread;
 
             // Command...
             public DG dg;
@@ -12451,11 +13238,13 @@ namespace TWAINWorkingGroup
             public TW_CUSTOMDSDATA twcustomdsdata;
             public TW_DEVICEEVENT twdeviceevent;
             public TW_ENTRYPOINT twentrypoint;
+            public TW_EVENT twevent;
             public TW_EXTIMAGEINFO twextimageinfo;
             public TW_FILESYSTEM twfilesystem;
             public TW_FILTER twfilter;
             public TW_GRAYRESPONSE twgrayresponse;
             public TW_IDENTITY twidentity;
+            public TW_IDENTITY_LEGACY twidentitylegacy;
             public TW_IMAGEINFO twimageinfo;
             public TW_IMAGELAYOUT twimagelayout;
             public TW_IMAGEMEMXFER twimagememxfer;
@@ -12726,10 +13515,21 @@ namespace TWAINWorkingGroup
         /// </summary>
         private ThreadData m_threaddataDatAudiofilexfer;
         private ThreadData m_threaddataDatAudionativexfer;
+        private ThreadData m_threaddataDatCapability;
+        private ThreadData m_threaddataDatEvent;
+        private ThreadData m_threaddataDatExtimageinfo;
+        private ThreadData m_threaddataDatIdentity;
         private ThreadData m_threaddataDatImagefilexfer;
+        private ThreadData m_threaddataDatImageinfo;
+        private ThreadData m_threaddataDatImagelayout;
         private ThreadData m_threaddataDatImagememfilexfer;
         private ThreadData m_threaddataDatImagememxfer;
         private ThreadData m_threaddataDatImagenativexfer;
+        private ThreadData m_threaddataDatParent;
+        private ThreadData m_threaddataDatPendingxfers;
+        private ThreadData m_threaddataDatSetupfilexfer;
+        private ThreadData m_threaddataDatSetupmemxfer;
+        private ThreadData m_threaddataDatStatus;
         private ThreadData m_threaddataDatUserinterface;
 
         /// <summary>

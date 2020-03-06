@@ -631,14 +631,14 @@ setglobal ICAP_BITDEPTHREDUCTION.ValueAfterReset             UNDEFINED
 ;
 setglobal ICAP_BITORDER.ConType                              TWON_ENUMERATION,TWON_ONEVALUE
 setglobal ICAP_BITORDER.ItemType                             TWTY_UINT16
-setglobal ICAP_BITORDER.ValueAfterOpen                       TWBO_MSBFIRST
-setglobal ICAP_BITORDER.ValueAfterReset                      TWBO_MSBFIRST
+setglobal ICAP_BITORDER.ValueAfterOpen                       UNDEFINED ; spec says TWBO_LSBFIRST, but who ever used this?
+setglobal ICAP_BITORDER.ValueAfterReset                      UNDEFINED ; spec says TWBO_LSBFIRST, but who ever used this?
 ;
 setglobal ICAP_BITORDERCODES.ConType                         TWON_ENUMERATION,TWON_ONEVALUE
 setglobal ICAP_BITORDERCODES.ItemType                        TWTY_UINT16
-setglobal ICAP_BITORDERCODES.ValueAfterOpen                  TWBO_LSBFIRST
-setglobal ICAP_BITORDERCODES.ValueAfterReset                 TWBO_LSBFIRST
-;
+setglobal ICAP_BITORDERCODES.ValueAfterOpen                  UNDEFINED
+setglobal ICAP_BITORDERCODES.ValueAfterReset                 UNDEFINED
+
 setglobal ICAP_BRIGHTNESS.ConType                            TWON_ENUMERATION,TWON_RANGE,TWON_ONEVALUE
 setglobal ICAP_BRIGHTNESS.ItemType                           TWTY_FIX32
 setglobal ICAP_BRIGHTNESS.ValueAfterOpen                     UNDEFINED
