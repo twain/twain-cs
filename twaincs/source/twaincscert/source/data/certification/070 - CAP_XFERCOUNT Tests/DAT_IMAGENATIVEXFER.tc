@@ -270,11 +270,13 @@ goto MAIN.XFERCOUNT.NEXT
 ;
 ; Did we pass? (do an extra check)
 :MAIN.PASS
+free handle image.handle
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
+free handle image.handle
 echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
 echo.passfail 'SUMMARY' 'fail'
 setglobal '${arg:2}' 'fail'

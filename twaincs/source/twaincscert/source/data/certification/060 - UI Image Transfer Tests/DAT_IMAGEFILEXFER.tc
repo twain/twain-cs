@@ -60,7 +60,6 @@ return 'pass'
 ;
 echo.titletest 'DAT_IMAGEFILEXFER v1.0 01-Mar-2020'
 setlocal indent ''
-setlocal image.handle '0'
 setlocal image.count '0'
 setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEFILEXFER'
 setlocal image.prefix 'fb'

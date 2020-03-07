@@ -207,6 +207,7 @@ if '${get:setupmemxfer.preferred}' <= '0' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'allocate pointer for ${get:setupmemxfer.preferred} bytes'
+free pointer image.pointer ; for the last loop
 allocate pointer image.pointer '${get:setupmemxfer.preferred}'
 if '${get:image.pointer}' == '0' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -332,6 +333,7 @@ goto MAIN.XFERCOUNT.NEXT
 ;
 ; Did we pass? (do an extra check)
 :MAIN.PASS
+image free memfileimage
 free pointer image.pointer
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'

@@ -538,7 +538,20 @@ namespace twaincscert
                         a_functionarguments.sts = m_twain.DatCapability((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twcapability);
                         if ((a_functionarguments.sts == TWAIN.STS.SUCCESS) || (a_functionarguments.sts == TWAIN.STS.CHECKSTATUS))
                         {
+                            // Convert the data to CSV...
                             a_functionarguments.szReturnValue = m_twain.CapabilityToCsv(twcapability, ((TWAIN.MSG)a_functionarguments.iMsg != TWAIN.MSG.QUERYSUPPORT));
+                            // Free the handle if the driver created it...
+                            switch ((TWAIN.MSG)a_functionarguments.iMsg)
+                            {
+                                default: break;
+                                case TWAIN.MSG.GET:
+                                case TWAIN.MSG.GETCURRENT:
+                                case TWAIN.MSG.GETDEFAULT:
+                                case TWAIN.MSG.QUERYSUPPORT:
+                                case TWAIN.MSG.RESET:
+                                    m_twain.DsmMemFree(ref twcapability.hContainer);
+                                    break;
+                            }
                         }
                         else
                         {
@@ -1233,6 +1246,10 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdAllocate(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            bool blResult;
+            bool blGlobal;
+            int iBytes;
+            string szValue;
             UInt32 u32Bytes = 0;
             IntPtr intptr = IntPtr.Zero;
             CallStack callstack = m_lcallstack[m_lcallstack.Count - 1];
@@ -1258,6 +1275,16 @@ namespace twaincscert
                 callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                 SetVariable(a_functionarguments.aszCmd[2], "0", 0, VariableScope.Local);
                 return (false);
+            }
+
+            // A heaping helping of paranoia...
+            blResult = GetVariable(a_functionarguments.aszCmd[2], 0, out szValue, out iBytes, out blGlobal, VariableScope.Local);
+            if (blResult)
+            {
+                if (szValue != "0")
+                {
+                    DisplayError("memory leak <" + a_functionarguments.aszCmd[2] + ">", a_functionarguments);
+                }
             }
 
             // Allocate a handle...
