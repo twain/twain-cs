@@ -64,7 +64,7 @@ namespace twaincscert
         public Terminal(FormMain a_formmain)
         {
             // Pick some colors...
-            if (TWAIN.GetProcessor() == TWAIN.Processor.MIPS64EL)
+            if ((TWAIN.GetProcessor() == TWAIN.Processor.MIPS64EL) || (TWAIN.GetPlatform() == TWAIN.Platform.MACOSX))
             {
                 m_consolecolorDefault = ConsoleColor.Black;
                 m_consolecolorBlue = ConsoleColor.DarkBlue;
@@ -151,6 +151,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSaveImage,                    new string[] { "saveimage" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetGlobal,                    new string[] { "setglobal" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetLocal,                     new string[] { "setlocal" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSizes,                        new string[] { "sizes" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSleep,                        new string[] { "sleep" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdWait,                         new string[] { "wait" }));
 
@@ -4196,6 +4197,20 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Some info that may be helpful...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdSizes(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            Display("int........" + sizeof(int));
+            Display("intPtr....." + Marshal.SizeOf(typeof(IntPtr)));
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
         /// Sleep some number of milliseconds...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
@@ -7030,21 +7045,7 @@ namespace twaincscert
         ///	                "pixelWidth": 1728,
         ///	                "resolution": 200,
         ///	                "size": 476279
-        ///             },
-		///             "status": {
-		///	                 "success": true
-		///             }
-	    ///        }
-        ///    }
-        ///    
-        /// Appears in XML as:
-        ///    <o>
-        ///        <o:metadata>
-        ///             <o:address>
-        ///	                <n:imageNumber>1</n:imageNumber>
-        ///	                <n:imagePart>1</n:imagePart>
-        ///	                <s:moreParts>lastPartInFile</s:moreParts>
-        ///	                <n:sheetNumber>1</n:sheetNumber>
+        ///             },Cmd
         ///	                <s:source>feederFront</s:source>
         ///	                <s:streamName>stream0</s:streamName>
         ///	                <s:sourceName>source0</s:sourceName>
