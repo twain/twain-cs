@@ -81,10 +81,10 @@ return 'pass' ; caller figures out what really happened based on certifyresult..
 :SENDANDCHECK
 dsmentry src ds '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}'
 if '${sts:}' != '${arg:1}' goto SENDANDCHECK.ERROR.ECHOPASSFAIL
-echo.passfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'pass'
+echo.passfail '${arg:5}/${arg:6} --> ${arg:1}' 'pass'
 setglobal '${arg:3}' '${ret:}'
 return
 :SENDANDCHECK.ERROR.ECHOPASSFAIL
-echo.passfail '    ${arg:5}/${arg:6} --> ${arg:1}' 'fail ${sts:} ${ret:}'
+echo.passfail '${arg:5}/${arg:6} --> ${arg:1}' 'fail ${sts:} ${ret:}'
 setglobal '${arg:2}' 'fail'
 return

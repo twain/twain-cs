@@ -46,42 +46,42 @@ if '${bits:}' !~ '32' goto MAIN.PASS
 ; MSG_OPENDSM using old DSM as TWAIN version 1.9 application, with DF_APP2 set
 echo.titletest 'MSG_OPENDSM using old DSM as TWAIN version 1.9 application, with DF_APP2 set'
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=1' 'protocolminor=9' 'uselegacydsm=true'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/1'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '${folder:parent}/DAT_IMAGEMEMXFER/1'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
 echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
 
 ; MSG_OPENDSM using old DSM as TWAIN version 2.x application, with DF_APP2 not set
 echo.titletest 'MSG_OPENDSM using old DSM as TWAIN version 2.x application, with DF_APP2 not set'
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=2' 'protocolminor=4' 'uselegacydsm=true' 'supportedgroups=0x00000003'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/2'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '${folder:parent}/DAT_IMAGEMEMXFER/2'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
 echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
 
 ; MSG_OPENDSM using old DSM as TWAIN version 2.x application, with DF_APP2 set
 echo.titletest 'MSG_OPENDSM using old DSM as TWAIN version 2.x application, with DF_APP2 set'
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=2' 'protocolminor=4' 'uselegacydsm=true' 'supportedgroups=0x20000003'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/3'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '${folder:parent}/DAT_IMAGEMEMXFER/3'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
 echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
 
 ; MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 1.9 application, with DF_APP2 set
 echo.titletest 'MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 1.9 application, with DF_APP2 set'
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=1' 'protocolminor=9' 'uselegacydsm=false' 'supportedgroups=0x20000003'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/4'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '${folder:parent}/DAT_IMAGEMEMXFER/4'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
 echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
 
 ; MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 2.x application, with DF_APP2 not set
 echo.titletest 'MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 2.x application, with DF_APP2 not set'
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=2' 'protocolminor=4' 'uselegacydsm=false' 'supportedgroups=0x00000003'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/5'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '${folder:parent}/DAT_IMAGEMEMXFER/5'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
 echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
 
 ; MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 1.9 application, with DF_APP2 not set
 echo.titletest 'MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 1.9 application, with DF_APP2 not set'
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=1' 'protocolminor=9' 'uselegacydsm=false' 'supportedgroups=0x00000003'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/6'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '${folder:parent}/DAT_IMAGEMEMXFER/6'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
 echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
 

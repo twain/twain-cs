@@ -12,6 +12,7 @@
 ;
 ; Locals
 ;   name - current test being done
+;   indent - amount to indent echo.passfail
 ;   twptlist - list of pixel types to check
 ;   itwpt - index of current pixel type being checked
 ;   icap_pixeltypevalue - current pixel type value for itwpt
@@ -29,6 +30,7 @@
 ; Initialize...
 ;
 echo.titletest 'DAT_CAPABILITY v1.0 21-Feb-2020'
+setlocal indent ''
 setlocal twptlist 'TWPT_BW,TWPT_GRAY,TWPT_RGB'
 setlocal itwpt '-1'
 setglobal g_datcapabilityresult 'pass'
@@ -42,7 +44,7 @@ setglobal g_datcapabilityresult 'pass'
 setlocal name 'MSG_RESETALL'
 dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 
@@ -53,6 +55,7 @@ echo.passfail '${get:name}' 'pass'
 ; because we have to restore it as part of the MSG_RESET and MSG_SET tests.
 ;
 :NEXTTWPT
+setlocal indent ''
 increment itwpt '${get:itwpt}'
 setglobal g_icap_pixeltypevalue '${getindex:twptlist:${get:itwpt}}'
 if '${get:g_icap_pixeltypevalue}' != '' goto MAIN.TWPTSET
@@ -60,10 +63,10 @@ goto MAIN.PASS
 :MAIN.TWPTSET
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:g_icap_pixeltypevalue}'
 if '${sts:}' == 'SUCCESS' goto MAIN.TWPTCONTINUE
-echo.passfail '${get:g_icap_pixeltypevalue}' 'skip'
+echo.passfail '${get:indent}${get:g_icap_pixeltypevalue}' 'skip'
 goto NEXTTWPT
 :MAIN.TWPTCONTINUE
-echo.passfail '${get:g_icap_pixeltypevalue}' 'pass'
+echo.passfail '${get:indent}${get:g_icap_pixeltypevalue}' 'pass'
 
 
 
@@ -72,10 +75,11 @@ echo.passfail '${get:g_icap_pixeltypevalue}' 'pass'
 ; CAP_SUPPORTEDCAPS (each Standard TWAIN capability ID is referred to as #CAP#
 ; for the rest of this section)
 ;
+setlocal indent '  '
 setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal cap_supportedcaps '${ret:}'
 
 
@@ -127,7 +131,7 @@ return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
 :MAIN.ERROR
 echo.passfail 'SUMMARY' 'fail'
 return 'fail'
@@ -144,50 +148,51 @@ return 'fail'
 :MSGQUERYSUPPORT
 ;
 ; Send the command...
+setlocal indent '    '
 echo ' '
 echo '  ${arg:1}'
 setlocal name 'Send MSG_QUERYSUPPORT'
 dsmentry src ds dg_control dat_capability msg_querysupport '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
-setlocal name '    Verify Cap'
+setlocal name 'Verify Cap'
 if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TW_CAPABILITY.ConType is not TWON_ONEVALUE, then end with error.
-setlocal name '    Verify ConType is TWON_ONEVALUE'
+setlocal name 'Verify ConType is TWON_ONEVALUE'
 if '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TW_ONEVALUE.ItemType is not TWTY_UINT32, then end with error
 ; SPECNOTE: spec says TWTY_INT32, test says TWTY_UINT32...spec wins...
-setlocal name '    Verify ItemType is TWTY_INT32'
+setlocal name 'Verify ItemType is TWTY_INT32'
 if '${getindex:twcapability:${get:TW_ONEVALUE.ItemType}}' != 'TWTY_INT32' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TWQC_GET, TWQC_GETCURRENT or TWQC_GETDEFAULT is detected, then
 ; all three must be present, if any are missing end with error
-setlocal name '    Verify GET, GETCURRENT, GETDEFAULT'
+setlocal name 'Verify GET, GETCURRENT, GETDEFAULT'
 if '${getindex:twcapability:${get:TW_ONEVALUE.Item}}' & '0x000D' == '0' goto MSGQUERYSUPPORT.VERIFYSET
 if '${getindex:twcapability:${get:TW_ONEVALUE.Item}}' & '0x000D' != '0x000D' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TWQC_RESET or TWQC_SET is detected, then both must be present,
 ; plus TWQC_GET, TWQC_GETCURRENT and TWQC_GETDEFAULT, if not true
 ; then end with error
 :MSGQUERYSUPPORT.VERIFYSET
-setlocal name '    Verify SET, RESET with GETs'
+setlocal name 'Verify SET, RESET with GETs'
 if '${getindex:twcapability:${get:TW_ONEVALUE.Item}}' & '0x0012' == '0' goto MSGQUERYSUPPORT.PASS
 if '${getindex:twcapability:${get:TW_ONEVALUE.Item}}' & '0x001F' != '0x001F' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
 goto MSGQUERYSUPPORT.PASS
 :MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'fail'
+echo.passfail '${get:indent}${get:name}' 'fail'
 setglobal '${arg:2}' '0'
 setglobal '${arg:3}' 'fail'
 return
@@ -208,37 +213,38 @@ return
 ;
 ; Skip if not supported (TWQC_GET)...
 if '${arg:2}' & '0x0001' == '0' goto MSGGET.SKIP
+setlocal indent '    '
 ;
 ; Send the command...
 setlocal name 'Send MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGGET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
-setlocal name '    Verify Cap'
+setlocal name 'Verify Cap'
 if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If the value of TW_CAPABILITY.ConType doesn’t match the Specification’s
 ; MSG_GET container for this capability, then end with error
-setlocal name '    Verify ConType contains ${get:${arg:1}.ConType}'
+setlocal name 'Verify ConType contains ${get:${arg:1}.ConType}'
 if '${get:${arg:1}.ConType}' !~contains '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' goto MSGGET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If container’s ItemType doesn’t match the Specification’s ItemType for
 ; this capability, then end with error.  Note that the index for ItemType
 ; is the same for all containers, so it doesn't matter which one we use
 ; to check this...
-setlocal name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
+setlocal name 'Verify ItemType contains ${get:${arg:1}.ItemType}'
 if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability:${get:TW_ONEVALUE.ItemType}}' goto MSGGET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
 goto MSGGET.PASS
 :MSGGET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'fail'
+echo.passfail '${get:indent}${get:name}' 'fail'
 setglobal '${arg:3}' 'fail'
 return
 :MSGGET.SKIP
@@ -259,41 +265,42 @@ return
 ;
 ; Skip if not supported (TWQC_GETCURRENT)...
 if '${arg:2}' & '0x0008' == '0' goto MSGGETCURRENT.SKIP
+setlocal indent '    '
 ;
 ; Send the command...
 setlocal name 'Send MSG_GETCURRENT'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
-setlocal name '    Verify Cap'
+setlocal name 'Verify Cap'
 if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
 ; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETCURRENT must be
 ; TWTY_ONEVALUE, if not then end with error
 ; SPECNOTE: we're testing for array, which gives us the same result...
 if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGGETCURRENT.ARRAY
-setlocal name '    Verify ConType contains TWON_ONEVALUE'
+setlocal name 'Verify ConType contains TWON_ONEVALUE'
 if '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 goto MSGGETCURRENT.ITEMTYPE
 :MSGGETCURRENT.ARRAY
-setlocal name '    Verify ConType contains TWON_ARRAY'
+setlocal name 'Verify ConType contains TWON_ARRAY'
 if '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If container’s ItemType doesn’t match the Specification’s ItemType for
 ; this capability, then end with error.  Note that the index for ItemType
 ; is the same for all containers, so it doesn't matter which one we use
 ; to check this...
 :MSGGETCURRENT.ITEMTYPE
-setlocal name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
+setlocal name 'Verify ItemType contains ${get:${arg:1}.ItemType}'
 if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability:${get:TW_ONEVALUE.ItemType}}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
 goto MSGGETCURRENT.PASS
@@ -319,46 +326,47 @@ return
 ;
 ; Skip if not supported (TWQC_GETDEFAULT)...
 if '${arg:2}' & '0x0004' == '0' goto MSGGETDEFAULT.SKIP
+setlocal indent '    '
 ;
 ; Send the command...
 setlocal name 'Send MSG_GETDEFAULT'
 dsmentry src ds dg_control dat_capability msg_getdefault '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
-setlocal name '    Verify Cap'
+setlocal name 'Verify Cap'
 if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
 ; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETDEFAULT must be
 ; TWTY_ONEVALUE, if not then end with error
 ; SPECNOTE: we're testing for array, which gives us the same result...
 if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGGETDEFAULT.ARRAY
-setlocal name '    Verify ConType contains TWON_ONEVALUE'
+setlocal name 'Verify ConType contains TWON_ONEVALUE'
 if '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 goto MSGGETDEFAULT.ITEMTYPE
 :MSGGETDEFAULT.ARRAY
-setlocal name '    Verify ConType contains TWON_ARRAY'
+setlocal name 'Verify ConType contains TWON_ARRAY'
 if '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If container’s ItemType doesn’t match the Specification’s ItemType for
 ; this capability, then end with error.  Note that the index for ItemType
 ; is the same for all containers, so it doesn't matter which one we use
 ; to check this...
 :MSGGETDEFAULT.ITEMTYPE
-setlocal name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
+setlocal name 'Verify ItemType contains ${get:${arg:1}.ItemType}'
 if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability:${get:TW_ONEVALUE.ItemType}}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
 goto MSGGETDEFAULT.PASS
 :MSGGETDEFAULT.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'fail'
+echo.passfail '${get:indent}${get:name}' 'fail'
 setglobal '${arg:3}' 'fail'
 return
 :MSGGETDEFAULT.SKIP
@@ -379,18 +387,19 @@ return
 ;
 ; Skip if not supported (TWQC_RESET)...
 if '${arg:2}' & '0x0010' == '0' goto MSGRESET.SKIP
+setlocal indent '    '
 ;
 ; Send the command...
 setlocal name 'Send MSG_RESET'
 dsmentry src ds dg_control dat_capability msg_reset '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
-setlocal name '    Verify Cap'
+setlocal name 'Verify Cap'
 if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If the TW_CAPABILITY.ConType for MSG_GET was TWON_ENUMERATION, TWON_ONEVALUE
 ; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETDEFAULT must be
@@ -398,28 +407,28 @@ echo.passfail '  ${get:name}' 'pass'
 ; SPECNOTE: the test implies that the MSG_GET container should returned, this is wrong...
 ; SPECNOTE: we're testing for array, which gives us the same result...
 if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGRESET.ARRAY
-setlocal name '    Verify ConType contains TWON_ONEVALUE'
+setlocal name 'Verify ConType contains TWON_ONEVALUE'
 if '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 goto MSGRESET.ITEMTYPE
 :MSGRESET.ARRAY
-setlocal name '    Verify ConType contains TWON_ARRAY'
+setlocal name 'Verify ConType contains TWON_ARRAY'
 if '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If container’s ItemType doesn’t match the Specification’s ItemType for
 ; this capability, then end with error.  Note that the index for ItemType
 ; is the same for all containers, so it doesn't matter which one we use
 ; to check this...
 :MSGRESET.ITEMTYPE
-setlocal name '    Verify ItemType contains ${get:${arg:1}.ItemType}'
+setlocal name 'Verify ItemType contains ${get:${arg:1}.ItemType}'
 if '${get:${arg:1}.ItemType}' !~contains '${getindex:twcapability:${get:TW_ONEVALUE.ItemType}}' goto MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
 goto MSGRESET.PASS
 :MSGRESET.ERROR.ECHOPASSFAIL
-echo.passfail '  ${get:name}' 'fail'
+echo.passfail '${get:indent}${get:name}' 'fail'
 call RESTORECAPABILITY '${arg:1}'
 setglobal '${arg:3}' 'fail'
 return
@@ -442,84 +451,85 @@ return
 ;
 ; Skip if not supported (TWQC_SET)...
 if '${arg:2}' & '0x0002' == '0' goto MSGSET.SKIP
+setlocal indent '    '
 ;
 ; Explain what's going on...
 setlocal name 'Test MSG_SET'
-echo.passfail '  ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; GET -> SET, and check they match with a final GET
 ; We'll accept SUCCESS or CHECKSTATUS
 setlocal name 'Send MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 setlocal name 'Send MSG_SET with that GET'
 dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
 if '/CHECKSTATUS/SUCCESS/' !~contains '/${sts:}/' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'Send MSG_GET to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; GETGURRENT -> SET, and check they match with a final GETCURRENT
 setlocal name 'Send MSG_GETCURRENT'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 setlocal name 'Send MSG_SET with that GETCURRENT'
 dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; GETDEFAULT -> SET, and check they match with a final GETCURRENT
 setlocal name 'Send MSG_GETDEFAULT'
 dsmentry src ds dg_control dat_capability msg_getdefault '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 setlocal name 'Send MSG_SET with that GETDEFAULT'
 dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; RESET -> SET, and check they match with a final GETCURRENT
 setlocal name 'Send MSG_RESET'
 dsmentry src ds dg_control dat_capability msg_reset '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal twcapability '${ret:}'
 setlocal name 'Send MSG_SET with that RESET'
 dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
 goto MSGSET.PASS
 :MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '      ${get:name}' 'fail ${sts:} <${get:twcapability}> <${get:value}>'
+echo.passfail '${get:indent}${get:name}' 'fail ${sts:} <${get:twcapability}> <${get:value}>'
 call RESTORECAPABILITY '${arg:1}'
 setglobal '${arg:3}' 'fail'
 return
@@ -539,36 +549,37 @@ return
 ; we'll keep on going...
 ;
 :ENABLECAPABILITIES
+setlocal indent '  '
 ;
 ; CAP_PRINTERENABLED
 :ENABLECAPABILITIES.CAP_PRINTERENABLED
 if '${arg:1}' !~contains 'CAP_PRINTERENABLED' goto ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED
 dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
 if '${sts:}' != 'SUCCESS' goto ENABLECAPABILITIES.CAP_PRINTERENABLED.ECHOPASSFAIL
-echo.passfail '  Enable CAP_PRINTERENABLED' 'pass'
+echo.passfail '${get:indent}Enable CAP_PRINTERENABLED' 'pass'
 goto ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED
 :ENABLECAPABILITIES.CAP_PRINTERENABLED.ECHOPASSFAIL
-echo.passfail '  Enable CAP_PRINTERENABLED' 'fail (but we won't fail on it here)'
+echo.passfail '${get:indent}Enable CAP_PRINTERENABLED' 'fail (but we won't fail on it here)'
 ;
 ; ICAP_BARCODEDETECTIONENABLED
 :ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED
 if '${arg:1}' !~contains 'ICAP_BARCODEDETECTIONENABLED' goto ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
 if '${sts:}' != 'SUCCESS' goto ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
-echo.passfail '  Enable ICAP_BARCODEDETECTIONENABLED' 'pass'
+echo.passfail '${get:indent}Enable ICAP_BARCODEDETECTIONENABLED' 'pass'
 goto ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED
 :ENABLECAPABILITIES.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
-echo.passfail '  Enable ICAP_BARCODEDETECTIONENABLED' 'fail (but we won't fail on it here)'
+echo.passfail '${get:indent}Enable ICAP_BARCODEDETECTIONENABLED' 'fail (but we won't fail on it here)'
 ;
 ; ICAP_PATCHCODEDETECTIONENABLED
 :ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED
 if '${arg:1}' !~contains 'CAP_PATCHCODEDETECTIONENABLED' goto ENABLECAPABILITIES.DONE
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
 if '${sts:}' != 'SUCCESS' goto ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
-echo.passfail '  Enable CAP_PATCHCODEDETECTIONENABLED' 'pass'
+echo.passfail '${get:indent}Enable CAP_PATCHCODEDETECTIONENABLED' 'pass'
 goto ENABLECAPABILITIES.DONE
 :ENABLECAPABILITIES.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
-echo.passfail '  Enable CAP_PATCHCODEDETECTIONENABLED' 'fail (but we won't fail on it here)'
+echo.passfail '${get:indent}Enable CAP_PATCHCODEDETECTIONENABLED' 'fail (but we won't fail on it here)'
 ;
 ; All done...
 :ENABLECAPABILITIES.DONE
@@ -586,6 +597,7 @@ return
 ; SPECNOTE: the concept of restoring isn't described in the tests
 ;
 :RESTORECAPABILITY
+setlocal indent '  '
 if '${arg:1}' == 'CAP_PRINTERENABLED' goto RESTORECAPABILITY.CAP_PRINTERENABLED
 if '${arg:1}' == 'ICAP_BARCODEDETECTIONENABLED' goto RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED
 if '${arg:1}' == 'ICAP_PATCHCODEDETECTIONENABLED' goto RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED
@@ -596,38 +608,38 @@ return
 :RESTORECAPABILITY.CAP_PRINTERENABLED
 dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
 if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.CAP_PRINTERENABLED.ECHOPASSFAIL
-echo.passfail '      Restore CAP_PRINTERENABLED value to TRUE' 'pass'
+echo.passfail '${get:indent}Restore CAP_PRINTERENABLED value to TRUE' 'pass'
 return
 :RESTORECAPABILITY.CAP_PRINTERENABLED.FAIL
-echo.passfail '      Restore CAP_PRINTERENABLED value to TRUE' 'fail (but we won't fail on it here)'
+echo.passfail '${get:indent}Restore CAP_PRINTERENABLED value to TRUE' 'fail (but we won't fail on it here)'
 return
 ;
 ; ICAP_BARCODEDETECTIONENABLED
 :RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_UINT16,TRUE'
 if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
-echo.passfail '      Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'pass'
+echo.passfail '${get:indent}Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'pass'
 return
 :RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.FAIL
-echo.passfail '      Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'fail (but we won't fail on it here)'
+echo.passfail '${get:indent}Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'fail (but we won't fail on it here)'
 return
 ;
 ; ICAP_PATCHCODEDETECTIONENABLED
 :RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_UINT16,TRUE'
 if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
-echo.passfail '      Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'pass'
+echo.passfail '${get:indent}Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'pass'
 return
 :RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.FAIL
-echo.passfail '      Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'fail (but we won't fail on it here)'
+echo.passfail '${get:indent}Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'fail (but we won't fail on it here)'
 return
 ;
 ; ICAP_PIXELTYPE
 :RESTORECAPABILITY.ICAP_PIXELTYPE
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:g_icap_pixeltypevalue}'
 if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_PIXELTYPE.ECHOPASSFAIL
-echo.passfail '      Restore ICAP_PIXELTYPE value to ${get:g_icap_pixeltypevalue}' 'pass'
+echo.passfail '${get:indent}Restore ICAP_PIXELTYPE value to ${get:g_icap_pixeltypevalue}' 'pass'
 return
 :RESTORECAPABILITY.ICAP_PIXELTYPE.FAIL
-echo.passfail '      Restore ICAP_PIXELTYPE value to ${get:g_icap_pixeltypevalue}' 'fail (but we won't fail on it here)'
+echo.passfail '${get:indent}Restore ICAP_PIXELTYPE value to ${get:g_icap_pixeltypevalue}' 'fail (but we won't fail on it here)'
 return

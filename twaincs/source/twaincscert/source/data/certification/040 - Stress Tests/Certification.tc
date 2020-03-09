@@ -7,10 +7,9 @@
 ;   arg:2 - global to set on fail
 ;
 ; Globals
-;   (none)
+;   g_localcertifyresult - global to report to caller on fail
 ;
 ; Locals
-;   certifyresult - global to report to caller on fail
 ;   twidentity.productname - product name of scanner to test
 ;
 ; Returns
@@ -24,7 +23,7 @@
 ;
 echo.titlesuite 'Stress Tests v1.0 23-Feb-2020'
 setlocal twidentity.productname '${arg:1}'
-setlocal certifyresult '${arg:2}'
+setglobal g_localcertifyresult 'pass'
 if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
 run '${folder:certification}/LoadTables'
 :MAIN.LOADTABLES.SKIP
@@ -34,16 +33,16 @@ run '${folder:certification}/LoadTables'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Run the tests...
 ;
-call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}' embedded
-call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}' embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
 
 
 
@@ -51,14 +50,14 @@ call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '
 ; Summary and cleanup...
 ;
 ; Did we pass?
-if '${get:certifyresult}' != 'pass' goto MAIN.ERROR
+if '${get:g_localcertifyresult}' != 'pass' goto MAIN.ERROR
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR
 echo.passfail 'SUMMARY' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setglobal '${arg:2}' 'fail'
 return 'fail'
 
 

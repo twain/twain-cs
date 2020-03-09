@@ -248,7 +248,7 @@ namespace twaincscert
                 aszCmd = interpreter.Tokenize(szCmd);
 
                 // Expansion of symbols...
-                Expansion(ref aszCmd);
+                Expansion(default(Interpreter.FunctionArguments), ref aszCmd);
 
                 // Dispatch...
                 Interpreter.FunctionArguments functionarguments = default(Interpreter.FunctionArguments);
@@ -1560,7 +1560,7 @@ namespace twaincscert
             Array.Copy(a_functionarguments.aszCmd, aszCmd, a_functionarguments.aszCmd.Length);
 
             // Expand the symbols...
-            Expansion(ref aszCmd);
+            Expansion(a_functionarguments, ref aszCmd);
 
             // Turn it into a line...
             for (ii = 1; ii < aszCmd.Length; ii++)
@@ -2011,8 +2011,15 @@ namespace twaincscert
                 Display("  Complete TW_IDENTITY of the current scanner driver.  Fields can be accessed with index.");
                 Display("");
                 Display("  '${folder:target}'");
-                Display("  Resolves to the full path for targeted special folder: certification, certimages, data, desktop,");
-                Display("  local, pictures, roaming.");
+                Display("  Resolves to the full path for a special folder indicated by target:");
+                Display("    certification - main certification folder");
+                Display("    certimages - folder to put images into");
+                Display("    data - data folder (in same folder as twaincscert.exe)");
+                Display("    desktop - user's desktop folder");
+                Display("    local - user's local temp folder");
+                Display("    parent - parent folder of the currently running script, or current folder");
+                Display("    pictures - user's pictures folder");
+                Display("    roaming - -user's roaming temp folder");
                 Display("");
                 Display("  '${format:specifier|value}'");
                 Display("  Formats the value according to the specifier.");
@@ -2043,7 +2050,7 @@ namespace twaincscert
                 Display("  The current TWAIN state (1 through 7).");
                 Display("");
                 Display("  '${sts:}'");
-                Display("  The TWAIN TWRC return code for the command.  If the status was TWRC_FAILURE, then this will");
+                Display("  The TWAIN TWRC return code for the command.  If the status was TWRC_FAILURE, this will");
                 Display("  contain the TWCC condition code.");
                 Display("");
                 Display("Note that some tricks are allowed, one can do ${ret:${get:index}}, using the set and increment");
@@ -3112,7 +3119,7 @@ namespace twaincscert
             UInt64 u64Ptr = 0;
             IntPtr intptrPtr = IntPtr.Zero;
             bool blGlobal = false;
-            byte[] abImage;
+            byte[] abImage = null;
             string szFolder = "";
             string szFilename = "";
             KeyValue keyvalue = default(KeyValue);
@@ -3269,7 +3276,12 @@ namespace twaincscert
                             // We're starting fresh...
                             if (u64Ptr == 0)
                             {
-                                intptrPtr = Marshal.AllocHGlobal((int)twimagememxfer.BytesWritten);
+                                intptrPtr = Marshal.AllocHGlobal((int)twimagememxfer.BytesWritten + 65536);
+                                if (intptrPtr == IntPtr.Zero)
+                                {
+                                    DisplayError("alloc failed <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
+                                    return (false);
+                                }
                                 NativeMethods.MemCpy(intptrPtr, twimagememxfer.Memory.TheMem, (int)twimagememxfer.BytesWritten);
                                 SetVariable(keyvalue.szKey, intptrPtr.ToString(), (int)twimagememxfer.BytesWritten, VariableScope.Local);
                             }
@@ -3277,7 +3289,12 @@ namespace twaincscert
                             else
                             {
                                 intptrPtr = (IntPtr)u64Ptr;
-                                intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(keyvalue.iBytes + (int)twimagememxfer.BytesWritten));
+                                intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(keyvalue.iBytes + (int)twimagememxfer.BytesWritten + 65536));
+                                if (intptrPtr == IntPtr.Zero)
+                                {
+                                    DisplayError("alloc failed <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
+                                    return (false);
+                                }
                                 NativeMethods.MemCpy((IntPtr)((UInt64)intptrPtr + (UInt64)keyvalue.iBytes), twimagememxfer.Memory.TheMem, (int)twimagememxfer.BytesWritten);
                                 SetVariable(keyvalue.szKey, intptrPtr.ToString(), keyvalue.iBytes + (int)twimagememxfer.BytesWritten, VariableScope.Local);
                             }
@@ -3323,7 +3340,11 @@ namespace twaincscert
                     GetVariable(keyvalue.szKey, -1, out keyvalue.szValue, out keyvalue.iBytes, out blGlobal, VariableScope.Local);
 
                     // If we have a pointer, free it, and set the varible to 0...
-                    if (UInt64.TryParse(keyvalue.szValue, out u64Ptr))
+                    if (string.IsNullOrEmpty(keyvalue.szValue))
+                    {
+                        SetVariable(keyvalue.szKey, "0", 0, VariableScope.Local);
+                    }
+                    else if (UInt64.TryParse(keyvalue.szValue, out u64Ptr))
                     {
                         intptrPtr = (IntPtr)u64Ptr;
                         if (intptrPtr != IntPtr.Zero)
@@ -3331,6 +3352,11 @@ namespace twaincscert
                             Marshal.FreeHGlobal(intptrPtr);
                             SetVariable(keyvalue.szKey, "0", 0, VariableScope.Local);
                         }
+                    }
+                    else
+                    {
+                        DisplayError("bad pointer <" + keyvalue.szKey + "=" + keyvalue.szValue + ">", a_functionarguments);
+                        SetVariable(keyvalue.szKey, "0", 0, VariableScope.Local);
                     }
                     return (false);
 
@@ -3887,6 +3913,7 @@ namespace twaincscert
                     return (false);
                 }
             }
+            szScriptFile = Path.GetFullPath(szScriptFile);
 
             // Read the file...
             try
@@ -3958,15 +3985,17 @@ namespace twaincscert
                     m_lcallstack[m_lcallstack.Count - 1] = callstack;
                 }
 
-                // Expansion of symbols...
-                Expansion(ref aszCmd);
-
-                // Dispatch...
+                // Build our function arguments...
                 Interpreter.FunctionArguments functionarguments = default(Interpreter.FunctionArguments);
                 functionarguments.aszCmd = aszCmd;
                 functionarguments.szScriptFile = szScriptFile;
                 functionarguments.aszScript = aszScript;
                 functionarguments.iCurrentLine = iLine;
+
+                // Expansion of symbols...
+                Expansion(functionarguments, ref aszCmd);
+
+                // Dispatch...
                 blDone = interpreter.Dispatch(ref functionarguments, m_ldispatchtable);
                 if (blDone)
                 {
@@ -4616,7 +4645,7 @@ namespace twaincscert
         ///     - ${rj:${arg:1}}
         /// </summary>
         /// <param name="a_aszCmd">tokenized string array to expand</param>
-        private void Expansion(ref string[] a_aszCmd)
+        private void Expansion(Interpreter.FunctionArguments a_functionarguments, ref string[] a_aszCmd)
         {
             int ii;
             int iReferenceCount;
@@ -4705,7 +4734,7 @@ namespace twaincscert
                         string[] asz = new string[1];
                         asz[0] = szSymbol.Substring(0, szSymbol.Length - 1).Substring(iSymbolIndexLeft);
                         iSymbolIndexLength = asz[0].Length;
-                        Expansion(ref asz);
+                        Expansion(a_functionarguments, ref asz);
                         szSymbol = szSymbol.Remove(iSymbolIndexLeft, iSymbolIndexLength);
                         szSymbol = szSymbol.Insert(iSymbolIndexLeft, asz[0]);
                     }
@@ -4833,6 +4862,64 @@ namespace twaincscert
                         }
                     }
 
+                    // Special folders
+                    else if (szSymbol.StartsWith("${folder:"))
+                    {
+                        if (szSymbol == "${folder:certification}")
+                        {
+                            szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
+                        }
+                        else if (szSymbol == "${folder:certimages}")
+                        {
+                            if ((m_twain != null) && !string.IsNullOrEmpty(m_twain.GetDsIdentity()))
+                            {
+                                string[] aszDs = CSV.Parse(m_twain.GetDsIdentity());
+                                if (aszDs.Length >= 12)
+                                {
+                                    szValue = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
+                                    szValue = Path.Combine(szValue, Regex.Replace(aszDs[11], "[^.a-zA-Z0-9]", "_"));
+                                    szValue = Path.Combine(szValue, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
+                                }
+                            }
+                        }
+                        else if (szSymbol == "${folder:data}")
+                        {
+                            szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "data");
+                        }
+                        else if (szSymbol == "${folder:desktop}")
+                        {
+                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                        }
+                        else if (szSymbol == "${folder:local}")
+                        {
+                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                        }
+                        else if (szSymbol == "${folder:parent}")
+                        {
+                            if (string.IsNullOrEmpty(a_functionarguments.szScriptFile))
+                            {
+                                szValue = Directory.GetCurrentDirectory();
+                            }
+                            else
+                            {
+                                szValue = Path.GetFileName(Path.GetDirectoryName(a_functionarguments.szScriptFile));
+                            }
+                        }
+                        else if (szSymbol == "${folder:pictures}")
+                        {
+                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+                        }
+                        else if (szSymbol == "${folder:roaming}")
+                        {
+                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                        }
+                        else
+                        {
+                            // Not the most brilliant idea, but what the hell...
+                            szValue = szSymbol.Replace("${", "").Replace(":", "").Replace("}", "");
+                        }
+                    }
+
                     // Format the data using a specifier...
                     else if (szSymbol.StartsWith("${format:"))
                     {
@@ -4894,53 +4981,6 @@ namespace twaincscert
                         if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
                         {
                             GetVariable(aszGet[0], iIndex, out szValue, out iBytes, out blGlobal);
-                        }
-                    }
-
-                    // Special folders
-                    else if (szSymbol.StartsWith("${folder:"))
-                    {
-                        if (szSymbol == "${folder:certification}")
-                        {
-                            szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
-                        }
-                        else if (szSymbol == "${folder:certimages}")
-                        {
-                            if ((m_twain != null) && !string.IsNullOrEmpty(m_twain.GetDsIdentity()))
-                            {
-                                string[] aszDs = CSV.Parse(m_twain.GetDsIdentity());
-                                if (aszDs.Length >= 12)
-                                {
-                                    szValue = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
-                                    szValue = Path.Combine(szValue, Regex.Replace(aszDs[11], "[^.a-zA-Z0-9]", "_"));
-                                    szValue = Path.Combine(szValue, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
-                                }
-                            }
-                        }
-                        else if (szSymbol == "${folder:data}")
-                        {
-                            szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "data");
-                        }
-                        else if (szSymbol == "${folder:desktop}")
-                        {
-                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                        }
-                        else if (szSymbol == "${folder:local}")
-                        {
-                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                        }
-                        else if (szSymbol == "${folder:pictures}")
-                        {
-                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-                        }
-                        else if (szSymbol == "${folder:roaming}")
-                        {
-                            szValue = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                        }
-                        else
-                        {
-                            // Not the most brilliant idea, but what the hell...
-                            szValue = szSymbol.Replace("${", "").Replace(":", "").Replace("}", "");
                         }
                     }
 

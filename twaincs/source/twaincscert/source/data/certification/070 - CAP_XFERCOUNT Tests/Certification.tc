@@ -46,10 +46,10 @@ setlocal xfermech '${ret:}'
 echo.passfail '${get:name}' 'pass'
 
 ; Do the tests...
-call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '070 - CAP_XFERCOUNT Tests'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '070 - CAP_XFERCOUNT Tests'
-call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '070 - CAP_XFERCOUNT Tests' '${get:xfermech}'
-call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '070 - CAP_XFERCOUNT Tests' '${get:xfermech}'
+call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
+call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '${get:xfermech}'
+call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '${get:xfermech}'
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}'
 return
 
