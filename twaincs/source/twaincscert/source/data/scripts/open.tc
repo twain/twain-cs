@@ -18,6 +18,15 @@ if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If the DF_DSM2 flag is set, then call DAT_ENTRYPOINT...
+;
+if '${app:${get:TW_IDENTITY.SupportedGroups}}' & '0x10000000' != '0x10000000' goto MAIN.ENTRYPOINT.SKIP
+dsmentry src null dg_control dat_entrypoint msg_get '0,0,0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Open the driver...
 ;
 dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'

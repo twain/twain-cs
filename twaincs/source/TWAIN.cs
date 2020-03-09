@@ -444,6 +444,15 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Get the identity of the current application...
+        /// </summary>
+        /// <returns></returns>
+        public string GetAppIdentity()
+        {
+            return (IdentityToCsv(m_twidentityApp));
+        }
+
+        /// <summary>
         /// Get the identity of the current driver, if we have one...
         /// </summary>
         /// <returns></returns>
@@ -9148,6 +9157,8 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
                             }
                         }
                     }
+                    // Needed for the DF_DSM2 flag...
+                    m_twidentityApp.SupportedGroups = m_twidentitylegacyApp.SupportedGroups;
                 }
                 catch (Exception exception)
                 {
@@ -9173,6 +9184,8 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
                     try
                     {
                         stsLatest = (STS)NativeMethods.Linux64DsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        // Needed for the DF_DSM2 flag...
+                        m_twidentityApp.SupportedGroups = m_twidentitylegacyApp.SupportedGroups;
                     }
                     catch
                     {
@@ -9187,6 +9200,8 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
                     try
                     {
                         stsLatest = (STS)NativeMethods.LinuxDsmEntryParent(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
+                        // Needed for the DF_DSM2 flag...
+                        m_twidentityApp.SupportedGroups = m_twidentitylegacyApp.SupportedGroups;
                     }
                     catch
                     {
@@ -9231,6 +9246,8 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
                     {
                         sts = (STS)NativeMethods.MacosxTwaindsmDsmEntryParent(ref m_twidentitymacosxApp, IntPtr.Zero, a_dg, DAT.PARENT, a_msg, ref a_intptrHwnd);
                     }
+                    // Needed for the DF_DSM2 flag...
+                    m_twidentityApp.SupportedGroups = m_twidentitymacosxApp.SupportedGroups;
                 }
                 catch (Exception exception)
                 {

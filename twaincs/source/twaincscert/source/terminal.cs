@@ -600,6 +600,7 @@ namespace twaincscert
                 case (int)TWAIN.DAT.ENTRYPOINT:
                     {
                         TWAIN.TW_ENTRYPOINT twentrypoint = default(TWAIN.TW_ENTRYPOINT);
+                        twentrypoint.Size = (uint)Marshal.SizeOf(twentrypoint);
                         a_functionarguments.sts = m_twain.DatEntrypoint((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twentrypoint);
                         a_functionarguments.szReturnValue = m_twain.EntrypointToCsv(twentrypoint);
                         callstack.functionarguments.sts = a_functionarguments.sts;
@@ -778,6 +779,7 @@ namespace twaincscert
                 case (int)TWAIN.DAT.METRICS:
                     {
                         TWAIN.TW_METRICS twmetrics = default(TWAIN.TW_METRICS);
+                        twmetrics.SizeOf = (uint)Marshal.SizeOf(twmetrics);
                         a_functionarguments.sts = m_twain.DatMetrics((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twmetrics);
                         a_functionarguments.szReturnValue = m_twain.MetricsToCsv(twmetrics);
                         callstack.functionarguments.sts = a_functionarguments.sts;
@@ -1162,6 +1164,8 @@ namespace twaincscert
         /// <returns>TWAIN status</returns>
         private TWAIN.STS ScanCallback(bool a_blClosing)
         {
+            bool blIsMsgXferReady = false;
+
             // Scoot...
             if (m_twain == null)
             {
@@ -1183,6 +1187,7 @@ namespace twaincscert
                     {
                         m_lmsgDatNull.Add(TWAIN.MSG.XFERREADY);
                         m_autoreseteventMsgDatNull.Set();
+                        blIsMsgXferReady = true;
                     }
                 }
             }
@@ -1211,7 +1216,7 @@ namespace twaincscert
 
             // We're waiting for that first image to show up, if we don't
             // see it, then return...
-            if (!m_twain.IsMsgXferReady())
+            if (!blIsMsgXferReady)
             {
                 // If we're on Windows we need to send event requests to the driver...
                 if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
@@ -1996,11 +2001,14 @@ namespace twaincscert
                 Display("  or label; 1 - n accesses the rest of the arguments.  An index can be specified to access any");
                 Display("  command in the stack, but only 0 is recommended to look at the last user command.");
                 Display("");
+                Display("  '${app:[index]}'");
+                Display("  Complete TW_IDENTITY of the current application.  Fields can be accessed with index.");
+                Display("");
                 Display("  '${bits:}'");
                 Display("  32 or 64.");
                 Display("");
-                Display("  '${ds:}'");
-                Display("  Complete TW_IDENTITY of the current scanner driver.");
+                Display("  '${ds:[index]}'");
+                Display("  Complete TW_IDENTITY of the current scanner driver.  Fields can be accessed with index.");
                 Display("");
                 Display("  '${folder:target}'");
                 Display("  Resolves to the full path for targeted special folder: certification, certimages, data, desktop,");
@@ -4677,6 +4685,7 @@ namespace twaincscert
                     // ${rj:x} we'll get x back, but if we have ${rj:${arg:1}}, we'll
                     // get the value of ${arg:1} back...
                     if (   szSymbol.StartsWith("${arg:")
+                        || szSymbol.StartsWith("${app:")
                         || szSymbol.StartsWith("${bits:")
                         || szSymbol.StartsWith("${ds:")
                         || szSymbol.StartsWith("${folder:")
@@ -4760,6 +4769,35 @@ namespace twaincscert
                         }
                     }
 
+                    // Get data from the application identity (indexible)...
+                    else if (szSymbol.StartsWith("${app:"))
+                    {
+                        if (m_twain == null)
+                        {
+                            szValue = "(dsm not loaded)";
+                        }
+                        else if (szSymbol == "${app:}")
+                        {
+                            szValue = m_twain.GetAppIdentity();
+                        }
+                        else
+                        {
+                            int iIndex = 0;
+                            if (int.TryParse(szSymbol.Replace("${app:", "").Replace("}", ""), out iIndex))
+                            {
+                                string[] asz = CSV.Parse(m_twain.GetAppIdentity());
+                                if ((iIndex < 0) || (iIndex >= asz.Length))
+                                {
+                                    szValue = "";
+                                }
+                                else
+                                {
+                                    szValue = asz[iIndex];
+                                }
+                            }
+                        }
+                    }
+
                     // Get number of bits in the machine word...
                     else if (szSymbol.StartsWith("${bits:"))
                     {
@@ -4771,7 +4809,7 @@ namespace twaincscert
                     {
                         if (m_twain == null)
                         {
-                            szValue = "(driver not loaded)";
+                            szValue = "(dsm not loaded)";
                         }
                         else if (szSymbol == "${ds:}")
                         {

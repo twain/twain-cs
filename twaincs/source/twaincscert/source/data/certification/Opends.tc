@@ -41,6 +41,9 @@ echo.titletest 'Opends v1.0 05-Mar-2020'
 :MAIN.TITLE.SKIP
 setlocal embedded '${arg:2}'
 setlocal indent '${arg:3}'
+if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
+run '${folder:certification}/LoadTables'
+:MAIN.LOADTABLES.SKIP
 
 
 
@@ -52,6 +55,18 @@ dsmload '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}' '${arg:8}' '${arg:9}' '${arg
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If the DF_DSM2 flag is set, then call DAT_ENTRYPOINT...
+;
+if '${app:${get:TW_IDENTITY.SupportedGroups}}' & '0x10000000' != '0x10000000' goto MAIN.ENTRYPOINT.SKIP
+setlocal name 'dg_control/dat_entrypoint/msg_get'
+dsmentry src null dg_control dat_entrypoint msg_get '0,0,0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
+echo.passfail '${get:indent}${get:name}' 'pass'
+:MAIN.ENTRYPOINT.SKIP
 
 
 

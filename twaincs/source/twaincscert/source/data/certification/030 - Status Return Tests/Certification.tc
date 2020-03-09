@@ -7,7 +7,7 @@
 ;   arg:2 - global to set on fail
 ;
 ; Globals
-;   g_statusreturnresult - global to set if we fail
+;   (none)
 ;
 ; Locals
 ;   certifyresult - global to report to caller on fail
@@ -35,9 +35,9 @@ run '${folder:certification}/LoadTables'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Run the tests...
 ;
-call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_statusreturnresult embedded
-call CERTIFY 'Status Return Tests'             '${get:twidentity.productname}' g_statusreturnresult
-call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_statusreturnresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}' embedded
+call CERTIFY 'Status Return Tests'             '${get:twidentity.productname}' '${get:certifyresult}'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}' embedded
 
 
 
@@ -45,7 +45,7 @@ call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g
 ; Summary and cleanup...
 ;
 ; Did we pass?
-if '${get:g_statusreturnresult}' != 'pass' goto MAIN.ERROR
+if '${get:certifyresult}' != 'pass' goto MAIN.ERROR
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'
 ;

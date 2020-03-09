@@ -1,0 +1,127 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Version Tests
+;   Confirm that the data sources responds correctly to different TWAIN versions of
+;   data source manager and application.
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global to set on fail
+;
+; Globals
+;   g_localcertifyresult - used locally to report to caller on fail
+;
+; Locals
+;   twidentity.productname - product name of scanner to test
+;
+; Returns
+;   (none)
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize stuff, load tables if not already done for us...
+;
+echo.titlesuite 'Version Tests v1.0 09-Mar-2020'
+setlocal twidentity.productname '${arg:1}'
+setglobal g_localcertifyresult 'pass' ; assume the best
+if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
+run '${folder:certification}/LoadTables'
+:MAIN.LOADTABLES.SKIP
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Only do this on 32-bit Windows...
+;
+if '${platform:}' !~ 'WINDOWS' goto MAIN.PASS
+if '${bits:}' !~ '32' goto MAIN.PASS
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Run the tests...
+;
+
+; MSG_OPENDSM using old DSM as TWAIN version 1.9 application, with DF_APP2 set
+echo.titletest 'MSG_OPENDSM using old DSM as TWAIN version 1.9 application, with DF_APP2 set'
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=1' 'protocolminor=9' 'uselegacydsm=true'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/1'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
+echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
+
+; MSG_OPENDSM using old DSM as TWAIN version 2.x application, with DF_APP2 not set
+echo.titletest 'MSG_OPENDSM using old DSM as TWAIN version 2.x application, with DF_APP2 not set'
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=2' 'protocolminor=4' 'uselegacydsm=true' 'supportedgroups=0x00000003'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/2'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
+echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
+
+; MSG_OPENDSM using old DSM as TWAIN version 2.x application, with DF_APP2 set
+echo.titletest 'MSG_OPENDSM using old DSM as TWAIN version 2.x application, with DF_APP2 set'
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=2' 'protocolminor=4' 'uselegacydsm=true' 'supportedgroups=0x20000003'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/3'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
+echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
+
+; MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 1.9 application, with DF_APP2 set
+echo.titletest 'MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 1.9 application, with DF_APP2 set'
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=1' 'protocolminor=9' 'uselegacydsm=false' 'supportedgroups=0x20000003'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/4'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
+echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
+
+; MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 2.x application, with DF_APP2 not set
+echo.titletest 'MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 2.x application, with DF_APP2 not set'
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=2' 'protocolminor=4' 'uselegacydsm=false' 'supportedgroups=0x00000003'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/5'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
+echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
+
+; MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 1.9 application, with DF_APP2 not set
+echo.titletest 'MSG_OPENDSM using TWAIN 2 DSM as TWAIN version 1.9 application, with DF_APP2 not set'
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' embedded '' 'protocolmajor=1' 'protocolminor=9' 'uselegacydsm=false' 'supportedgroups=0x00000003'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' g_localcertifyresult 'FALSE' '080 - Version Tests/DAT_IMAGEMEMXFER/6'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' embedded
+echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+:MAIN.PASS
+if '${get:g_localcertifyresult}' != 'pass' goto MAIN.ERROR
+echo.passfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR
+echo.passfail 'SUMMARY' 'fail'
+setglobal '${arg:2}' 'fail'
+return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Certify
+; arg:1 - script to run
+; arg:2 - TW_IDENTITY.ProductName of scanner to test
+; arg:3 - embeded flag for open/close -or- global to set on fail
+; arg:4 - dsmload arg -or- showui
+; arg:5 - dsmload arg -or- image folder
+; arg:6 - dsmload arg
+; arg:7 - dsmload arg
+; arg:8 - dsmload arg
+; returns: (none)
+;
+:CERTIFY
+;
+run '${arg:1}' '${arg:2}' '${arg:3}' '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}' '${arg:8}'
+if '${ret:}' != 'pass' goto CERTIFY.FAIL
+return 'pass'
+;
+:CERTIFY.FAIL
+setglobal g_localcertifyresult 'fail'
+return 'fail'

@@ -56,6 +56,7 @@ call RUNCERTIFICATION '040 - Stress Tests'                    '${get:twidentity.
 call RUNCERTIFICATION '050 - Non-UI Image Transfer Tests'     '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '060 - UI Image Transfer Tests'         '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '070 - CAP_XFERCOUNT Tests'             '${get:twidentity.productname}' g_certifyresult
+call RUNCERTIFICATION '080 - Version Tests'                   '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '090 - Verify Values for MSG_OPENDS, MSG_RESET, and MSG_RESETALL' '${get:twidentity.productname}' g_certifyresult
 
 
