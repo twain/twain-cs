@@ -15,6 +15,7 @@
 ;   twidentity.productname - product name of scanner to test
 ;   certifyresult - global to set on fail
 ;   xfermech - result of getting ICAP_XFERMECH
+;   sheets - count of sheets the user needs
 ;
 ; Returns
 ;   (none)
@@ -28,6 +29,7 @@
 echo.titlesuite 'UI Image Transfer Tests v1.0 03-Mar-2020'
 setlocal twidentity.productname '${arg:1}'
 setlocal certifyresult '${arg:2}'
+setlocal sheets '0'
 if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
 run '${folder:certification}/LoadTables'
 :MAIN.LOADTABLES.SKIP
@@ -35,18 +37,52 @@ run '${folder:certification}/LoadTables'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Run the tests...
+; Open the scanner...
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Prompt the user, if they have an ADF...
+;
+if '${get:g_skipprompts}' != '' goto MAIN.SKIP.PROMPTS
+dsmentry src ds dg_control dat_capability msg_get 'CAP_FEEDERENABLED,0,0,0'
+if '${ret:}' !~contains 'TRUE' goto MAIN.SKIP.PROMPTS
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+setlocal xfermech '${ret:}'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_PIXELTYPE,0,0,0'
+if '${ret:}' !~contains 'TWPT_BW' goto MAIN.PROMPTS.SKIP.BW
+increment sheets '${get:sheets}' '${getindex:xfermech:${get:TW_ENUMERATION.NumItems}}'
+:MAIN.PROMPTS.SKIP.BW
+if '${ret:}' !~contains 'TWPT_GRAY' goto MAIN.PROMPTS.SKIP.GRAY
+increment sheets '${get:sheets}' '${getindex:xfermech:${get:TW_ENUMERATION.NumItems}}'
+:MAIN.PROMPTS.SKIP.GRAY
+if '${ret:}' !~contains 'TWPT_RGB' goto MAIN.PROMPTS.SKIP.RGB
+increment sheets '${get:sheets}' '${getindex:xfermech:${get:TW_ENUMERATION.NumItems}}'
+:MAIN.PROMPTS.SKIP.RGB
+echo.prompt
+echo.prompt "Place ${get:sheets} sheets of paper in the scanner's feeder."
+pause '(press the ENTER key when ready to continue)'
+echo.prompt
+:MAIN.SKIP.PROMPTS
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Get ICAP_XFERMECH...
+;
 setlocal name 'ICAP_XFERMECH MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto CERTIFY.FAIL
 setlocal xfermech '${ret:}'
 echo.passfail '${get:name}' 'pass'
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Do the tests...
+;
 call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '${folder:parent}'
 call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '${folder:parent}'
 call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '${folder:parent}' '${get:xfermech}'

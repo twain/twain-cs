@@ -534,7 +534,7 @@ setglobal CAP_UICONTROLLABLE.ItemType                        TWTY_BOOL
 setglobal CAP_UICONTROLLABLE.ValueAfterOpen                  TRUE ; mandatory for all sources
 setglobal CAP_UICONTROLLABLE.ValueAfterReset                 UNDEFINED
 ;
-setglobal CAP_XFERCOUNT.ConType                              TWON_RANGE
+setglobal CAP_XFERCOUNT.ConType                              TWON_RANGE,TWON_ONEVALUE
 setglobal CAP_XFERCOUNT.ItemType                             TWTY_INT16
 setglobal CAP_XFERCOUNT.ValueAfterOpen                       -1
 setglobal CAP_XFERCOUNT.ValueAfterReset                      -1

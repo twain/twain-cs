@@ -274,7 +274,7 @@ setlocal name 'dg_control/dat_pendingxfers/msg_endxfer'
 dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGEINFO.NEXT
+if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGEMEMXFER.NEXT
 
 
 

@@ -8,17 +8,19 @@
 ; Globals
 ;   g_datcapabilityresult - pass/fail for the entire test
 ;   g_querysupport - numeric value of query support for a capability
-;   g_icap_pixeltypevalue - for restoring pixel type
+;   g_pixeltype.value - for restoring pixel type
 ;
 ; Locals
 ;   name - current test being done
 ;   indent - padding for echo.passfail
-;   twptlist - list of pixel types to check
-;   itwpt - index of current pixel type being checked
-;   icap_pixeltypevalue - current pixel type value for itwpt
-;   cap_supportedcaps - data from MSG_GET for CAP_SUPPORTEDCAPS
-;   icap - index of capability from cap_supportedcaps
-;   cap - current cap value for icap
+;
+;   pixeltype.itemlist - list of pixeltypes to check
+;   pixeltype.index - index of current pixeltype being checked
+;   pixeltype.value - current pixel type value for pixeltype.index
+;
+;   supportedcaps - data from MSG_GET for CAP_SUPPORTEDCAPS
+;   supportedcaps.index - index of capability from supportedcaps
+;   supportedcaps.value - current cap value for supportedcaps.index
 ;
 ; Returns
 ;   pass or fail
@@ -31,8 +33,8 @@
 ;
 echo.titletest 'DAT_CAPABILITY v1.0 23-Feb-2020'
 setlocal indent ''
-setlocal twptlist 'TWPT_BW,TWPT_GRAY,TWPT_RGB'
-setlocal itwpt '-1'
+setlocal pixeltype.itemlist 'TWPT_BW,TWPT_GRAY,TWPT_RGB'
+setlocal pixeltype.index '-1'
 setglobal g_datcapabilityresult 'pass'
 
 
@@ -51,22 +53,22 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Repeat this section for each enumerated value found inside of ICAP_PIXELTYPE, 
 ; (testing is done for each value of ICAP_PIXELTYPE, to provide the best chance
-; of exercising every available capability).  Remember teh icappixeltype setting,
+; of exercising every available capability).  Remember the pixeltype setting,
 ; because we have to restore it as part of the MSG_RESET and MSG_SET tests.
 ;
 :NEXTTWPT
 setlocal indent '  '
-increment itwpt '${get:itwpt}'
-setglobal g_icap_pixeltypevalue '${getindex:twptlist:${get:itwpt}}'
-if '${get:g_icap_pixeltypevalue}' != '' goto MAIN.TWPTSET
+increment pixeltype.index '${get:pixeltype.index}'
+setglobal g_pixeltype.value '${getindex:pixeltype.itemlist:${get:pixeltype.index}}'
+if '${get:g_pixeltype.value}' != '' goto MAIN.TWPTSET
 goto MAIN.PASS
 :MAIN.TWPTSET
-dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:g_icap_pixeltypevalue}'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:g_pixeltype.value}'
 if '${sts:}' == 'SUCCESS' goto MAIN.TWPTCONTINUE
-echo.passfail '${get:indent}${get:g_icap_pixeltypevalue}' 'skip'
+echo.passfail '${get:indent}${get:g_pixeltype.value}' 'skip'
 goto NEXTTWPT
 :MAIN.TWPTCONTINUE
-echo.passfail '${get:indent}${get:g_icap_pixeltypevalue}' 'pass'
+echo.passfail '${get:indent}${get:g_pixeltype.value}' 'pass'
 
 
 
@@ -79,7 +81,7 @@ setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal cap_supportedcaps '${ret:}'
+setlocal supportedcaps '${ret:}'
 
 
 
@@ -87,7 +89,7 @@ setlocal cap_supportedcaps '${ret:}'
 ; Turn on capabilities that enable the use of other capabilities
 ; SPECNOTE: this isn't described in the tests, but it seems like a good idea
 ;
-call ENABLECAPABILITIES '${get:cap_supportedcaps}'
+call ENABLECAPABILITIES '${get:supportedcaps}'
 
 
 
@@ -95,12 +97,13 @@ call ENABLECAPABILITIES '${get:cap_supportedcaps}'
 ; Grab a vendor custom capability from CAP_SUPPORTEDCAPS, we know it's
 ; vendor custom if it's a number.
 ;
-setlocal icap '5'
+setlocal supportedcaps.index '${get:TW_ARRAY.ItemList}'
+increment supportedcaps.index '${get:supportedcaps.index}' -1
 :NEXTCAP
-increment icap '${get:icap}'
-setlocal cap '${getindex:cap_supportedcaps:${get:icap}}'
-if '${get:cap}' == '' goto NEXTTWPT
-if '${get:cap}' !~contains '0x' goto NEXTCAP
+increment supportedcaps.index '${get:supportedcaps.index}' 1
+setlocal supportedcaps.value '${getindex:supportedcaps:${get:supportedcaps.index}}'
+if '${get:supportedcaps.value}' == '' goto NEXTTWPT
+if '${get:supportedcaps.value}' !~contains '0x' goto NEXTCAP
 
 
 
@@ -109,12 +112,12 @@ if '${get:cap}' !~contains '0x' goto NEXTCAP
 ; SPECNOTE: because we're referencing the querysupport value we don't have to accept
 ; TWCC_CAPSEQERROR as a valid value, so it'll be an error just like everything else...
 ;
-call MSGQUERYSUPPORT '${get:cap}' g_querysupport          g_datcapabilityresult
-call MSGGET          '${get:cap}' '${get:g_querysupport}' g_datcapabilityresult
-call MSGGETCURRENT   '${get:cap}' '${get:g_querysupport}' g_datcapabilityresult
-call MSGGETDEFAULT   '${get:cap}' '${get:g_querysupport}' g_datcapabilityresult
-call MSGRESET        '${get:cap}' '${get:g_querysupport}' g_datcapabilityresult
-call MSGSET          '${get:cap}' '${get:g_querysupport}' g_datcapabilityresult
+call MSGQUERYSUPPORT '${get:supportedcaps.value}' g_querysupport          g_datcapabilityresult
+call MSGGET          '${get:supportedcaps.value}' '${get:g_querysupport}' g_datcapabilityresult
+call MSGGETCURRENT   '${get:supportedcaps.value}' '${get:g_querysupport}' g_datcapabilityresult
+call MSGGETDEFAULT   '${get:supportedcaps.value}' '${get:g_querysupport}' g_datcapabilityresult
+call MSGRESET        '${get:supportedcaps.value}' '${get:g_querysupport}' g_datcapabilityresult
+call MSGSET          '${get:supportedcaps.value}' '${get:g_querysupport}' g_datcapabilityresult
 goto NEXTCAP
 
 
@@ -139,10 +142,22 @@ return 'fail'
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: MSGQUERYSUPPORT
-; arg:1 - capability to check
-; arg:2 - value returned
-; arg:3 - only updated on fail
-; returns: (none)
+;
+; Arguments
+;   arg:1 - capability to check
+;   arg:2 - value returned
+;   arg:3 - only updated on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - name of current test
+;   indent - amount to indent echo.passfail
+;   capability - MSG_QUERYSUPPORT on arg:1
+;
+; Returns
+;   (none)
 ;
 :MSGQUERYSUPPORT
 setlocal indent '    '
@@ -154,29 +169,29 @@ setlocal name 'Send MSG_QUERYSUPPORT'
 dsmentry src ds dg_control dat_capability msg_querysupport '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
+setlocal capability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
 setlocal name 'Verify Cap'
-if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TW_CAPABILITY.ConType is not TWON_ONEVALUE, then end with error.
 setlocal name 'Verify ConType is TWON_ONEVALUE'
-if '${getindex:twcapability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TW_ONEVALUE.ItemType is not TWTY_UINT32, then end with error
 ; SPECNOTE: spec says TWTY_INT32, test says TWTY_UINT32...spec wins...
 setlocal name 'Verify ItemType is TWTY_INT32'
-if '${getindex:twcapability:${get:TW_ONEVALUE.ItemType}}' != 'TWTY_INT32' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_ONEVALUE.ItemType}}' != 'TWTY_INT32' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TWQC_GET, TWQC_GETCURRENT or TWQC_GETDEFAULT is detected, then
 ; all three must be present, if any are missing end with error
 setlocal name 'Verify GET, GETCURRENT, GETDEFAULT'
-if '${getindex:twcapability:${get:TW_ONEVALUE.Item}}' & '0x000D' == '0' goto MSGQUERYSUPPORT.VERIFYSET
-if '${getindex:twcapability:${get:TW_ONEVALUE.Item}}' & '0x000D' != '0x000D' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x000D' == '0' goto MSGQUERYSUPPORT.VERIFYSET
+if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x000D' != '0x000D' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TWQC_RESET or TWQC_SET is detected, then both must be present,
@@ -184,8 +199,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; then end with error
 :MSGQUERYSUPPORT.VERIFYSET
 setlocal name 'Verify SET, RESET with GETs'
-if '${getindex:twcapability:${get:TW_ONEVALUE.Item}}' & '0x0012' == '0' goto MSGQUERYSUPPORT.PASS
-if '${getindex:twcapability:${get:TW_ONEVALUE.Item}}' & '0x001F' != '0x001F' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x0012' == '0' goto MSGQUERYSUPPORT.PASS
+if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x001F' != '0x001F' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
@@ -196,17 +211,29 @@ setglobal '${arg:2}' '0'
 setglobal '${arg:3}' 'fail'
 return
 :MSGQUERYSUPPORT.PASS
-setglobal '${arg:2}' '${getindex:twcapability:${get:TW_ONEVALUE.Item}}'
+setglobal '${arg:2}' '${getindex:capability:${get:TW_ONEVALUE.Item}}'
 return
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: MSGGET
-; arg:1 - capability to check
-; arg:2 - querysupport value
-; arg:3 - only updated on fail
-; returns: (none)
+;
+; Arguments
+;   arg:1 - capability to check
+;   arg:2 - value from MSG_QUERYSUPPORT
+;   arg:3 - only updated on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - name of current test
+;   indent - amount to indent echo.passfail
+;   capability - MSG_QUERYSUPPORT on arg:1
+;
+; Returns
+;   (none)
 ;
 :MSGGET
 ;
@@ -219,11 +246,11 @@ setlocal name 'Send MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGGET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
+setlocal capability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
 setlocal name 'Verify Cap'
-if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGET.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
@@ -241,10 +268,22 @@ return
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: MSGGETCURRENT
-; arg:1 - capability to check
-; arg:2 - querysupport value
-; arg:3 - only updated on fail
-; returns: (none)
+;
+; Arguments
+;   arg:1 - capability to check
+;   arg:2 - value from MSG_QUERYSUPPORT
+;   arg:3 - only updated on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - name of current test
+;   indent - amount to indent echo.passfail
+;   capability - MSG_QUERYSUPPORT on arg:1
+;
+; Returns
+;   (none)
 ;
 :MSGGETCURRENT
 ;
@@ -257,11 +296,11 @@ setlocal name 'Send MSG_GETCURRENT'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
+setlocal capability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
 setlocal name 'Verify Cap'
-if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
@@ -279,10 +318,22 @@ return
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: MSGGETDEFAULT
-; arg:1 - capability to check
-; arg:2 - querysupport value
-; arg:3 - only updated on fail
-; returns: (none)
+;
+; Arguments
+;   arg:1 - capability to check
+;   arg:2 - value from MSG_QUERYSUPPORT
+;   arg:3 - only updated on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - name of current test
+;   indent - amount to indent echo.passfail
+;   capability - MSG_QUERYSUPPORT on arg:1
+;
+; Returns
+;   (none)
 ;
 :MSGGETDEFAULT
 ;
@@ -295,11 +346,11 @@ setlocal name 'Send MSG_GETDEFAULT'
 dsmentry src ds dg_control dat_capability msg_getdefault '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
+setlocal capability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
 setlocal name 'Verify Cap'
-if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
@@ -317,10 +368,22 @@ return
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: MSGRESET
-; arg:1 - capability to check
-; arg:2 - querysupport value
-; arg:3 - only updated on fail
-; returns: (none)
+;
+; Arguments
+;   arg:1 - capability to check
+;   arg:2 - value from MSG_QUERYSUPPORT
+;   arg:3 - only updated on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - name of current test
+;   indent - amount to indent echo.passfail
+;   capability - MSG_QUERYSUPPORT on arg:1
+;
+; Returns
+;   (none)
 ;
 :MSGRESET
 ;
@@ -333,11 +396,11 @@ setlocal name 'Send MSG_RESET'
 dsmentry src ds dg_control dat_capability msg_reset '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGRESET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
+setlocal capability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
 setlocal name 'Verify Cap'
-if '${getindex:twcapability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGRESET.ERROR.ECHOPASSFAIL
+if '${getindex:capability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGRESET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; All done...
@@ -355,10 +418,23 @@ return
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: MSGSET
-; arg:1 - capability to check
-; arg:2 - querysupport value
-; arg:3 - only updated on fail
-; returns: (none)
+;
+; Arguments
+;   arg:1 - capability to check
+;   arg:2 - value from MSG_QUERYSUPPORT
+;   arg:3 - only updated on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - name of current test
+;   indent - amount to indent echo.passfail
+;   capability - MSG_QUERYSUPPORT on arg:1
+;   capabilityrestore - value to restore when we're done
+;
+; Returns
+;   (none)
 ;
 :MSGSET
 ;
@@ -376,17 +452,17 @@ setlocal name 'Send MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
-setlocal twcapabilityrestore '${ret:}'
+setlocal capability '${ret:}'
+setlocal capabilityrestore '${ret:}'
 setlocal name 'Send MSG_SET with that GET'
-dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
+dsmentry src ds dg_control dat_capability msg_set '${get:capability}'
 if '/CHECKSTATUS/SUCCESS/' !~contains '/${sts:}/' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'Send MSG_GET to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${get:value}' != '${get:capability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; GETGURRENT -> SET, and check they match with a final GETCURRENT
@@ -394,16 +470,16 @@ setlocal name 'Send MSG_GETCURRENT'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
+setlocal capability '${ret:}'
 setlocal name 'Send MSG_SET with that GETCURRENT'
-dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
+dsmentry src ds dg_control dat_capability msg_set '${get:capability}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${get:value}' != '${get:capability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; GETDEFAULT -> SET, and check they match with a final GETCURRENT
@@ -411,16 +487,16 @@ setlocal name 'Send MSG_GETDEFAULT'
 dsmentry src ds dg_control dat_capability msg_getdefault '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
+setlocal capability '${ret:}'
 setlocal name 'Send MSG_SET with that GETDEFAULT'
-dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
+dsmentry src ds dg_control dat_capability msg_set '${get:capability}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${get:value}' != '${get:capability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; RESET -> SET, and check they match with a final GETCURRENT
@@ -428,25 +504,25 @@ setlocal name 'Send MSG_RESET'
 dsmentry src ds dg_control dat_capability msg_reset '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal twcapability '${ret:}'
+setlocal capability '${ret:}'
 setlocal name 'Send MSG_SET with that RESET'
-dsmentry src ds dg_control dat_capability msg_set '${get:twcapability}'
+dsmentry src ds dg_control dat_capability msg_set '${get:capability}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'Send MSG_GETCURRENT to confirm MSG_SET'
 dsmentry src ds dg_control dat_capability msg_getcurrent '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
-if '${get:value}' != '${get:twcapability}' goto MSGSET.ERROR.ECHOPASSFAIL
+if '${get:value}' != '${get:capability}' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Restore the setting when we came into this function...
-dsmentry src ds dg_control dat_capability msg_set '${get:twcapabilityrestore}'
+dsmentry src ds dg_control dat_capability msg_set '${get:capabilityrestore}'
 ;
 ; All done...
 goto MSGSET.PASS
 :MSGSET.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'fail ${sts:} <${get:twcapability}> <${get:value}>'
+echo.passfail '${get:indent}${get:name}' 'fail ${sts:} <${get:capability}> <${get:value}>'
 setglobal '${arg:3}' 'fail'
 return
 :MSGSET.SKIP
@@ -458,10 +534,20 @@ return
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: ENABLECAPABILITIES
-; arg:1 - cap_supportedcaps
-; returns: (none)
-; Turn on stuff that we find in the list, we don't care if it fails,
-; we'll keep on going...
+;   Turn on stuff that we find in the list, we don't care if it fails,
+;   we'll keep on going...
+;
+; Arguments
+;   arg:1 - supportedcaps
+;
+; Globals
+;   (none)
+;
+; Locals
+;   (none)
+;
+; Returns
+;   (none)
 ;
 :ENABLECAPABILITIES
 setlocal indent '    '

@@ -10,7 +10,7 @@
 ;
 ; Locals
 ;   name - current test being done
-;   icap_bitdepth - data from MSG_GET for ICAP_BITDEPTH
+;   bitdepth - data from MSG_GET for ICAP_BITDEPTH
 ;
 ; Returns
 ;   pass or fail
@@ -22,6 +22,7 @@
 ; Initialize...
 ;
 echo.titletest 'ICAP_PIXELTYPE/ICAP_BITDEPTH v1.0 21-Feb-2020'
+setlocal bitdepth ''
 
 
 
@@ -43,7 +44,7 @@ setlocal name 'TWPT_BW MSG_GET ICAP_BITDEPTH'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_BITDEPTH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
-setlocal icap_bitdepth '${ret:}'
+setlocal bitdepth '${ret:}'
 
 
 
@@ -52,7 +53,7 @@ setlocal icap_bitdepth '${ret:}'
 ; SPECNOTE: well, this is wrong, goto TWPT_GRAY
 ;
 setlocal name 'TWPT_BW TW_CAPABILITY.ConType is TWON_ENUMERATION'
-if '${getindex:icap_bitdepth:${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.TWPTGRAY
+if '${getindex:bitdepth:${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.TWPTGRAY
 echo.passfail '${get:name}' 'pass'
 
 
@@ -61,7 +62,7 @@ echo.passfail '${get:name}' 'pass'
 ; If TW_ENUMERATION.ItemType is not TWTY_UINT16, then end with error
 ;
 setlocal name 'TWPT_BW TW_ENUMERATION.ItemType is TWTY_UINT16'
-if '${getindex:icap_bitdepth:${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:bitdepth:${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -70,7 +71,7 @@ echo.passfail '${get:name}' 'pass'
 ; If the TW_ENUMERATION.ItemList includes a value of 8 or 24, then end with error
 ;
 setlocal name 'TWPT_BW TW_ENUMERATION does not contain 8 or 24'
-call CHECKENUMERATION '${get:icap_bitdepth}' '8' '24'
+call CHECKENUMERATION '${get:bitdepth}' '8' '24'
 if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
@@ -95,7 +96,7 @@ setlocal name 'TWPT_GRAY MSG_GET ICAP_BITDEPTH'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_BITDEPTH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
-setlocal icap_bitdepth '${ret:}'
+setlocal bitdepth '${ret:}'
 
 
 
@@ -103,7 +104,7 @@ setlocal icap_bitdepth '${ret:}'
 ; If TW_CAPABILITY.ConType is not TWON_ENUMERATION, then proceed to the TWPT_RGB test below
 ;
 setlocal name 'TWPT_GRAY TW_CAPABILITY.ConType is TWON_ENUMERATION'
-if '${getindex:icap_bitdepth:${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.TWPTRGB
+if '${getindex:bitdepth:${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.TWPTRGB
 echo.passfail '${get:name}' 'pass'
 
 
@@ -112,7 +113,7 @@ echo.passfail '${get:name}' 'pass'
 ; If TW_ENUMERATION.ItemType is not TWTY_UINT16, then end with error
 ;
 setlocal name 'TWPT_GRAY TW_ENUMERATION.ItemType is TWTY_UINT16'
-if '${getindex:icap_bitdepth:${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:bitdepth:${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -121,7 +122,7 @@ echo.passfail '${get:name}' 'pass'
 ; If the TW_ENUMERATION.ItemList includes a value of 1 or 24, then end with error
 ;
 setlocal name 'TWPT_GRAY TW_ENUMERATION does not contain 1 or 24'
-call CHECKENUMERATION '${get:icap_bitdepth}' '1' '24'
+call CHECKENUMERATION '${get:bitdepth}' '1' '24'
 if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
@@ -146,7 +147,7 @@ setlocal name 'TWPT_RGB MSG_GET ICAP_BITDEPTH'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_BITDEPTH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
-setlocal icap_bitdepth '${ret:}'
+setlocal bitdepth '${ret:}'
 
 
 
@@ -154,7 +155,7 @@ setlocal icap_bitdepth '${ret:}'
 ; If TW_CAPABILITY.ConType is not TWON_ENUMERATION, then pass
 ;
 setlocal name 'TWPT_RGB TW_CAPABILITY.ConType is TWON_ENUMERATION'
-if '${getindex:icap_bitdepth:${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.PASS
+if '${getindex:bitdepth:${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.PASS
 echo.passfail '${get:name}' 'pass'
 
 
@@ -163,7 +164,7 @@ echo.passfail '${get:name}' 'pass'
 ; If TW_ENUMERATION.ItemType is not TWTY_UINT16, then end with error
 ;
 setlocal name 'TWPT_RGB TW_ENUMERATION.ItemType is TWTY_UINT16'
-if '${getindex:icap_bitdepth:${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:bitdepth:${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 
 
@@ -172,7 +173,7 @@ echo.passfail '${get:name}' 'pass'
 ; If the TW_ENUMERATION.ItemList includes a value of 1 or 8, then end with error
 ;
 setlocal name 'TWPT_RGB TW_ENUMERATION does not contain 1 or 8'
-call CHECKENUMERATION '${get:icap_bitdepth}' '1' '8'
+call CHECKENUMERATION '${get:bitdepth}' '1' '8'
 if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:name}' 'pass'
 

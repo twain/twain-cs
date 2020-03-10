@@ -66,6 +66,20 @@ setlocal xfercount.test '0'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Prompt the user, if they have an ADF...
+;
+if '${get:g_skipprompts}' != '' goto MAIN.SKIP.PROMPTS
+dsmentry src ds dg_control dat_capability msg_get 'CAP_FEEDERENABLED,0,0,0'
+if '${ret:}' !~contains 'TRUE' goto MAIN.SKIP.PROMPTS
+echo.prompt
+echo.prompt "Place at least 3 sheets of paper in the scanner's feeder."
+pause '(press the ENTER key when ready to continue)'
+echo.prompt
+:MAIN.SKIP.PROMPTS
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Clean the image folder for this test...
 ;
 image cleanfolder '${get:image.folderone}'

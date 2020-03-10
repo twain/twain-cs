@@ -132,6 +132,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoGreen,                    new string[] { "echo.green" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoPassfail,                 new string[] { "echo.passfail" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoProgress,                 new string[] { "echo.progress" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoPrompt,                   new string[] { "echo.prompt" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoRed,                      new string[] { "echo.red" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitlesuite,               new string[] { "echo.titlesuite" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitletest,                new string[] { "echo.titletest" }));
@@ -144,6 +145,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIncrement,                    new string[] { "increment" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdInput,                        new string[] { "input" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdLog,                          new string[] { "log" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdPause,                        new string[] { "pause" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReport,                       new string[] { "report" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReturn,                       new string[] { "return" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRun,                          new string[] { "run" }));
@@ -1504,7 +1506,7 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdEchoBlue(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            return (CmdEchoColor(ref a_functionarguments, ConsoleColor.Blue));
+            return (CmdEchoColor(ref a_functionarguments, m_consolecolorBlue));
         }
 
         /// <summary>
@@ -1514,7 +1516,7 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdEchoGreen(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            return (CmdEchoColor(ref a_functionarguments, ConsoleColor.Green));
+            return (CmdEchoColor(ref a_functionarguments, m_consolecolorGreen));
         }
 
         /// <summary>
@@ -1524,7 +1526,7 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdEchoRed(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            return (CmdEchoColor(ref a_functionarguments, ConsoleColor.Red));
+            return (CmdEchoColor(ref a_functionarguments, m_consolecolorRed));
         }
 
         /// <summary>
@@ -1534,7 +1536,7 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdEchoYellow(ref Interpreter.FunctionArguments a_functionarguments)
         {
-            return (CmdEchoColor(ref a_functionarguments, ConsoleColor.Yellow));
+            return (CmdEchoColor(ref a_functionarguments, m_consolecolorYellow));
         }
 
         /// <summary>
@@ -1677,6 +1679,16 @@ namespace twaincscert
 
             // All done...
             return (false);
+        }
+
+        /// <summary>
+        /// Echo text as red...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdEchoPrompt(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            return (CmdEchoColor(ref a_functionarguments, m_consolecolorGreen));
         }
 
         /// <summary>
@@ -1877,42 +1889,46 @@ namespace twaincscert
                 Display(m_szBanner);
                 Display("");
                 DisplayRed("Overview");
-                Display("help intro...................................introduction to this program");
-                Display("help certification...........................certifying a scanner");
-                Display("help scripting...............................general discussion of scripting");
+                Display("help intro......................................introduction to this program");
+                Display("help certification..............................certifying a scanner");
+                Display("help scripting..................................general discussion of scripting");
                 Display("");
                 DisplayRed("Data Source Manager (DSM) commands");
-                Display("certify [productname] [verbose]..............certify a TWAIN driver");
-                Display("dsmload [args]...............................load the DSM");
-                Display("dsmunload....................................unload the DSM");
-                Display("dsmentry.....................................send a command to the DSM");
-                Display("help [command]...............................this text or info about a command");
-                Display("wait [timeout]...............................wait for a DAT_NULL message");
+                Display("certify [productname] [verbose] [skipprompts]...certify a TWAIN driver");
+                Display("dsmload [args]..................................load the DSM");
+                Display("dsmunload.......................................unload the DSM");
+                Display("dsmentry........................................send a command to the DSM");
+                Display("help [command]..................................this text or info about a command");
+                Display("wait [timeout]..................................wait for a DAT_NULL message");
                 Display("");
                 DisplayRed("Scripting");
-                Display("allocate {flag} {variable} {size}............allocate memory");
-                Display("call {label}.................................call function");
-                Display("cd [path]....................................shows or sets the current directory");
-                Display("clean........................................clean the images folder");
-                Display("dir..........................................lists files and folders in the current directory");
-                Display("echo[.color] [text]..........................echo text");
-                Display("echo.passfail {title} {result}...............echo test result in a tabular form");
-                Display("echo.progress {title} {result}...............echo progress in a tabular form");
-                Display("echo.titlesuite {title}......................echo test suite");
-                Display("echo.titletest {title}.......................echo test title");
-                Display("free {flag} {variable}.......................free memory");
-                Display("goto {label}.................................jump to the :label in the script");
-                Display("if {item1} {operator} {item2} goto {label}...if statement");
-                Display("increment {dst} {src} [step].................increment src by step and store in dst");
-                Display("json2xml {file|json}.........................convert json formatted data to xml");
-                Display("log {info|warn|error,etc} text...............add a line to the log file");
-                Display("report {initialize {driver}|save {folder}}...self certification report");
-                Display("return [status]..............................return from call function");
-                Display("run [script].................................run a script");
-                Display("runv [script]................................run a script verbosely");
-                Display("setglobal [key [value]]......................show, set, or delete global keys");
-                Display("setlocal [key [value]].......................show, set, or delete local keys");
-                Display("sleep {milliseconds}.........................pause the current thread");
+                Display("allocate {flag} {variable} {size}...............allocate memory");
+                Display("call {label}....................................call function");
+                Display("cd [path].......................................shows or sets the current directory");
+                Display("clean...........................................clean the images folder");
+                Display("dir.............................................lists files and folders in the current directory");
+                Display("echo[.color] [text].............................echo text");
+                Display("echo.passfail {title} {result}..................echo test result in a tabular form");
+                Display("echo.progress {title} {result}..................echo progress in a tabular form");
+                Display("echo.prompt [text]..............................echo prior to using the input command");
+                Display("echo.titlesuite {title}.........................echo test suite");
+                Display("echo.titletest {title}..........................echo test title");
+                Display("free {flag} {variable}..........................free memory");
+                Display("goto {label}....................................jump to the :label in the script");
+                Display("if {item1} {operator} {item2} goto {label}......if statement");
+                Display("increment {dst} {src} [step]....................increment src by step and store in dst");
+                Display("input [text]....................................display text and wait for user input");
+                Display("json2xml {file|json}............................convert json formatted data to xml");
+                Display("log {info|warn|error,etc} text..................add a line to the log file");
+                Display("pause [text]....................................display text and wait for ENTER key");
+                Display("pwd.............................................report the current working directory");
+                Display("report {initialize {driver}|save {folder}}......self certification report");
+                Display("return [status].................................return from call function");
+                Display("run [script]....................................run a script");
+                Display("runv [script]...................................run a script verbosely");
+                Display("setglobal [key [value]].........................show, set, or delete global keys");
+                Display("setlocal [key [value]]..........................show, set, or delete local keys");
+                Display("sleep {milliseconds}............................pause the current thread");
                 return (false);
             }
 
@@ -1962,10 +1978,11 @@ namespace twaincscert
                 Display("must be run, for both 32-bit and 64-bit systems, on all platforms supported by the driver.");
                 Display("");
                 Display("The following command runs certification:");
-                Display("  certify [\"driver\"] [verbose]");
+                Display("  certify [\"driver\"] [verbose] [skipprompts]");
                 Display("  Where,");
                 Display("      driver - the TW_IDENTITY.ProductName of a TWAIN driver");
                 Display("      verbose - if you want to see under the hood");
+                Display("      skipprompts - diagnostic, best used with simulators");
                 Display("");
                 Display("If no are given, the command shows a list of the installed TWAIN driver and prompts for the one");
                 Display("to use.  Follow the instructions to complete the process.");
@@ -2254,6 +2271,14 @@ namespace twaincscert
                 return (false);
             }
 
+            // Echo.progress...
+            if ((szCommand == "echo.prompt"))
+            {
+                DisplayRed("ECHO.PROMPT [TEXT]");
+                Display("Use prior to an input command.");
+                return (false);
+            }
+
             // Free...
             if ((szCommand == "free"))
             {
@@ -2352,6 +2377,23 @@ namespace twaincscert
             {
                 DisplayRed("INCREMENT {DST} {SRC} [STEP]");
                 Display("Increments SRC by STEP and stores in DST.  STEP defaults to 1.");
+                return (false);
+            }
+
+            // Input...
+            if ((szCommand == "input"))
+            {
+                DisplayRed("INPUT [TITLE]");
+                Display("Echoes the text and waits for user input, which is complete when the ENTER");
+                Display("key is pressed.  The input can be retrieved from ${ret:}");
+                return (false);
+            }
+
+            // Pause...
+            if ((szCommand == "pause"))
+            {
+                DisplayRed("PAUSE [TITLE]");
+                Display("Echoes the text and waits for the ENTER key to be pressed.");
                 return (false);
             }
 
@@ -2465,6 +2507,9 @@ namespace twaincscert
             // Gotta pretend we're in a script...
             m_blRunningScript = true;
 
+            // Make sure skipprompts is off...
+            SetVariable("g_skipprompts", "", 0, VariableScope.Global);
+
             // If we have arguments, drop them in...
             if ((a_functionarguments.aszCmd != null) && (a_functionarguments.aszCmd.Length > 1) && (a_functionarguments.aszCmd[1] != null))
             {
@@ -2473,6 +2518,10 @@ namespace twaincscert
                     if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "verbose")
                     {
                         m_blVerbose = true;
+                    }
+                    else if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "skipprompts")
+                    {
+                        SetVariable("g_skipprompts", "true", 0, VariableScope.Global);
                     }
                     else
                     {
@@ -3700,6 +3749,47 @@ namespace twaincscert
                     Log.Assert(szMessage);
                     break;
             }
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
+        /// Pause until the user presses the enter key...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdPause(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            int ii;
+            string szCmd = "";
+            string szPrompt = "(press ENTER to continue)";
+            List<string> lszCommands = new List<string>();
+
+            // Get the prompt...
+            if ((a_functionarguments.aszCmd.Length >= 2) && (a_functionarguments.aszCmd[1] != null))
+            {
+                szPrompt = a_functionarguments.aszCmd[1];
+            }
+
+            // Get the commands...
+            for (ii = 3; true; ii++)
+            {
+                if ((ii >= a_functionarguments.aszCmd.Length) || string.IsNullOrEmpty(a_functionarguments.aszCmd[ii - 1]))
+                {
+                    break;
+                }
+                lszCommands.Add(a_functionarguments.aszCmd[ii - 1]);
+            }
+
+            // Wait for input...
+            Interpreter interpreter = new Interpreter(szPrompt, m_consolecolorDefault, m_consolecolorGreen);
+            szCmd = interpreter.Prompt(m_streamreaderConsole, ((m_twain == null) ? 1 : (int)m_twain.GetState()), true, false);
+
+            // Update the return value...
+            CallStack callstack = m_lcallstack[m_lcallstack.Count - 1];
+            callstack.functionarguments.szReturnValue = "";
+            m_lcallstack[m_lcallstack.Count - 1] = callstack;
 
             // All done...
             return (false);
@@ -5849,7 +5939,7 @@ namespace twaincscert
         /// <param name="a_streamreaderConsole">the console to use</param>
         /// <param name="a_iTwainState">twain state</param>
         /// <returns>data captured</returns>
-        public string Prompt(StreamReader a_streamreaderConsole, int a_iTwainState)
+        public string Prompt(StreamReader a_streamreaderConsole, int a_iTwainState, bool a_blAllowEmptyLine = false, bool a_blEcho = true)
         {
             string szCmd;
 
@@ -5880,6 +5970,10 @@ namespace twaincscert
                     szCmd = (a_streamreaderConsole == null) ? Console.In.ReadLine() : a_streamreaderConsole.ReadLine();
                     if (string.IsNullOrEmpty(szCmd))
                     {
+                        if (a_blAllowEmptyLine)
+                        {
+                            break;
+                        }
                         continue;
                     }
                 }
@@ -5896,7 +5990,10 @@ namespace twaincscert
                             // A character...
                             default:
                                 lchLine.Add((char)iCh);
-                                Console.Out.Write((char)iCh);
+                                if (a_blEcho)
+                                {
+                                    Console.Out.Write((char)iCh);
+                                }
                                 break;
 
                             // Backspace and delete...
@@ -5905,9 +6002,12 @@ namespace twaincscert
                                 if (lchLine.Count > 0)
                                 {
                                     lchLine.RemoveAt(lchLine.Count - 1);
-                                    Console.Out.Write('\b');
-                                    Console.Out.Write(' ');
-                                    Console.Out.Write('\b');
+                                    if (a_blEcho)
+                                    {
+                                        Console.Out.Write('\b');
+                                        Console.Out.Write(' ');
+                                        Console.Out.Write('\b');
+                                    }
                                 }
                                 break;
 
@@ -5930,7 +6030,10 @@ namespace twaincscert
                 szCmd = szCmd.Trim();
                 if (string.IsNullOrEmpty(szCmd))
                 {
-                    continue;
+                    if (!a_blAllowEmptyLine)
+                    {
+                        continue;
+                    }
                 }
 
                 // We must have data...

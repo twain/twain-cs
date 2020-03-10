@@ -172,16 +172,6 @@ if '${get:feederenabled.value}' ~~ 'FALSE' goto MAIN.USERINTERFACE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; We only need one sheet of paper...
-;
-setlocal name 'CAP_XFERCOUNT MSG_SET 1'
-dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,1'
-if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Start scanning...
 ;
 :MAIN.USERINTERFACE
