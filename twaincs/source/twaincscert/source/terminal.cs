@@ -92,6 +92,10 @@ namespace twaincscert
             m_lcallstack = new List<CallStack>();
             m_formmain = null;
             m_intptrHwnd = IntPtr.Zero;
+            m_szSetRecordVariable = "";
+            m_szSetRecordFilter = "";
+            m_szSetRecordRemove = "";
+            m_szSetRecordData = "";
             if (a_formmain != null)
             {
                 m_formmain = a_formmain;
@@ -153,6 +157,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSaveImage,                    new string[] { "saveimage" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetGlobal,                    new string[] { "setglobal" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetLocal,                     new string[] { "setlocal" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetRecord,                    new string[] { "setrecord" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSizes,                        new string[] { "sizes" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSleep,                        new string[] { "sleep" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdWait,                         new string[] { "wait" }));
@@ -162,6 +167,9 @@ namespace twaincscert
             {
                 Directory.SetCurrentDirectory("data");
             }
+
+            // Give ourselves a convenient variable...
+            SetVariable("sys_waittimeout", "60", 0, VariableScope.Global);
 
             // Say hi...
             Assembly assembly = typeof(Terminal).Assembly;
@@ -4351,6 +4359,76 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Record variables being set into another variable...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdSetRecord(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            // No data...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[0] == null))
+            {
+                DisplayError("setrecord needs arguments", a_functionarguments);
+                return (false);
+            }
+
+            // Turn it off, and save the result...
+            if (a_functionarguments.aszCmd[1].ToLowerInvariant() == "off")
+            {
+                if (!string.IsNullOrEmpty(m_szSetRecordVariable))
+                {
+                    SetVariable(m_szSetRecordVariable, m_szSetRecordData, 0, VariableScope.Global);
+                }
+                m_szSetRecordVariable = "";
+                m_szSetRecordFilter = "";
+                m_szSetRecordRemove = "";
+                m_szSetRecordData = "";
+                return (false);
+            }
+
+            // The only other valid option is on...
+            if (a_functionarguments.aszCmd[1].ToLowerInvariant() != "on")
+            {
+                DisplayError("unrecognized argument", a_functionarguments);
+                return (false);
+            }
+
+            // Validate...
+            if ((a_functionarguments.aszCmd.Length < 3) || string.IsNullOrEmpty(a_functionarguments.aszCmd[2]))
+            {
+                DisplayError("setrecord on needs a variable name", a_functionarguments);
+                return (false);
+            }
+
+            // Record the name...
+            m_szSetRecordVariable = a_functionarguments.aszCmd[2];
+            m_szSetRecordData = "";
+            m_szSetRecordFilter = "";
+            m_szSetRecordRemove = "";
+
+            // Check if the caller asked for a filter...
+            if ((a_functionarguments.aszCmd.Length < 4) || string.IsNullOrEmpty(a_functionarguments.aszCmd[3]))
+            {
+                return (false);
+            }
+
+            // Record the filter...
+            m_szSetRecordFilter = a_functionarguments.aszCmd[3];
+
+            // Check if the caller asked for a substring to remove...
+            if ((a_functionarguments.aszCmd.Length < 5) || string.IsNullOrEmpty(a_functionarguments.aszCmd[4]))
+            {
+                return (false);
+            }
+
+            // Record the remove string...
+            m_szSetRecordRemove = a_functionarguments.aszCmd[4];
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
         /// Some info that may be helpful...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
@@ -5271,6 +5349,20 @@ namespace twaincscert
         {
             int iKey;
 
+            // Record stuff...
+            if (!string.IsNullOrEmpty(m_szSetRecordVariable))
+            {
+                string szKey = a_szKey;
+                if (string.IsNullOrEmpty(m_szSetRecordFilter) || a_szKey.Contains(m_szSetRecordFilter))
+                {
+                    if (!string.IsNullOrEmpty(m_szSetRecordRemove))
+                    {
+                        szKey = szKey.Replace(m_szSetRecordRemove, "");
+                    }
+                    m_szSetRecordData += string.IsNullOrEmpty(m_szSetRecordData) ? szKey : ("," + szKey);
+                }
+            }
+
             // If automatic, check if we have a value in either list...
             if (a_variablescope == VariableScope.Auto)
             {
@@ -5503,6 +5595,10 @@ namespace twaincscert
         /// </summary>
         private List<KeyValue> m_lkeyvalue;
         private object m_objectKeyValue;
+        private string m_szSetRecordVariable;
+        private string m_szSetRecordFilter;
+        private string m_szSetRecordRemove;
+        private string m_szSetRecordData;
 
         /// <summary>
         /// A last in first off stack of function calls...

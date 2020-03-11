@@ -196,8 +196,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Wait for MSG_XFERREADY, if we don't see it then scoot...
 ;
-setlocal name 'wait 60 seconds for MSG_XFERREADY'
-wait 60000
+setlocal name 'wait ${get:sys_waittimeout} seconds for MSG_XFERREADY'
+wait '${get:sys_waittimeout}000'
 if '${ret:}' !~contains 'msg_xferready' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 

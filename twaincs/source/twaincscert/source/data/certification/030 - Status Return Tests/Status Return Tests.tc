@@ -30,9 +30,10 @@ setlocal certifyresult '${arg:2}'
 ;
 if '${get:g_skipprompts}' != '' goto MAIN.SKIP.PROMPTS
 echo.prompt
-echo.prompt '*** DO NOT CLICK ON THE USER INTERFACE WHEN IT COMES UP ***'
+echo.prompt '*** DO NOT CLICK ON THE TWAIN USER INTERFACE WHEN IT COMES UP ***'
 echo.prompt 'We are checking that the driver works correctly in state 5.'
-echo.prompt 'When done the user interface will exit on its own.'
+echo.prompt 'When done the TWAIN user interface will exit on its own.'
+echo.prompt
 pause '(press the ENTER key when ready to continue)'
 echo.prompt
 :MAIN.SKIP.PROMPTS

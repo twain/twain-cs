@@ -62,6 +62,10 @@ if '${ret:}' !~contains 'TWPT_RGB' goto MAIN.PROMPTS.SKIP.RGB
 increment sheets '${get:sheets}' '${getindex:xfermech:${get:TW_ENUMERATION.NumItems}}'
 :MAIN.PROMPTS.SKIP.RGB
 echo.prompt
+echo.prompt "Scanning will take place during this test.  The SCAN button"
+echo.prompt "on the TWAIN user interface must be pressed.  This may also"
+echo.prompt "have names like START or ACQUIRE."
+echo.prompt
 echo.prompt "Place ${get:sheets} sheets of paper in the scanner's feeder."
 pause '(press the ENTER key when ready to continue)'
 echo.prompt

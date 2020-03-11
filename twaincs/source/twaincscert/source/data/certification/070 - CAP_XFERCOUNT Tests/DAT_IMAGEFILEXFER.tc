@@ -78,6 +78,10 @@ if '${get:g_skipprompts}' != '' goto MAIN.SKIP.PROMPTS
 dsmentry src ds dg_control dat_capability msg_get 'CAP_FEEDERENABLED,0,0,0'
 if '${ret:}' !~contains 'TRUE' goto MAIN.SKIP.PROMPTS
 echo.prompt
+echo.prompt "Scanning will take place during this test.  There will be no"
+echo.prompt "need to press any button on the TWAIN user interface to start"
+echo.prompt "the scanner.  A progress indicator may appear during scanning."
+echo.prompt
 echo.prompt "Place at least 3 sheets of paper in the scanner's feeder."
 pause '(press the ENTER key when ready to continue)'
 echo.prompt
@@ -222,8 +226,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Wait for MSG_XFERREADY, if we don't see it then scoot...
 ;
-setlocal name 'wait 60 seconds for MSG_XFERREADY'
-wait 60000
+setlocal name 'wait ${get:sys_waittimeout} seconds for MSG_XFERREADY'
+wait '${get:sys_waittimeout}000'
 if '${ret:}' !~contains 'msg_xferready' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 

@@ -6,11 +6,15 @@
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
 ;
 ; Globals
-;   (none)
+;   sys_capabilitytable - from LoadTables.tc
 ;
 ; Locals
 ;   name - current test being done
+;   certifyresult - result of the tests
 ;   supportedcaps - data from MSG_GET for CAP_SUPPORTEDCAPS
+;   capabilitytable.index - index of current value
+;   capabilitytable.value - current value based on capabilitytable.index
+;   capabilitytable.flags - current value's flags
 ;
 ; Returns
 ;   pass or fail
@@ -21,8 +25,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'CAP_SUPPORTEDCAPS v1.0 21-Feb-2020'
+echo.titletest 'CAP_SUPPORTEDCAPS v1.0 11-Mar-2020'
 setlocal supportedcaps ''
+setlocal certifyresult 'pass' ; assume success
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check for TWAIN protocol 2.4 or higher
+; We won't abort on this, since it may be useful for folks to run the
+; tests, but we won't let it pass...
+;
+setlocal name 'Check for TWAIN 2.4 protocol or higher'
+if '${ds:${get:TW_IDENTITY.ProtocolMajor}}' >= 3 goto MAIN.PROTOCOLVERSION.PASS ; >=3 is good
+if '${ds:${get:TW_IDENTITY.ProtocolMajor}}' < 2 goto MAIN.PROTOCOLVERSION.FAIL ; <2 is bad
+if '${ds:${get:TW_IDENTITY.ProtocolMinor}}' < 4 goto MAIN.PROTOCOLVERSION.FAIL ; <2.4 is bad
+goto MAIN.PROTOCOLVERSION.PASS
+;
+:MAIN.PROTOCOLVERSION.FAIL
+echo.passfail '${get:name}' 'fail - ${ds:${get:TW_IDENTITY.ProtocolMajor}}.${ds:${get:TW_IDENTITY.ProtocolMinor}}'
+setlocal certifyresult 'fail'
+goto MAIN.PROTOCOLVERSION.DONE
+;
+:MAIN.PROTOCOLVERSION.PASS
+echo.passfail '${get:name}' 'pass'
+:MAIN.PROTOCOLVERSION.DONE
 
 
 
@@ -75,28 +102,24 @@ echo.passfail '${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If CAP_SUPPORTEDCAPS not found, then end with error
+; SPECNOTE: the tests ask that CAP_SUPPORTEDCAPS, ICAP_PIXELTYPE, ICAP_XFERMECH be
+; confirmed, but the spec lists many manadatory capabilities.  So we'll go through
+; the table to identify them all.  Not the use of the extra commas to make sure we
+; correctly identify full items, and not substrings...
 ;
-setlocal name 'Find CAP_SUPPORTEDCAPS'
-if '${get:supportedcaps}' !~contains 'CAP_SUPPORTEDCAPS' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:name}' 'pass'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If ICAP_PIXELTYPE not found, then end with error
+setlocal name 'Check for mandatory capabilities'
+setlocal capabilitytable.index '-1'
 ;
-setlocal name 'Find ICAP_PIXELTYPE'
-if '${get:supportedcaps}' !~contains 'ICAP_PIXELTYPE' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:name}' 'pass'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If ICAP_XFERMECH not found, then end with error
+:MAIN.SUPPORTEDCAPS.NEXT
+increment capabilitytable.index '${get:capabilitytable.index}' 1
+setlocal capabilitytable.value '${getindex:sys_capabilitytable:${get:capabilitytable.index}}'
+if '${get:capabilitytable.value}' == '' goto MAIN.SUPPORTEDCAPS.DONE
+setlocal capabilitytable.flags '${get:${get:capabilitytable.value}.Flags}' ; ex: ICAP_PIXELTYPE.Flags
+if '${get:capabilitytable.flags}' !~contains 'mandatory' goto MAIN.SUPPORTEDCAPS.NEXT ; if not mandatory, skip it
+if ',${get:supportedcaps},' !~contains ',${get:capabilitytable.value},' goto MAIN.ERROR.ECHOPASSFAIL
+goto MAIN.SUPPORTEDCAPS.NEXT
 ;
-setlocal name 'Find ICAP_XFERMECH'
-if '${get:supportedcaps}' !~contains 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
+:MAIN.SUPPORTEDCAPS.DONE
 echo.passfail '${get:name}' 'pass'
 
 
@@ -105,6 +128,7 @@ echo.passfail '${get:name}' 'pass'
 ; Summary and cleanup...
 ;
 ; Did we pass?
+if '${get:certifyresult}' != 'pass' goto MAIN.ERROR
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'
 ;
