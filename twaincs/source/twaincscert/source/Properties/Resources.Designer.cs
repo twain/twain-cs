@@ -59,5 +59,15 @@ namespace twaincscert.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] data {
+            get {
+                object obj = ResourceManager.GetObject("data", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }

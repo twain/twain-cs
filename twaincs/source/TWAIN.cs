@@ -2188,8 +2188,8 @@ namespace TWAINWorkingGroup
                 a_twidentity.Id = ulong.Parse(asz[0]);
                 a_twidentity.Version.MajorNum = ushort.Parse(asz[1]);
                 a_twidentity.Version.MinorNum = ushort.Parse(asz[2]);
-                a_twidentity.Version.Language = (TWLG)Enum.Parse(typeof(TWLG), asz[3]);
-                a_twidentity.Version.Country = (TWCY)Enum.Parse(typeof(TWCY), asz[4]);
+                if (asz[3] != "0") a_twidentity.Version.Language = (TWLG)Enum.Parse(typeof(TWLG), asz[3]);
+                if (asz[4] != "0") a_twidentity.Version.Country = (TWCY)Enum.Parse(typeof(TWCY), asz[4]);
                 a_twidentity.Version.Info.Set(asz[5]);
                 a_twidentity.ProtocolMajor = ushort.Parse(asz[6]);
                 a_twidentity.ProtocolMinor = ushort.Parse(asz[7]);
@@ -3132,7 +3132,6 @@ namespace TWAINWorkingGroup
                     case "VIETNAMESE": return ("113");
                 }
             }
-Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
 
             // Er...
             return (a_szValue);
@@ -6605,15 +6604,32 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
         {
             // If you get a first chance exception, be aware that some drivers
             // will do that to you, you can ignore it and they'll keep going...
-            m_threaddataDatIdentity.sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentity
-            (
-                ref m_twidentitylegacyApp,
-                IntPtr.Zero,
-                m_threaddataDatIdentity.dg,
-                m_threaddataDatIdentity.dat,
-                m_threaddataDatIdentity.msg,
-                ref m_threaddataDatIdentity.twidentitylegacy
-            );
+            if (GetState() <= STATE.S3)
+            {
+                m_threaddataDatIdentity.sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentity
+                (
+                    ref m_twidentitylegacyApp,
+                    IntPtr.Zero,
+                    m_threaddataDatIdentity.dg,
+                    m_threaddataDatIdentity.dat,
+                    m_threaddataDatIdentity.msg,
+                    ref m_threaddataDatIdentity.twidentitylegacy
+                );
+            }
+            // Man, I'm learning stupid new stuff all the time, so the old DSM
+            // had to have the destination.  Argh...
+            else
+            {
+                m_threaddataDatIdentity.sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentityState4
+                (
+                    ref m_twidentitylegacyApp,
+                    ref m_twidentitylegacyDs,
+                    m_threaddataDatIdentity.dg,
+                    m_threaddataDatIdentity.dat,
+                    m_threaddataDatIdentity.msg,
+                    ref m_threaddataDatIdentity.twidentitylegacy
+                );
+            }
         }
         private void DatIdentityWindowsTwainDsm()
         {
@@ -6683,7 +6699,14 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
                     {
                         if (m_blUseLegacyDSM)
                         {
-                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                            if (GetState() <= STATE.S3)
+                            {
+                                sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentity(ref m_twidentitylegacyApp, IntPtr.Zero, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                            }
+                            else
+                            {
+                                sts = (STS)NativeMethods.WindowsTwain32DsmEntryIdentityState4(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.IDENTITY, a_msg, ref twidentitylegacy);
+                            }
                         }
                         else
                         {
@@ -12100,11 +12123,25 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
                 {
                     if (m_blUseLegacyDSM)
                     {
-                        sts = (STS)NativeMethods.WindowsTwain32DsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        if (GetState() <= STATE.S3)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryStatusState3(ref m_twidentitylegacyApp, IntPtr.Zero, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        if (GetState() <= STATE.S3)
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryStatusState3(ref m_twidentitylegacyApp, IntPtr.Zero, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -12122,7 +12159,44 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
                 // Issue the command...
                 try
                 {
-                    sts = (STS)NativeMethods.LinuxDsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                    if (m_blFoundLatestDsm64 && (m_linuxdsm == LinuxDsm.IsLatestDsm))
+                    {
+                        if (GetState() <= STATE.S3)
+                        {
+                            sts = (STS)NativeMethods.Linux64DsmEntryStatusState3(ref m_twidentitylegacyApp, IntPtr.Zero, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.Linux64DsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
+                    }
+                    else if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
+                    {
+                        if (GetState() <= STATE.S3)
+                        {
+                            sts = (STS)NativeMethods.LinuxDsmEntryStatusState3(ref m_twidentitylegacyApp, IntPtr.Zero, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.LinuxDsmEntryStatus(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
+                    }
+                    else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
+                    {
+                        if (GetState() <= STATE.S3)
+                        {
+                            sts = (STS)NativeMethods.Linux020302Dsm64bitEntryStatusState3(ref m_twidentityApp, IntPtr.Zero, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
+                        else
+                        {
+                            sts = (STS)NativeMethods.Linux020302Dsm64bitEntryStatus(ref m_twidentityApp, ref m_twidentityDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        }
+                    }
+                    else
+                    {
+                        Log.Error("apparently we don't have a DSM...");
+                        sts = STS.BUMMER;
+                    }
                 }
                 catch (Exception exception)
                 {
@@ -12139,13 +12213,13 @@ Console.Out.WriteLine("mlm>>> eek! <" + a_szValue + ">");
                 // Issue the command...
                 try
                 {
-                    if (m_blUseLegacyDSM)
+                    if (GetState() <= STATE.S3)
                     {
-                        sts = (STS)NativeMethods.MacosxTwainDsmEntryStatus(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        sts = (STS)NativeMethods.MacosxTwainDsmEntryStatusState3(ref m_twidentitymacosxApp, IntPtr.Zero, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.MacosxTwaindsmDsmEntryStatus(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
+                        sts = (STS)NativeMethods.MacosxTwainDsmEntryStatus(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, DG.CONTROL, DAT.STATUS, MSG.GET, ref twstatus);
                     }
                 }
                 catch (Exception exception)

@@ -4,6 +4,17 @@
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - dsmload argument
+;   arg:3 - dsmload argument
+;   arg:4 - dsmload argument
+;   arg:5 - dsmload argument
+;   arg:6 - dsmload argument
+;   arg:7 - dsmload argument
+;   arg:8 - dsmload argument
+;   arg:9 - dsmload argument
+;   arg:10 - dsmload argument
+;   arg:11 - dsmload argument
+;   arg:12 - dsmload argument
 ;
 ; Globals
 ;   g_twextimageinfo - extended image info
@@ -29,7 +40,7 @@ setlocal cap_supportedcaps ''
 setlocal icap_supportedextimageinfo ''
 setlocal image.count '0'
 setlocal twainstate '0'
-setlocal image.folder '${folder:desktop}/twaincscert'
+setlocal image.folder '${folder:data}/images'
 setglobal g_twextimageinfo ''
 image cleanfolder '${get:image.folder}'
 
@@ -39,8 +50,8 @@ image cleanfolder '${get:image.folder}'
 ; Load and open the DSM...
 ;
 setlocal twainstate '1'
-dsmload
-echo 'dsmload'
+dsmload '${arg:2}' '${arg:3}' '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}' '${arg:8}' '${arg:9}' '${arg:10}' '${arg:11}' '${arg:12}'
+echo.progress 'dsmload ${arg:2} ${arg:3} ${arg:4} ${arg:5} ${arg:6} ${arg:7} ${arg:8} ${arg:9} ${arg:10} ${arg:11} ${arg:12}' '${sts:}'
 setlocal twainstate '2'
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 echo.progress 'parent/opendsm' '${sts:}'
@@ -50,9 +61,20 @@ setlocal twainstate '3'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If the DF_APP2|DF_DSM2 flag is set, then call DAT_ENTRYPOINT...
+;
+if '${app:${get:TW_IDENTITY.SupportedGroups}}' & '0x30000000' != '0x30000000' goto MAIN.ENTRYPOINT.SKIP
+dsmentry src null dg_control dat_entrypoint msg_get '0,0,0,0,0,0'
+echo.progress 'entrypoint/get' '${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
+:MAIN.ENTRYPOINT.SKIP
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Open the driver...
 ;
-dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
+dsmentry src null dg_control dat_identity msg_opends '0,0,0,0,0,,0,0,0x0,,,${arg:1}'
 setlocal twidentity '${ret:}'
 echo.progress 'identity/opends' '${sts:} - ${get:twidentity}'
 if '${sts:}' != 'SUCCESS' goto MAIN.FAIL

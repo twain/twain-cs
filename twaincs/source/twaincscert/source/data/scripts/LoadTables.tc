@@ -155,7 +155,9 @@ return
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: LOADCAPABILITYTABLE
 ; Loads stuff we need to confirm about each known capability, we'll skip the
-; g_ prefix for these items...
+; g_ prefix for these items.  Note the use of sys_capabilitytable, this will
+; record the names of all the capabilities for us, so we can access them in
+; any script...
 ;
 :LOADCAPABILITYTABLE
 ;
@@ -608,7 +610,7 @@ setglobal CAP_THUMBNAILSENABLED.Flags                        ''
 setglobal CAP_UICONTROLLABLE.ConType                         TWON_ENUMERATION
 setglobal CAP_UICONTROLLABLE.ItemType                        TWTY_BOOL
 setglobal CAP_UICONTROLLABLE.ValueAfterOpen                  TRUE ; mandatory for all sources
-setglobal CAP_UICONTROLLABLE.ValueAfterReset                 TRUE ; SPECNOTE: should be true!
+setglobal CAP_UICONTROLLABLE.ValueAfterReset                 UNDEFINED
 setglobal CAP_UICONTROLLABLE.Flags                           'mandatory'
 ;
 setglobal CAP_XFERCOUNT.ConType                              TWON_RANGE,TWON_ONEVALUE

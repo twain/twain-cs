@@ -94,6 +94,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="TWAIN">
       <SpecificVersion>False</SpecificVersion>
@@ -142,6 +143,7 @@
       <Name>twaincs</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="MsBuildAL1073WarningWorkaround.targets" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
@@ -149,6 +151,11 @@
 RMDIR /S /Q "$(TargetDir)data"
 XCOPY "$(ProjectDir)data" "$(TargetDir)data" /i /e /y /q
 </PostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>XCOPY "$(ProjectDir)data" "$(TargetDir)data" /i /e /y /q
+cd "$(TargetDir)data\.."
+powershell Compress-Archive -Force "$(ProjectDir)data" "$(ProjectDir)Properties/data.zip"</PreBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

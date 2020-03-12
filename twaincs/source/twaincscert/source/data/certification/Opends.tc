@@ -55,13 +55,14 @@ dsmload '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}' '${arg:8}' '${arg:9}' '${arg
 dsmentry src null dg_control dat_parent msg_opendsm hwnd
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 echo.passfail '${get:indent}${get:name}' 'pass'
+echo.passfail '${get:indent}using ${dsm:}' 'pass'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If the DF_DSM2 flag is set, then call DAT_ENTRYPOINT...
+; If the DF_APP2|DF_DSM2 flag is set, then call DAT_ENTRYPOINT...
 ;
-if '${app:${get:TW_IDENTITY.SupportedGroups}}' & '0x10000000' != '0x10000000' goto MAIN.ENTRYPOINT.SKIP
+if '${app:${get:TW_IDENTITY.SupportedGroups}}' & '0x30000000' != '0x30000000' goto MAIN.ENTRYPOINT.SKIP
 setlocal name 'dg_control/dat_entrypoint/msg_get'
 dsmentry src null dg_control dat_entrypoint msg_get '0,0,0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
@@ -73,8 +74,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Open the driver...
 ;
-setlocal name 'dg_control/dat_identity/msg_opends'
-dsmentry src null dg_control dat_identity msg_opends '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
+setlocal name 'dg_control/dat_identity/msg_opends <${arg:1}>'
+dsmentry src null dg_control dat_identity msg_opends '0,0,0,0,0,,0,0,0x0,,,${arg:1}'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
 
 
@@ -90,7 +91,7 @@ return 'pass'
 ; Ruh-roh...
 :MAIN.ERROR
 if '${get:embedded}' == 'embedded' goto MAIN.ERROR.EMBEDDED
-echo.passfail '${get:name}' 'fail'
+echo.passfail '${get:name}' 'fail - ${sts:} '${ret:}'
 echo.passfail 'SUMMARY' 'fail'
 return 'fail'
 
@@ -105,5 +106,5 @@ return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.EMBEDDED
-echo.passfail '${get:indent}${get:name}' 'fail'
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} '${ret:}'
 return 'fail'

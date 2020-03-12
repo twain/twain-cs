@@ -37,6 +37,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
 using System.Resources;
 using System.Runtime.InteropServices;
@@ -96,6 +97,7 @@ namespace twaincscert
             m_szSetRecordFilter = "";
             m_szSetRecordRemove = "";
             m_szSetRecordData = "";
+            m_szTwainSelfCertFolder = "";
             if (a_formmain != null)
             {
                 m_formmain = a_formmain;
@@ -113,59 +115,87 @@ namespace twaincscert
             m_ldispatchtable = new List<Interpreter.DispatchTable>();
 
             // Discovery and Selection...
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdHelp,                         new string[] { "help", "?" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCertify,                      new string[] { "certify" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdList,                         new string[] { "list" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdQuit,                         new string[] { "ex", "exit", "q", "quit" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSelect,                       new string[] { "select" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdStatus,                       new string[] { "status" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdHelp,             new string[] { "help", "?" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCertify,          new string[] { "certify" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdQuit,             new string[] { "ex", "exit", "q", "quit" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdStatus,           new string[] { "status" }));
 
             // Dsmentry (all DG/DAT/MSG stuff comes here)...
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDsmEntry,                     new string[] { "dsmentry" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDsmLoad,                      new string[] { "dsmload" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDsmUnload,                    new string[] { "dsmunload" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDsmEntry,         new string[] { "dsmentry" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDsmLoad,          new string[] { "dsmload" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDsmUnload,        new string[] { "dsmunload" }));
 
             // Scripting...
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdAllocate,                     new string[] { "allocate" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCall,                         new string[] { "call" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCd,                           new string[] { "cd", "pwd" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdClean,                        new string[] { "clean" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDir,                          new string[] { "dir", "ls" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEcho,                         new string[] { "echo" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoBlue,                     new string[] { "echo.blue" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoGreen,                    new string[] { "echo.green" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoPassfail,                 new string[] { "echo.passfail" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoProgress,                 new string[] { "echo.progress" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoPrompt,                   new string[] { "echo.prompt" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoRed,                      new string[] { "echo.red" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitlesuite,               new string[] { "echo.titlesuite" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitletest,                new string[] { "echo.titletest" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoYellow,                   new string[] { "echo.yellow" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFree,                         new string[] { "free" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGc,                           new string[] { "gc" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGoto,                         new string[] { "goto" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIf,                           new string[] { "if" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdImage,                        new string[] { "image" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIncrement,                    new string[] { "increment" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdInput,                        new string[] { "input" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdLog,                          new string[] { "log" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdPause,                        new string[] { "pause" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReport,                       new string[] { "report" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReturn,                       new string[] { "return" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRun,                          new string[] { "run" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRunv,                         new string[] { "runv" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSaveImage,                    new string[] { "saveimage" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetGlobal,                    new string[] { "setglobal" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetLocal,                     new string[] { "setlocal" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetRecord,                    new string[] { "setrecord" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSizes,                        new string[] { "sizes" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSleep,                        new string[] { "sleep" }));
-            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdWait,                         new string[] { "wait" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdAllocate,         new string[] { "allocate" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCall,             new string[] { "call" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCd,               new string[] { "cd", "pwd" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdClean,            new string[] { "clean" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDir,              new string[] { "dir", "ls" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEcho,             new string[] { "echo" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoBlue,         new string[] { "echo.blue" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoGreen,        new string[] { "echo.green" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoPassfail,     new string[] { "echo.passfail" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoProgress,     new string[] { "echo.progress" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoPrompt,       new string[] { "echo.prompt" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoRed,          new string[] { "echo.red" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitlesuite,   new string[] { "echo.titlesuite" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitletest,    new string[] { "echo.titletest" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoYellow,       new string[] { "echo.yellow" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFree,             new string[] { "free" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGc,               new string[] { "gc" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGoto,             new string[] { "goto" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIf,               new string[] { "if" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdImage,            new string[] { "image" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIncrement,        new string[] { "increment" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdInput,            new string[] { "input" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdLog,              new string[] { "log" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdPause,            new string[] { "pause" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReport,           new string[] { "report" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReturn,           new string[] { "return" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRun,              new string[] { "run" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRunv,             new string[] { "runv" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSaveImage,        new string[] { "saveimage" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetGlobal,        new string[] { "setglobal" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetLocal,         new string[] { "setlocal" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSetRecord,        new string[] { "setrecord" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSizes,            new string[] { "sizes" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSleep,            new string[] { "sleep" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdWait,             new string[] { "wait" }));
 
-            // If we see a data folder, drop into it to make life a little easier for our user...
+            // Create our certification folder...
+            try
+            {
+                m_szTwainSelfCertFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
+                if (!Directory.Exists(m_szTwainSelfCertFolder))
+                {
+                    Directory.CreateDirectory(m_szTwainSelfCertFolder);
+                }
+                if (!Directory.Exists(Path.Combine(m_szTwainSelfCertFolder, "data")))
+                {
+                    string szDataZip = Path.Combine(m_szTwainSelfCertFolder, "data.zip");
+                    File.WriteAllBytes(szDataZip, twaincscert.Properties.Resources.data);
+                    ZipFile.ExtractToDirectory(szDataZip, m_szTwainSelfCertFolder);
+                    File.Delete(szDataZip);
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.Error("Couldn't create the data folder - " + exception.Message);
+            }
+
+            // If we see a data folder in our working directory, we'll use that...
             if (Directory.Exists("data"))
             {
                 Directory.SetCurrentDirectory("data");
+            }
+            // Otherwise, try for the "TWAIN Self Certification" folder...
+            else
+            {
+                string szDataFolder = Path.Combine(m_szTwainSelfCertFolder, "data");
+                if (Directory.Exists(szDataFolder))
+                {
+                    Directory.SetCurrentDirectory(szDataFolder);
+                }
             }
 
             // Give ourselves a convenient variable...
@@ -693,10 +723,6 @@ namespace twaincscert
                     {
                         TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
                         m_twain.CsvToIdentity(ref twidentity, a_functionarguments.aszCmd[6]);
-                        if ((TWAIN.MSG)a_functionarguments.iMsg == TWAIN.MSG.CLOSEDS)
-                        {
-                            a_functionarguments.iMsg = (int)TWAIN.MSG.CLOSEDS;
-                        }
                         a_functionarguments.sts = m_twain.DatIdentity((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twidentity);
                         a_functionarguments.szReturnValue = m_twain.IdentityToCsv(twidentity);
                         callstack.functionarguments.sts = a_functionarguments.sts;
@@ -992,7 +1018,7 @@ namespace twaincscert
             for (int aa = 0; aa < a_functionarguments.aszCmd.Length; aa++)
             {
                 // Split it on the first '='...
-                string[] aszKeyValue = a_functionarguments.aszCmd[aa].Split(new char[] { '=' }, 1);
+                string[] aszKeyValue = a_functionarguments.aszCmd[aa].Split(new char[] { '=' }, 2);
                 if (aszKeyValue.Length != 2)
                 {
                     continue;
@@ -1020,7 +1046,14 @@ namespace twaincscert
                         UInt16.TryParse(aszKeyValue[1], out u16ProtocolMinor);
                         break;
                     case "supportedgroups":
-                        UInt32.TryParse(aszKeyValue[1], out u32SupportedGroups);
+                        if (aszKeyValue[1].ToLowerInvariant().StartsWith("0x"))
+                        {
+                            UInt32.TryParse(aszKeyValue[1].Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out u32SupportedGroups);
+                        }
+                        else
+                        {
+                            UInt32.TryParse(aszKeyValue[1], out u32SupportedGroups);
+                        }
                         break;
                     case "twcy":
                         Enum.TryParse(aszKeyValue[1], out twcy);
@@ -1896,20 +1929,21 @@ namespace twaincscert
             {
                 Display(m_szBanner);
                 Display("");
-                DisplayRed("Overview");
+                DisplayYellow("Overview");
                 Display("help intro......................................introduction to this program");
                 Display("help certification..............................certifying a scanner");
                 Display("help scripting..................................general discussion of scripting");
                 Display("");
-                DisplayRed("Data Source Manager (DSM) commands");
+                DisplayYellow("Data Source Manager (DSM) commands");
                 Display("certify [productname] [verbose] [skipprompts]...certify a TWAIN driver");
                 Display("dsmload [args]..................................load the DSM");
                 Display("dsmunload.......................................unload the DSM");
                 Display("dsmentry........................................send a command to the DSM");
                 Display("help [command]..................................this text or info about a command");
+                Display("status..........................................status info for this program");
                 Display("wait [timeout]..................................wait for a DAT_NULL message");
                 Display("");
-                DisplayRed("Scripting");
+                DisplayYellow("Scripting");
                 Display("allocate {flag} {variable} {size}...............allocate memory");
                 Display("call {label}....................................call function");
                 Display("cd [path].......................................shows or sets the current directory");
@@ -1950,7 +1984,7 @@ namespace twaincscert
             if ((szCommand == "intro"))
             {
                 /////////0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-                DisplayRed("INTRODUCTION TO THIS PROGRAM");
+                DisplayYellow("INTRODUCTION TO THIS PROGRAM");
                 Display("The TWAIN Certification program is an interpreter that interacts with TWAIN scanners.");
                 Display("It's main purpose is to run certification scripts testing compliance with the TWAIN");
                 Display("Specification.  It can also be used to test individual TWAIN commands with a high");
@@ -1981,7 +2015,7 @@ namespace twaincscert
             if ((szCommand == "certification") || (szCommand == "certify"))
             {
                 /////////0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-                DisplayRed("CERTIFYING A SCANNER");
+                DisplayYellow("CERTIFYING A SCANNER");
                 Display("Certification is accomplished using scripts contained in the data/Certification folder.  These");
                 Display("must be run, for both 32-bit and 64-bit systems, on all platforms supported by the driver.");
                 Display("");
@@ -2006,7 +2040,7 @@ namespace twaincscert
             if ((szCommand == "scripting"))
             {
                 /////////0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-                DisplayRed("GENERAL DISCUSSION OF SCRIPTING");
+                DisplayYellow("GENERAL DISCUSSION OF SCRIPTING");
                 Display("The TWAIN Certification program is designed to test scanners.  It looks at DAT objects.  It's");
                 Display("script based to make it easier to manage the tests.  Users can create and run their own tests,");
                 Display("such as extracting key items from an existing test to make it easier to debug.");
@@ -2034,6 +2068,9 @@ namespace twaincscert
                 Display("");
                 Display("  '${ds:[index]}'");
                 Display("  Complete TW_IDENTITY of the current scanner driver.  Fields can be accessed with index.");
+                Display("");
+                Display("  '${dsm:}'");
+                Display("  Full path to the current DSM, or an empty string if we don't currently have one.");
                 Display("");
                 Display("  '${folder:target}'");
                 Display("  Resolves to the full path for a special folder indicated by target:");
@@ -2091,7 +2128,7 @@ namespace twaincscert
             // Help...
             if ((szCommand == "help"))
             {
-                DisplayRed("HELP [COMMAND]");
+                DisplayYellow("HELP [COMMAND]");
                 Display("Provides assistence with command and their arguments.  It does not");
                 Display("go into detail on TWAIN.  Please read the Specification for more");
                 Display("information.");
@@ -2108,10 +2145,10 @@ namespace twaincscert
                 AssemblyName assemblyname = assembly.GetName();
                 Version version = assemblyname.Version;
 
-                DisplayRed("DSMLOAD");
+                DisplayYellow("DSMLOAD");
                 Display("Load the Data Source Manager (DSM).  This must be done before using");
                 Display("dsmentry.  There are several arguments, which must be prefaced with");
-                Display("their name:");
+                Display("their name (format is name=value):");
                 Display("  manufacturer - tw_identity.Manufacturer (default='TWAIN Working Group')");
                 Display("  productfamily - tw_identity.ProductFamily (default='TWAIN Open Source')");
                 Display("  productname - tw_identity.ProductName (default='TWAIN Certification')");
@@ -2131,7 +2168,7 @@ namespace twaincscert
             // Dsmload...
             if ((szCommand == "dsmunload"))
             {
-                DisplayRed("DSMUNLOAD");
+                DisplayYellow("DSMUNLOAD");
                 Display("Unload the Data Source Manager (DSM).");
                 return (false);
             }
@@ -2139,7 +2176,7 @@ namespace twaincscert
             // Dsmentry...
             if ((szCommand == "dsmentry"))
             {
-                DisplayRed("DSMENTRY src dst dg dat msg memref");
+                DisplayYellow("DSMENTRY src dst dg dat msg memref");
                 Display("Send a command to the DSM with the following arguments:");
                 Display("  src - source of the message (this application)");
                 Display("  dst - destination, null for DSM commands, otherwise the Data Source");
@@ -2157,7 +2194,7 @@ namespace twaincscert
             // Wait...
             if ((szCommand == "wait [reset|timeout]"))
             {
-                DisplayRed("WAIT");
+                DisplayYellow("WAIT");
                 Display("Wait for a DSM_NULL message, such as MSG_XFERREADY.  The message can");
                 Display("arrive through the message pump on Windows, or the callback system on");
                 Display("any of the platforms (assuming TWAINDSM is in use).");
@@ -2176,7 +2213,7 @@ namespace twaincscert
             // Quit...
             if ((szCommand == "quit"))
             {
-                DisplayRed("QUIT");
+                DisplayYellow("QUIT");
                 Display("Exit from this program.");
                 return (false);
             }
@@ -2184,7 +2221,7 @@ namespace twaincscert
             // Status...
             if ((szCommand == "status"))
             {
-                DisplayRed("STATUS");
+                DisplayYellow("STATUS");
                 Display("General information about the current operation of the program.");
                 return (false);
             }
@@ -2197,7 +2234,7 @@ namespace twaincscert
             // Allocate...
             if ((szCommand == "allocate"))
             {
-                DisplayRed("ALLOCATE {HANDLE|POINTER} {VARIABLE} {SIZE}");
+                DisplayYellow("ALLOCATE {HANDLE|POINTER} {VARIABLE} {SIZE}");
                 Display("Allocate a pointer or a handle of SIZE bytes and store the value in");
                 Display("the specified variable.  On failure the value will be 0.");
                 return (false);
@@ -2206,7 +2243,7 @@ namespace twaincscert
             // Call...
             else if ((szCommand == "call"))
             {
-                DisplayRed("CALL {FUNCTION [argument1 [argument2 [...]]}");
+                DisplayYellow("CALL {FUNCTION [argument1 [argument2 [...]]}");
                 Display("Call a function with optional arguments.  Check '${ret:} to see what the");
                 Display("function sent back with its RETURN command.  The function must be prefixed");
                 Display("with a colon.  For example...");
@@ -2234,7 +2271,7 @@ namespace twaincscert
             // Cd...
             if ((szCommand == "cd"))
             {
-                DisplayRed("CD [PATH]");
+                DisplayYellow("CD [PATH]");
                 Display("Show the current directory.  If a path is specified, change to that path.");
                 return (false);
             }
@@ -2242,7 +2279,7 @@ namespace twaincscert
             // Clean...
             if ((szCommand == "clean"))
             {
-                DisplayRed("CLEAN");
+                DisplayYellow("CLEAN");
                 Display("Delete all files and folders in the images folder.");
                 return (false);
             }
@@ -2250,7 +2287,7 @@ namespace twaincscert
             // Dir...
             if ((szCommand == "dir"))
             {
-                DisplayRed("DIR");
+                DisplayYellow("DIR");
                 Display("Directory command, lists files and folders in the current directory.");
                 return (false);
             }
@@ -2258,7 +2295,7 @@ namespace twaincscert
             // Echo...
             if ((szCommand == "echo"))
             {
-                Display("ECHO[.COLOR] [TEXT]");
+                DisplayYellow("ECHO[.COLOR] [TEXT]");
                 Display("Echoes the text.  If there is no text an empty line is echoed.  The");
                 return (false);
             }
@@ -2266,7 +2303,7 @@ namespace twaincscert
             // Echo.passfail...
             if ((szCommand == "echo.passfail"))
             {
-                DisplayRed("ECHO.PASSFAIL [TITLE] [RESULT]");
+                DisplayYellow("ECHO.PASSFAIL [TITLE] [RESULT]");
                 Display("Echoes the title and result in a long tabular format.");
                 return (false);
             }
@@ -2274,7 +2311,7 @@ namespace twaincscert
             // Echo.progress...
             if ((szCommand == "echo.progress"))
             {
-                DisplayRed("ECHO.PROGRESS [TITLE] [RESULT]");
+                DisplayYellow("ECHO.PROGRESS [TITLE] [RESULT]");
                 Display("Echoes the title and result in a short tabular format.");
                 return (false);
             }
@@ -2282,7 +2319,7 @@ namespace twaincscert
             // Echo.progress...
             if ((szCommand == "echo.prompt"))
             {
-                DisplayRed("ECHO.PROMPT [TEXT]");
+                DisplayYellow("ECHO.PROMPT [TEXT]");
                 Display("Use prior to an input command.");
                 return (false);
             }
@@ -2290,7 +2327,7 @@ namespace twaincscert
             // Free...
             if ((szCommand == "free"))
             {
-                DisplayRed("FREE {HANDLE|POINTER} {VARIABLE}");
+                DisplayYellow("FREE {HANDLE|POINTER} {VARIABLE}");
                 Display("Free a pointer or a handle in the specified variable.  If it");
                 Display("is already 0, no action is taken.  On success the variable is");
                 Display("set to 0.");
@@ -2300,7 +2337,7 @@ namespace twaincscert
             // Goto...
             if ((szCommand == "goto"))
             {
-                DisplayRed("GOTO {LABEL}");
+                DisplayYellow("GOTO {LABEL}");
                 Display("Jump to the specified label in the script.  The label must be");
                 Display("prefixed with a colon.  For example...");
                 Display("");
@@ -2313,7 +2350,7 @@ namespace twaincscert
             // If...
             if ((szCommand == "if"))
             {
-                DisplayRed("IF {ITEM1} {OPERATOR} {ITEM2} [OPERATOR2 ITEM3] GOTO {LABEL}");
+                DisplayYellow("IF {ITEM1} {OPERATOR} {ITEM2} [OPERATOR2 ITEM3] GOTO {LABEL}");
                 Display("If the operator for ITEM1 and ITEM2 is true, then goto the");
                 Display("label.  For the best experience get in the habit of putting");
                 Display("either single or double quotes around the items.");
@@ -2351,11 +2388,11 @@ namespace twaincscert
             // Image...
             if ((szCommand == "image"))
             {
-                DisplayRed("IMAGE {free} {variable}");
-                DisplayRed("IMAGE {append} {variable} {TW_IMAGEMEMXFER}");
-                DisplayRed("IMAGE {addheader} {variable} {TW_IMAGEINFO}");
-                DisplayRed("IMAGE {delete} {folder}");
-                DisplayRed("IMAGE {save} {variable} {native|memfile|memory} {filename}");
+                DisplayYellow("IMAGE {free} {variable}");
+                DisplayYellow("IMAGE {append} {variable} {TW_IMAGEMEMXFER}");
+                DisplayYellow("IMAGE {addheader} {variable} {TW_IMAGEINFO}");
+                DisplayYellow("IMAGE {delete} {folder}");
+                DisplayYellow("IMAGE {save} {variable} {native|memfile|memory} {filename}");
                 Display("Use image append to chain together data from one or more DAT_IMAGEMEMXFER");
                 Display("or DAT_IMAGEMEMFILEXFER calls.  Use image free to free that memory when");
                 Display("done with it.");
@@ -2383,7 +2420,7 @@ namespace twaincscert
             // Increment...
             if ((szCommand == "increment"))
             {
-                DisplayRed("INCREMENT {DST} {SRC} [STEP]");
+                DisplayYellow("INCREMENT {DST} {SRC} [STEP]");
                 Display("Increments SRC by STEP and stores in DST.  STEP defaults to 1.");
                 return (false);
             }
@@ -2391,7 +2428,7 @@ namespace twaincscert
             // Input...
             if ((szCommand == "input"))
             {
-                DisplayRed("INPUT [TITLE]");
+                DisplayYellow("INPUT [TITLE]");
                 Display("Echoes the text and waits for user input, which is complete when the ENTER");
                 Display("key is pressed.  The input can be retrieved from ${ret:}");
                 return (false);
@@ -2400,7 +2437,7 @@ namespace twaincscert
             // Pause...
             if ((szCommand == "pause"))
             {
-                DisplayRed("PAUSE [TITLE]");
+                DisplayYellow("PAUSE [TITLE]");
                 Display("Echoes the text and waits for the ENTER key to be pressed.");
                 return (false);
             }
@@ -2408,7 +2445,7 @@ namespace twaincscert
             // pwd...
             if ((szCommand == "pwd"))
             {
-                DisplayRed("PWD");
+                DisplayYellow("PWD");
                 Display("Show the path to the current working directory.");
                 return (false);
             }
@@ -2416,7 +2453,7 @@ namespace twaincscert
             // Report...
             if ((szCommand == "report"))
             {
-                DisplayRed("REPORT {INITIALIZE | SAVE {FOLDER}}");
+                DisplayYellow("REPORT {INITIALIZE | SAVE {FOLDER}}");
                 Display("Initialize or save a self certification report.");
                 return (false);
             }
@@ -2424,7 +2461,7 @@ namespace twaincscert
             // Return...
             if ((szCommand == "return"))
             {
-                DisplayRed("RETURN [DATA]");
+                DisplayYellow("RETURN [DATA]");
                 Display("Return data from a call function or a script invoked with RUN or");
                 Display("RUNV.  The caller examines this value with the '${ret:}' symbol.");
                 return (false);
@@ -2433,7 +2470,7 @@ namespace twaincscert
             // Run...
             if ((szCommand == "run"))
             {
-                DisplayRed("RUN [SCRIPT]");
+                DisplayYellow("RUN [SCRIPT]");
                 Display("Runs the specified script.  SCRIPT is the full path to the script");
                 Display("to be run.  If a SCRIPT is not specified, the scripts in the");
                 Display("current folder are listed.");
@@ -2443,7 +2480,7 @@ namespace twaincscert
             // Run verbose...
             if ((szCommand == "runv"))
             {
-                Display("RUNV [SCRIPT]");
+                DisplayYellow("RUNV [SCRIPT]");
                 Display("Runs the specified script.  SCRIPT is the full path to the script");
                 Display("to be run.  If a SCRIPT is not specified, the scripts in the");
                 Display("current folder are listed.  The script commands are displayed.");
@@ -2453,7 +2490,7 @@ namespace twaincscert
             // Set...
             if ((szCommand == "setglobal"))
             {
-                DisplayRed("SETGLOBAL {KEY} {VALUE}");
+                DisplayYellow("SETGLOBAL {KEY} {VALUE}");
                 Display("Set a key to the specified value.  If a KEY is not specified");
                 Display("all of the current keys are listed with their values.  These");
                 Display("are global to all scripts.  Use SETLOCAL when possible to");
@@ -2468,7 +2505,7 @@ namespace twaincscert
             // Setlocal...
             if ((szCommand == "setlocal"))
             {
-                DisplayRed("SETLOCAL {KEY} {VALUE}");
+                DisplayYellow("SETLOCAL {KEY} {VALUE}");
                 Display("Set a key to the specified value.  If a KEY is not specified");
                 Display("all of the current keys are listed with their values.  This");
                 Display("key only exists in the context of the current function.  So");
@@ -2485,7 +2522,7 @@ namespace twaincscert
             // Sleep...
             if ((szCommand == "sleep"))
             {
-                DisplayRed("SLEEP {MILLISECONDS}");
+                DisplayYellow("SLEEP {MILLISECONDS}");
                 Display("Pause the thread for the specified number of milliseconds.");
                 return (false);
             }
@@ -3661,18 +3698,6 @@ namespace twaincscert
         }
 
         /// <summary>
-        /// List scanners, both ones on the LAN and ones that are
-        /// available in the cloud (when we get that far)...
-        /// </summary>
-        /// <param name="a_functionarguments">tokenized command and anything needed</param>
-        /// <returns>true to quit</returns>
-        private bool CmdList(ref Interpreter.FunctionArguments a_functionarguments)
-        {
-            // All done...
-            return (false);
-        }
-
-        /// <summary>
         /// Quit...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
@@ -3830,8 +3855,7 @@ namespace twaincscert
                     return (false);
                 }
                 m_szSelfCertReportProductname = a_functionarguments.aszCmd[2];
-                szFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
-                szFolder = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
+                szFolder = Path.Combine(m_szTwainSelfCertFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
                 szFolder = Path.Combine(szFolder, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                 if (Directory.Exists(szFolder))
                 {
@@ -3856,8 +3880,7 @@ namespace twaincscert
                 {
                     if (string.IsNullOrEmpty(szFolder))
                     {
-                        szFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
-                        szFolder = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
+                        szFolder = Path.Combine(m_szTwainSelfCertFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
                         szFolder = Path.Combine(szFolder, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                     }
                     if (!Directory.Exists(szFolder))
@@ -4242,24 +4265,16 @@ namespace twaincscert
         }
 
         /// <summary>
-        /// Select a scanner, do a snapshot, if needed, if no selection
-        /// is offered, then pick the first scanner found...
-        /// </summary>
-        /// <param name="a_functionarguments">tokenized command and anything needed</param>
-        /// <returns>true to quit</returns>
-        private bool CmdSelect(ref Interpreter.FunctionArguments a_functionarguments)
-        {
-            // All done...
-            return (false);
-        }
-
-        /// <summary>
         /// With no arguments, list the keys with their values.  With an argument,
         /// set the specified value.
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
         /// <returns>true to quit</returns>
         private bool CmdSetGlobal(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            return (CmdSetGlobal(ref a_functionarguments, false));
+        }
+        private bool CmdSetGlobal(ref Interpreter.FunctionArguments a_functionarguments, bool a_blSysOnly)
         {
             // If we don't have any arguments, list what we have...
             if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[1] == null))
@@ -4274,9 +4289,13 @@ namespace twaincscert
                     }
 
                     // Loopy...
-                    Display("KEY/VALUE PAIRS");
+                    Display((a_blSysOnly ? "SYS " : "") + "KEY/VALUE PAIRS");
                     foreach (KeyValue keyvalue in m_lkeyvalue)
                     {
+                        if (a_blSysOnly && !keyvalue.szKey.StartsWith("sys_"))
+                        {
+                            continue;
+                        }
                         Display(keyvalue.szKey + "=<" + keyvalue.szValue + ">");
                     }
                 }
@@ -4476,26 +4495,32 @@ namespace twaincscert
         private bool CmdStatus(ref Interpreter.FunctionArguments a_functionarguments)
         {
             // Platform...
-            Display("Platform........." + TWAINWorkingGroup.TWAIN.GetPlatform() + " (" + TWAINWorkingGroup.TWAIN.GetMachineWordBitSize() + "-bit)");
+            Display("Platform.................." + TWAINWorkingGroup.TWAIN.GetPlatform() + " (" + TWAINWorkingGroup.TWAIN.GetMachineWordBitSize() + "-bit)");
+            Display("Certification Folder......" + m_szTwainSelfCertFolder);
+            Display("Current Folder............" + Directory.GetCurrentDirectory());
 
             // DSM is not loaded...
             if (m_twain == null)
             {
-                Display("DSM Path.........(not loaded)");
+                Display("DSM Path..................(not loaded)");
                 return (false);
             }
 
             // DSM in use...
-            Display("DSM Path........." + m_twain.GetDsmPath());
+            Display("DSM Path.................." + m_twain.GetDsmPath());
 
             // State...
-            Display("TWAIN State......" + ((int)m_twain.GetState()));
+            Display("TWAIN State..............." + ((int)m_twain.GetState()));
 
             // If state 4 or higher, what is our driver?
             if (m_twain.GetState() >= TWAIN.STATE.S4)
             {
-                Display("TWAIN Driver....." + m_twain.GetDsIdentity());
+                Display("TWAIN Driver.............." + m_twain.GetDsIdentity());
             }
+
+            // List the system variables...
+            Display("");
+            CmdSetGlobal(ref a_functionarguments, true);
 
             // All done...
             return (false);
@@ -4885,6 +4910,7 @@ namespace twaincscert
                         || szSymbol.StartsWith("${app:")
                         || szSymbol.StartsWith("${bits:")
                         || szSymbol.StartsWith("${ds:")
+                        || szSymbol.StartsWith("${dsm:")
                         || szSymbol.StartsWith("${folder:")
                         || szSymbol.StartsWith("${format:")
                         || szSymbol.StartsWith("${get:")
@@ -5030,6 +5056,15 @@ namespace twaincscert
                         }
                     }
 
+                    // Path to the DSM we're using (if any)...
+                    else if (szSymbol.StartsWith("${dsm:"))
+                    {
+                        if (m_twain != null)
+                        {
+                            szValue = m_twain.GetDsmPath();
+                        }
+                    }
+
                     // Special folders
                     else if (szSymbol.StartsWith("${folder:"))
                     {
@@ -5044,7 +5079,7 @@ namespace twaincscert
                                 string[] aszDs = CSV.Parse(m_twain.GetDsIdentity());
                                 if (aszDs.Length >= 12)
                                 {
-                                    szValue = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
+                                    szValue = m_szTwainSelfCertFolder;
                                     szValue = Path.Combine(szValue, Regex.Replace(aszDs[11], "[^.a-zA-Z0-9]", "_"));
                                     szValue = Path.Combine(szValue, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                                 }
@@ -5052,7 +5087,7 @@ namespace twaincscert
                         }
                         else if (szSymbol == "${folder:data}")
                         {
-                            szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "data");
+                            szValue = m_szTwainSelfCertFolder;
                         }
                         else if (szSymbol == "${folder:desktop}")
                         {
@@ -5611,6 +5646,7 @@ namespace twaincscert
         private StringBuilder m_stringbuilderSelfCertReport;
         private string m_szSelfCertReportPath;
         private string m_szSelfCertReportProductname;
+        private string m_szTwainSelfCertFolder;
 
         /// <summary>
         /// The opening banner (program, version, etc)...
