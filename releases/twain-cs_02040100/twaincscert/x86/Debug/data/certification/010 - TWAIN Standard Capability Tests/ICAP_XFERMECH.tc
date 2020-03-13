@@ -1,0 +1,127 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_XFERMECH
+;   Confirm Basic Negotiation with ICAP_XFERMECH
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - current test being done
+;   xfermech - data from MSG_GET for ICAP_XFERMECH
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+echo.titletest 'ICAP_XFERMECH v1.0 21-Feb-2020'
+setlocal xfermech ''
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; MSG_GET ICAP_XFERMECH
+; If result is not TWRC_SUCCESS, then end with error
+;
+setlocal name 'MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+setlocal xfermech '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_CAPABILITY.Cap is not ICAP_XFERMECH, then end with error
+;
+setlocal name 'TW_CAPABILITY.Cap is ICAP_XFERMECH'
+if '${getindex:xfermech:${get:TW_CAPABILITY.Cap}}' != 'ICAP_XFERMECH' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_CAPABILITY.ConType is not TWON_ENUMERATION, then end with error
+;
+setlocal name 'TW_CAPABILITY.ConType is TWON_ENUMERATION'
+if '${getindex:xfermech:${get:TW_CAPABILITY.ConType}}' != 'TWON_ENUMERATION' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_ENUMERATION.ItemType is not TWTY_UINT16, then end with error
+;
+setlocal name 'TW_ENUMERATION.ItemType is TWTY_UINT16'
+if '${getindex:xfermech:${get:TW_ENUMERATION.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_ENUMERATION contains TWSX_NATIVE (0)...
+;
+setlocal name 'TW_ENUMERATION contains TWSX_NATIVE'
+call CHECKENUMERATION '${get:xfermech}' '0'
+if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_ENUMERATION contains TWSX_MEMORY (2)...
+;
+setlocal name 'TW_ENUMERATION contains TWSX_MEMORY'
+call CHECKENUMERATION '${get:xfermech}' '2'
+if '${ret:}' == 'pass' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+:MAIN.PASS
+echo.passfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+:MAIN.ERROR
+echo.passfail 'SUMMARY' 'fail'
+return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Check Enumeration
+; arg:1 - enumeration to check
+; arg:2/n - values to check for
+; returns: pass/fail
+;
+:CHECKENUMERATION
+;
+setlocal enum '${arg:1}'
+setlocal ee '5'
+:NEXTENUM
+increment ee '${get:ee}'
+if '${getindex:enum:${get:ee}}' == '' goto CHECKENUMERATION.FAIL
+setlocal aa '2'
+:NEXTARG
+if '${arg:${get:aa}}' == '' goto NEXTENUM
+if '${arg:${get:aa}}' == '${getindex:enum:${get:ee}}' goto CHECKENUMERATION.PASS
+increment aa '${get:aa}'
+goto NEXTARG
+:CHECKENUMERATION.FAIL
+return 'fail'
+:CHECKENUMERATION.PASS
+return 'pass'

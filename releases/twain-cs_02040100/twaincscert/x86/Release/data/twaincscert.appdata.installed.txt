@@ -1,0 +1,118 @@
+{
+    "comment": [
+        "******************************************************************************",
+        "copy or rename this file to TwainDirect.Certification.appdata.txt in the same",
+        "foler as the TwainDirect.Certification.exe, and remove the leading X from any",
+        "lines you want to use."
+    ],
+
+
+
+    "commentLogLevel": [
+        "******************************************************************************",
+        "default: 0",
+        "0 - only errors are reported",
+        "these values are bits, add them together as needed, for instance, to get",
+        "all logging data flushed to disk, use a value of 7",
+        "1 - log informational messages",
+        "2 - log verbose stuff, like HTML headers",
+        "4 - flush to disk, use to help diagnose crashes"
+    ],
+    "XlogLevel": 3,
+
+
+
+    "commentLanguage": [
+        "******************************************************************************",
+        "default: en-US",
+        "valid values are language-country, if not supported the code uses en-US"
+    ],
+    "Xlanguage": "en-US",
+
+
+
+    "commentHttpTimeoutCommand": [
+        "******************************************************************************",
+        "default: 30000",
+        "milliseconds that scanner has to respond to a command"
+    ],
+    "XhttpTimeoutCommand": 30000,
+
+
+
+    "commentHttpTimeoutData": [
+        "******************************************************************************",
+        "default: 30000",
+        "milliseconds that scanner has to deliver data to the app"
+    ],
+    "XhttpTimeoutData": 30000,
+
+
+
+    "commentHttpTimeoutEvent": [
+        "******************************************************************************",
+        "default: 60000",
+        "milliseconds that waitForEvents waits for data before issuing a new command."
+    ],
+    "XhttpTimeoutEvent": 60000,
+
+
+
+    "commentUseHttps": [
+        "******************************************************************************",
+        "default: auto",
+        "auto - talk to scanners using either http or https",
+        "no - use http only",
+        "yes - use https only"
+    ],
+    "XuseHttps": "auto",
+
+
+
+    "commentUseInfoex": [
+        "******************************************************************************",
+        "default: yes",
+        "yes - use the infoex command to get extra data",
+        "no - use the original info command"
+    ],
+    "XuseInfoex": "yes",
+
+
+
+    "commentCloudApiRoot": [
+        "******************************************************************************",
+        "default: https://api-twain.hazybits.com/dev",
+        "Add one or more cloud api root paths for the user to select from.",
+        " ",
+        "available fields:",
+        "  name - friendly name to show the user in dropdowns",
+        "  url - endpoint for talking to the cloud",
+        "  manage - web page to bring up for managing this cloud",
+        "  signin - authentication to use",
+        "  folderName - name under Twain.Scanner where we keep data for this cloud",
+        "  useHttps - default is 'yes', specify 'no' if using twain-cloud-express",
+        " ",
+        "If using twain-cloud-express, copy the following lines down into cloudApiRoot",
+        "as the first item in the array of objects (just after the '[').",
+        "***BEGIN STARTING FROM THE NEXT LINE***",
+        {
+            "name": "Local Cloud",
+            "url": "http://localhost:3000/api",
+            "manager": "http://localhost:3000",
+            "signin": "google",
+            "folderName": "localcloud",
+            "useHttps": "no"
+        },
+        "***DO NOT COPY THIS LINE***"
+    ],
+    "XcloudApiRoot": [
+        {
+            "name": "HazyBits",
+            "url": "https://twain.hazybits.com/api",
+            "manager": "https://twain.hazybits.com",
+            "signin": "google",
+            "folderName": "hazybits",
+            "useHttps": "yes"
+        }
+    ]
+}

@@ -1,0 +1,76 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_XFERCOUNT Tests
+;   Confirm that when the data source accepts various values for CAP_XFERCOUNT, that it
+;   returns the specified number of images. Test both flatbed and document feeders.
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global to set on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   twidentity.productname - product name of scanner to test
+;   certifyresult - global to set on fail
+;   xfermech - result of getting ICAP_XFERMECH
+;
+; Returns
+;   (none)
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize stuff, load tables if not already done for us...
+;
+echo.titlesuite 'CAP_XFERCOUNT Tests v1.0 04-Mar-2020'
+setlocal twidentity.productname '${arg:1}'
+setlocal certifyresult '${arg:2}'
+if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
+run '${folder:certification}/LoadTables'
+:MAIN.LOADTABLES.SKIP
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Run the tests...
+;
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'
+
+; Get ICAP_XFERMECH...
+setlocal name 'ICAP_XFERMECH MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+if '${sts:}' != 'SUCCESS' goto CERTIFY.FAIL
+setlocal xfermech '${ret:}'
+echo.passfail '${get:name}' 'pass'
+
+; Do the tests...
+call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
+call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '${get:xfermech}'
+call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '${get:xfermech}'
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}'
+return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Certify
+; arg:1 - script to run
+; arg:2 - TW_IDENTITY.ProductName of scanner to test
+; arg:3 - global value to update on fail
+; arg:4 - showui value
+; arg:5 - name of test
+; arg:6 - xfermech values
+; returns: (none)
+;
+:CERTIFY
+;
+run '${arg:1}' '${arg:2}' '${arg:3}' '${arg:4}' '${arg:5}' '${arg:6}'
+if '${ret:}' != 'pass' goto CERTIFY.FAIL
+return 'pass'
+;
+:CERTIFY.FAIL
+setglobal '${arg:3}' 'fail'
+return 'fail'

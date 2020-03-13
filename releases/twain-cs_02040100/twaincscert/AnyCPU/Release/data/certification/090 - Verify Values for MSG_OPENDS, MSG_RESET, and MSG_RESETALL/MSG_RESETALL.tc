@@ -1,0 +1,232 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; MSG_RESETALL
+;   Compare the CAP.ValueAfterReset values of all TWAIN standard capabilities
+;   for the values of CAP_FEEDERENABLES and ICAP_PIXELTYPE to make sure they
+;   have their mandatory settting after running MSG_RESETALL.
+;
+;   Our loop takes the form:
+;   resetall
+;   foreach CAP_FEEDERENABLED
+;     foreach ICAP_PIXELTYPE
+;       foreach CAP_SUPPORTEDCAPS
+;         check values
+;       end
+;     end
+;   end
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global for us to update on failure
+;
+; Globals
+;   (none)
+;
+; Locals
+;   name - current test being done
+;   indent - indent the passfail text
+;   capability - getcurrent result for capability
+;
+;   feederenabled.list - scanner's feederenabled values
+;   feederenabled.index - index of feederenabled values
+;   feederenabled.value - current feederenabled value
+;
+;   pixeltype.list - scanner's pixeltype values for this feederenabled
+;   pixeltype.index - index of pixeltype values
+;   pixeltype.value - current pixeltype value
+;
+;   supportedcaps.list - scanner's capabilities
+;   supportedcaps.index - index of supportedcaps values
+;   supportedcaps.value - current supportedcap value
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+echo.titletest 'MSG_RESETALL v1.0 01-Mar-2020'
+setlocal indent ''
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Open the source...
+;
+run '${folder:certification}/Opends' '${arg:1}' embedded
+if '${ret:}' != 'pass' goto MAIN.ERROR.ECHOPASSFAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Reset all...
+;
+setlocal name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get CAP_FEEDERENABLED, and loop so we test all values
+; for the current ICAP_XFERMECH setting.
+;
+setlocal name 'CAP_FEEDERENABLED MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_FEEDERENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal feederenabled.list '${ret:}' ; what the scanner told us
+setlocal feederenabled.index '${get:TW_ENUMERATION.ItemList}' ; point to itemlist
+increment feederenabled.index '${get:feederenabled.index}' -1 ; less 1
+;
+:MAIN.FEEDERENABLED.NEXT
+setlocal indent ''
+increment feederenabled.index '${get:feederenabled.index}' 1 ; next itemlist
+setlocal feederenabled.value '${getindex:feederenabled.list:${get:feederenabled.index}}' ; get the value
+if '${get:feederenabled.value}' == '' goto MAIN.PASS ; we've passed all tests!!!
+;
+setlocal name 'CAP_FEEDERENABLED MSG_SET ${get:feederenabled.value}'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_FEEDERENABLED,TWON_ONEVALUE,TWTY_BOOL,${get:feederenabled.value}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get ICAP_PIXELTYPE, and loop so we test all values for
+; the current CAP_FEEDERENABLED setting.
+;
+setlocal indent '  '
+setlocal name 'ICAP_PIXELTYPE MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_PIXELTYPE,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal pixeltype.list '${ret:}' ; what the scanner told us
+setlocal pixeltype.index '${get:TW_ENUMERATION.ItemList}' ; point to itemlist
+increment pixeltype.index '${get:pixeltype.index}' -1 ; less 1
+;
+:MAIN.PIXELTYPE.NEXT
+setlocal indent '  '
+increment pixeltype.index '${get:pixeltype.index}' 1 ; next itemlist
+setlocal pixeltype.value '${getindex:pixeltype.list:${get:pixeltype.index}}' ; get the value
+if '${get:pixeltype.value}' == '' goto MAIN.FEEDERENABLED.NEXT ; pixeltypes done for this feederenabled
+;
+setlocal name 'ICAP_PIXELTYPE MSG_SET ${get:pixeltype.value}'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:pixeltype.value}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get CAP_SUPPORTEDCAPS, and loop so we test all values for
+; the current ICAP_PIXELTYPE setting.
+;
+setlocal indent '    '
+setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal supportedcaps.list '${ret:}' ; what the scanner told us
+setlocal supportedcaps.index '${get:TW_ENUMERATION.ItemList}' ; point to itemlist
+increment supportedcaps.index '${get:supportedcaps.index}' -1 ; less 1
+;
+:MAIN.SUPPORTEDCAPS.NEXT
+setlocal indent '    '
+increment supportedcaps.index '${get:supportedcaps.index}' 1 ; next itemlist
+setlocal supportedcaps.value '${getindex:supportedcaps.list:${get:supportedcaps.index}}' ; get the value
+if '${get:supportedcaps.value}' ~contains '0x' goto MAIN.SUPPORTEDCAPS.NEXT ; nonstandard TWAIN, skip it
+if '${get:supportedcaps.value}' == '' goto MAIN.PIXELTYPE.NEXT ; supportedcaps done for this pixeltype
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get the CAP.ValueAfterReset, and skip if it's UNDEFINED
+;
+setlocal valueafterreset '${get:${get:supportedcaps.value}.ValueAfterReset}'
+if '${get:valueafterreset}' == 'UNDEFINED' goto MAIN.SUPPORTEDCAPS.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Reset the current value...
+;
+setlocal name '${get:supportedcaps.value} MSG_GETCURRENT'
+dsmentry src ds dg_control dat_capability msg_getcurrent '${get:supportedcaps.value},0,0,0'
+setlocal capability '${ret:}'
+if '${sts:}' == 'CAPSEQERROR' goto MAIN.SUPPORTEDCAPS.NEXT ; skip items that we can't access right now
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Compare the values for a TW_ONEVALUE...
+;
+setlocal name '${get:supportedcaps.value} ${getindex:capability:${get:TW_ONEVALUE.Item}} == ${get:valueafterreset}'
+if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' == 'TWON_ARRAY' goto MAIN.COMPARE.ARRAY.EMPTY
+if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MAIN.ERROR.ECHOPASSFAIL
+if '${get:valueafterreset}' contains '|' goto MAIN.MULTIPLE.VALUES
+if '${getindex:capability:${get:TW_ONEVALUE.Item}}' != '${get:valueafterreset}' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.SUPPORTEDCAPS.NEXT
+;
+:MAIN.MULTIPLE.VALUES
+if '|${get:valueafterreset}|' !~contains '|${getindex:capability:${get:TW_ONEVALUE.Item}}|' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.SUPPORTEDCAPS.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Compare the values for a TW_ARRAY that should be empty...
+;
+:MAIN.COMPARE.ARRAY.EMPTY
+setlocal name '${get:supportedcaps.value} array is empty'
+if '${get:valueafterreset}' != '' goto MAIN.COMPARE.ARRAY.NOTEMPTY
+if '${getindex:capability:${get:TW_ARRAY.ItemList}}' != '' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.SUPPORTEDCAPS.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Compare the values for a TW_ARRAY that has mandatory values...
+;
+:MAIN.COMPARE.ARRAY.NOTEMPTY
+setlocal name '${get:supportedcaps.value} array with values'
+if '${getindex:capability:${get:TW_ARRAY.ItemList}}' == '' goto MAIN.ERROR.ECHOPASSFAIL
+;
+setlocal valueafterreset.index '-1'
+:MAIN.VALUE.NEXT
+increment valueafterreset.index '${get:valueafterreset.index}' 1
+setlocal value '${getindex:valueafterreset:${get:valueafterreset.index}}'
+if '${get:value}' == '' goto MAIN.SUPPORTEDCAPS.NEXT ; we did okay, go to the next capability
+setlocal name '${get:supportedcaps.value} contains ${get:value}'
+if '${get:capability}' !~contains '${get:value}' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.VALUE.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass? (do an extra check)
+:MAIN.PASS
+run '${folder:certification}/Closeds' '${arg:1}' embedded
+echo.passfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
+run '${folder:certification}/Closeds' '${arg:1}' embedded
+echo.passfail 'SUMMARY' 'fail'
+setglobal '${arg:2}' 'fail'
+return 'fail'

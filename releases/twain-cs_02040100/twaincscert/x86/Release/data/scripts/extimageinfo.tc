@@ -1,0 +1,85 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Extimageinfo
+;   Get the TW_EXTIMAGEINFO for this image, must be called in state 7
+;
+; Arguments
+;   arg:1 - global variable to put the return data into
+;   arg:2 - CSV list of TWEI_* values to get
+;
+; Globals
+;   (none)
+;
+; Locals
+;   twextimageinfo - numinfos and array of structures
+;   twextimageinfo.numinfos - counter
+;   twextimageinfo.twinfo - array of tw_info structures
+;   comma - CSV seperator
+;   tweilist - CSV list of TWEI_* values to get
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Init stuff...
+;
+setlocal twextimageinfo '0'
+setlocal twextimageinfo.numinfos '0'
+setlocal twextimageinfo.twinfo ''
+setlocal comma ''
+setlocal tweilist '${arg:2}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Walk the TWE_* values...
+;
+if '${arg:${get:twextimageinfo.numinfos}}' == '' goto MAIN.DATEXTIMAGEINGO
+:MAIN.NEXTTWINFO
+setlocal twei '${getindex:tweilist:${get:twextimageinfo.numinfos}}' ; next item
+if '${get:twei}' == '' goto MAIN.SETTWEXTIMAGEINFO ; we've exhausted the list
+setlocal twextimageinfo.twinfo '${get:twextimageinfo.twinfo}${get:comma}${get:twei},0,0,0,0' ; build the data
+increment twextimageinfo.numinfos '${get:twextimageinfo.numinfos}' '1' ; increment for the next item
+setlocal comma ',' ; turn on comma
+goto MAIN.NEXTTWINFO ; next twei
+:MAIN.SETTWEXTIMAGEINFO
+setlocal twextimageinfo '${get:twextimageinfo.numinfos},${get:twextimageinfo.twinfo}' ; build the final data
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Send the command...
+;
+:MAIN.DATEXTIMAGEINGO
+dsmentry src ds dg_image dat_extimageinfo msg_get '${get:twextimageinfo}'
+echo.progress 'extimageinfo/get' '${sts:} - ${ret:}'
+if '${sts:}' != 'SUCCESS' goto MAIN.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We've passed...
+;
+:MAIN.PASS
+setglobal '${arg:1}' '${ret:}'
+return 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We've run into a problem...
+;
+:MAIN.FAIL
+echo.progress 'ERROR' '${sts:}'
+return 'fail'
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We're run into a problem...
+;
+:MAIN.FAIL
+return 'fail'

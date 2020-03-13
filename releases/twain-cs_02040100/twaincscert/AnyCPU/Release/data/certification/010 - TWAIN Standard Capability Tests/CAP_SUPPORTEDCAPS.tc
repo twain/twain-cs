@@ -1,0 +1,140 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_SUPPORTEDCAPS
+;   Confirm Basic Negotiation with CAP_SUPPORTEDCAPS
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   sys_capabilitytable - from LoadTables.tc
+;
+; Locals
+;   name - current test being done
+;   certifyresult - result of the tests
+;   supportedcaps - data from MSG_GET for CAP_SUPPORTEDCAPS
+;   capabilitytable.index - index of current value
+;   capabilitytable.value - current value based on capabilitytable.index
+;   capabilitytable.flags - current value's flags
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+echo.titletest 'CAP_SUPPORTEDCAPS v1.0 11-Mar-2020'
+setlocal supportedcaps ''
+setlocal certifyresult 'pass' ; assume success
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check for TWAIN protocol 2.4 or higher
+; We won't abort on this, since it may be useful for folks to run the
+; tests, but we won't let it pass...
+;
+setlocal name 'Check for TWAIN 2.4 protocol or higher'
+if '${ds:${get:TW_IDENTITY.ProtocolMajor}}' >= 3 goto MAIN.PROTOCOLVERSION.PASS ; >=3 is good
+if '${ds:${get:TW_IDENTITY.ProtocolMajor}}' < 2 goto MAIN.PROTOCOLVERSION.FAIL ; <2 is bad
+if '${ds:${get:TW_IDENTITY.ProtocolMinor}}' < 4 goto MAIN.PROTOCOLVERSION.FAIL ; <2.4 is bad
+goto MAIN.PROTOCOLVERSION.PASS
+;
+:MAIN.PROTOCOLVERSION.FAIL
+echo.passfail '${get:name}' 'fail - ${ds:${get:TW_IDENTITY.ProtocolMajor}}.${ds:${get:TW_IDENTITY.ProtocolMinor}}'
+setlocal certifyresult 'fail'
+goto MAIN.PROTOCOLVERSION.DONE
+;
+:MAIN.PROTOCOLVERSION.PASS
+echo.passfail '${get:name}' 'pass'
+:MAIN.PROTOCOLVERSION.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; MSG_GET CAP_SUPPORTEDCAPS
+; If result is not TWRC_SUCCESS, then end with error
+;
+setlocal name 'MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+setlocal supportedcaps '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_CAPABILITY.Cap is not CAP_SUPPORTEDCAPS, then end with error
+;
+setlocal name 'TW_CAPABILITY.Cap is CAP_SUPPORTEDCAPS'
+if '${getindex:supportedcaps:${get:TW_CAPABILITY.Cap}}' != 'CAP_SUPPORTEDCAPS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_CAPABILITY.ConType is not TWON_ARRAY, then end with error
+;
+setlocal name 'TW_CAPABILITY.ConType is TWON_ARRAY'
+if '${getindex:supportedcaps:${get:TW_CAPABILITY.ConType}}' != 'TWON_ARRAY' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_ARRAY.ItemType is not TWTY_UINT16, then end with error
+;
+setlocal name 'TW_ARRAY.ItemType is TWTY_UINT16'
+if '${getindex:supportedcaps:${get:TW_ARRAY.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If TW_ARRAY.NumItems is equal to zero, then end with error
+;
+setlocal name 'TW_ARRAY.NumItems > 0'
+if '${getindex:supportedcaps:${get:TW_ARRAY.NumItems}}' <= '0' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; SPECNOTE: the tests ask that CAP_SUPPORTEDCAPS, ICAP_PIXELTYPE, ICAP_XFERMECH be
+; confirmed, but the spec lists many manadatory capabilities.  So we'll go through
+; the table to identify them all.  Not the use of the extra commas to make sure we
+; correctly identify full items, and not substrings...
+;
+setlocal name 'Check for mandatory capabilities'
+setlocal capabilitytable.index '-1'
+;
+:MAIN.SUPPORTEDCAPS.NEXT
+increment capabilitytable.index '${get:capabilitytable.index}' 1
+setlocal capabilitytable.value '${getindex:sys_capabilitytable:${get:capabilitytable.index}}'
+if '${get:capabilitytable.value}' == '' goto MAIN.SUPPORTEDCAPS.DONE
+setlocal capabilitytable.flags '${get:${get:capabilitytable.value}.Flags}' ; ex: ICAP_PIXELTYPE.Flags
+if '${get:capabilitytable.flags}' !~contains 'mandatory' goto MAIN.SUPPORTEDCAPS.NEXT ; if not mandatory, skip it
+if ',${get:supportedcaps},' !~contains ',${get:capabilitytable.value},' goto MAIN.ERROR.ECHOPASSFAIL
+goto MAIN.SUPPORTEDCAPS.NEXT
+;
+:MAIN.SUPPORTEDCAPS.DONE
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+if '${get:certifyresult}' != 'pass' goto MAIN.ERROR
+echo.passfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+:MAIN.ERROR
+echo.passfail 'SUMMARY' 'fail'
+return 'fail'
