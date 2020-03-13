@@ -153,7 +153,8 @@ XCOPY "$(ProjectDir)data" "$(TargetDir)data" /i /e /y /q
 </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>XCOPY "$(ProjectDir)data" "$(TargetDir)data" /i /e /y /q
+    <PreBuildEvent>call "$(ProjectDir)version.bat"
+XCOPY "$(ProjectDir)data" "$(TargetDir)data" /i /e /y /q
 cd "$(TargetDir)data\.."
 powershell Compress-Archive -Force "$(ProjectDir)data" "$(ProjectDir)Properties/data.zip"</PreBuildEvent>
   </PropertyGroup>

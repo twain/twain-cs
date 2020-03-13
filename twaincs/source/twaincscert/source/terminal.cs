@@ -163,31 +163,19 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdWait,             new string[] { "wait" }));
 
             // Create our certification folder...
-            try
+            if (!CreateTwainSelfCertDataFolder(false))
             {
-                m_szTwainSelfCertFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
-                if (!Directory.Exists(m_szTwainSelfCertFolder))
-                {
-                    Directory.CreateDirectory(m_szTwainSelfCertFolder);
-                }
-                if (!Directory.Exists(Path.Combine(m_szTwainSelfCertFolder, "data")))
-                {
-                    string szDataZip = Path.Combine(m_szTwainSelfCertFolder, "data.zip");
-                    File.WriteAllBytes(szDataZip, twaincscert.Properties.Resources.data);
-                    ZipFile.ExtractToDirectory(szDataZip, m_szTwainSelfCertFolder);
-                    File.Delete(szDataZip);
-                }
-            }
-            catch (Exception exception)
-            {
-                Log.Error("Couldn't create the data folder - " + exception.Message);
+                DisplayRed("Couldn't create the data folder...");
+                Log.Error("Couldn't create the data folder...");
             }
 
-            // If we see a data folder in our working directory, we'll use that...
+            // If we see a data folder in our working directory, we'll use that for
+            // everything except certification...
             if (Directory.Exists("data"))
             {
                 Directory.SetCurrentDirectory("data");
             }
+
             // Otherwise, try for the "TWAIN Self Certification" folder...
             else
             {
@@ -2543,6 +2531,7 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdCertify(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            bool blDeveloper = false;
             bool blRunningScriptRestore = m_blRunningScript;
             bool blVerboseRestore = m_blVerbose;
             bool blTwainSuccess = false;
@@ -2577,11 +2566,32 @@ namespace twaincscert
 
             // Tell the user the plan...
             DisplayYellow("TWAIN Certification");
+
+            // Refresh the scripts...
+            Display("");
+            if (!CreateTwainSelfCertDataFolder(true))
+            {
+                DisplayRed("Failed to refresh the certification scripts, try manually deleting the 'TWAIN Self Certification' folder on your desktop...");
+                m_blRunningScript = blRunningScriptRestore;
+                m_blVerbose = blVerboseRestore;
+                return (false);
+            }
+
+            // Developer warning...
+            string szLocation = Assembly.GetEntryAssembly().Location;
+            if (szLocation.Contains(Path.DirectorySeparatorChar + "Debug" + Path.DirectorySeparatorChar) || szLocation.Contains(Path.DirectorySeparatorChar + "Release" + Path.DirectorySeparatorChar))
+            {
+                DisplayYellow("  Developer environment detected...");
+                blDeveloper = true;
+            }
+            Display("");
+
+            // Info...
             Display("  This tool certifies TWAIN drivers.  To complete certification it must be run on.");
             Display("  all platforms supported by the driver:  Windows, Linux, macOS for 32-bit and 64-bit.");
             Display("");
             Display("  The tool will ask for some information, and begin the test, which only takes a");
-            Display("  few minutes to complete.  On success the tool will provide instructions on how");
+            Display("  few minutes to complete.  On success the tool will provide instructions on how to");
             Display("  submit information about a TWAIN driver that has passed certification.");
 
             // Show the available scanners, so the user can pick one...
@@ -2618,7 +2628,7 @@ namespace twaincscert
 
                 // Walk the driver list...
                 functionarguments = new Interpreter.FunctionArguments();
-                functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_identity", "msg_getfirst", "0,0,0,ENGLISH_USA,USA,,0,0,0x0,,," };
+                functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_identity", "msg_getfirst", "0,0,0,0,0,,0,0,0x0,,," };
                 while (true)
                 {
                     // Ask for this item...
@@ -2632,12 +2642,15 @@ namespace twaincscert
                     string[] aszTwidentity = CSV.Parse(functionarguments.szReturnValue);
                     if (aszTwidentity.Length == 12)
                     {
-                        aszDrivers.Add(aszTwidentity[11]);
+                        // ProductName / Version.MajorVersion / Version.MinorVersion
+                        if (aszTwidentity[1].Length == 1) aszTwidentity[1] = "0" + aszTwidentity[1];
+                        if (aszTwidentity[2].Length == 1) aszTwidentity[2] = "0" + aszTwidentity[2];
+                        aszDrivers.Add("\"" + aszTwidentity[11] + "\"," + "(v" + aszTwidentity[1] + "." + aszTwidentity[2] + ")");
                     }
 
                     // Next entry...
                     functionarguments = new Interpreter.FunctionArguments();
-                    functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_identity", "msg_getnext", "0,0,0,ENGLISH_USA,USA,,0,0,0x0,,," };
+                    functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_identity", "msg_getnext", "0,0,0,0,0,,0,0,0x0,,," };
                 }
 
                 // Close the DSM...
@@ -2667,7 +2680,8 @@ namespace twaincscert
                 DisplayYellow("Available TWAIN Drivers:");
                 foreach (string szDriver in aszDrivers)
                 {
-                    Display("  " + szDriver);
+                    string[] aszDriver = CSV.Parse(szDriver);
+                    Display("  " + aszDriver[0] + " " + aszDriver[1]);
                 }
 
                 // Ask for a scanner...
@@ -2693,7 +2707,8 @@ namespace twaincscert
                         // stuff like 1000 vs 1000X...
                         foreach (string szDriver in aszDrivers)
                         {
-                            if (szDriver.ToLowerInvariant().EndsWith(szSelection.ToLowerInvariant()))
+                            string[] aszDriver = CSV.Parse(szDriver);
+                            if (aszDriver[0].ToLowerInvariant().EndsWith(szSelection.ToLowerInvariant()))
                             {
                                 szSelection = szDriver;
                                 blFound = true;
@@ -2705,7 +2720,8 @@ namespace twaincscert
                         {
                             foreach (string szDriver in aszDrivers)
                             {
-                                if (szDriver.ToLowerInvariant().Contains(szSelection.ToLowerInvariant()))
+                                string[] aszDriver = CSV.Parse(szDriver);
+                                if (aszDriver[0].ToLowerInvariant().Contains(szSelection.ToLowerInvariant()))
                                 {
                                     szSelection = szDriver;
                                     blFound = true;
@@ -2734,7 +2750,8 @@ namespace twaincscert
             Display("");
             while (true)
             {
-                interpreter.SetPrompt("Certify '" + szSelection + "'" + " (yes/no)? ");
+                string[] aszDriver = CSV.Parse(szSelection);
+                interpreter.SetPrompt("Certify '" + aszDriver[0] + " " + aszDriver[1] + "'" + " (yes/no)? ");
                 string szAnswer = interpreter.Prompt(m_streamreaderConsole, 0);
                 if (szAnswer.ToLowerInvariant().StartsWith("y"))
                 {
@@ -2750,6 +2767,9 @@ namespace twaincscert
 
             // Let's do it!
             {
+                string[] aszDriver = CSV.Parse(szSelection);
+                m_szSelfCertDriverVersion = aszDriver[1];
+
                 Display("");
                 Display("");
                 Display("");
@@ -2766,6 +2786,7 @@ namespace twaincscert
                         DisplayRed("same folder as this application, or the current folder.");
                         m_blRunningScript = blRunningScriptRestore;
                         m_blVerbose = blVerboseRestore;
+                        m_szSelfCertDriverVersion = "";
                         return (false);
                     }
                 }
@@ -2777,11 +2798,11 @@ namespace twaincscert
                 functionarguments = new Interpreter.FunctionArguments();
                 if (m_blVerbose)
                 {
-                    functionarguments.aszCmd = new string[3] { "runv", "certification", szSelection };
+                    functionarguments.aszCmd = new string[4] { "runv", "certification", aszDriver[0], aszDriver[1] };
                 }
                 else
                 {
-                    functionarguments.aszCmd = new string[3] { "run", "certification", szSelection };
+                    functionarguments.aszCmd = new string[4] { "run", "certification", aszDriver[0], aszDriver[1] };
                 }
                 CmdRun(ref functionarguments);
                 blTwainSuccess = (functionarguments.szReturnValue == "pass");
@@ -2791,14 +2812,30 @@ namespace twaincscert
             // Report successful results, and point the user to twaindirect.org...
             if (blTwainSuccess)
             {
-                Display("");
-                Display("");
-                Display("");
-                DisplayGreen("TWAIN Certification passed...");
-                Display("If you are the manufacturer of this driver, please go to the TWAIN");
-                Display("website at https://twain.org to register your scanner.  There is a");
-                Display("'TWAIN Self Certification' folder on your desktop that contains the");
-                Display("report for this run.");
+                if (blDeveloper)
+                {
+                    Display("");
+                    Display("");
+                    Display("");
+                    DisplayYellow("TWAIN Certification passed...");
+                    DisplayYellow("Developer environment detected...");
+                    Display("Please rerun the latest released version of this program before submitting");
+                    Display("the results.  Users are free to confirm drivers on their own, so please");
+                    Display("don't make changes to either the code or the script, unless that change is");
+                    Display("part of an update that will be rolled into a new released version.");
+                }
+                else
+                {
+                    Display("");
+                    Display("");
+                    Display("");
+                    DisplayGreen("TWAIN Certification passed...");
+                    Display("If you are the manufacturer of this driver, please go to the TWAIN website");
+                    Display("at https://twain.org to register your scanner.  There is a 'TWAIN Self");
+                    Display("Certification' folder on your desktop that contains the report for this run.");
+                    Display("This information does not have to be sent, but it is suggested that you keep");
+                    Display("a copy in your records.");
+                }
             }
 
             // Report unsuccessful results, and point the user to twaindirect.org...
@@ -2808,13 +2845,14 @@ namespace twaincscert
                 Display("");
                 Display("");
                 DisplayRed("TWAIN Certification failed...");
-                Display("Please refer to the log files in the 'TWAIN Self Certification' folder");
-                Display("on your desktop for additional information.");
+                Display("Please refer to the log files in the 'TWAIN Self Certification' folder on your");
+                Display("desktop for additional information.");
             }
 
             // All done...
             m_blRunningScript = blRunningScriptRestore;
             m_blVerbose = blVerboseRestore;
+            m_szSelfCertDriverVersion = "";
             return (false);
         }
 
@@ -3855,7 +3893,7 @@ namespace twaincscert
                     return (false);
                 }
                 m_szSelfCertReportProductname = a_functionarguments.aszCmd[2];
-                szFolder = Path.Combine(m_szTwainSelfCertFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
+                szFolder = Path.Combine(m_szTwainSelfCertFolder, Regex.Replace(m_szSelfCertReportProductname + m_szSelfCertDriverVersion, "[^.a-zA-Z0-9]", "_"));
                 szFolder = Path.Combine(szFolder, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                 if (Directory.Exists(szFolder))
                 {
@@ -3880,14 +3918,14 @@ namespace twaincscert
                 {
                     if (string.IsNullOrEmpty(szFolder))
                     {
-                        szFolder = Path.Combine(m_szTwainSelfCertFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_"));
+                        szFolder = Path.Combine(m_szTwainSelfCertFolder, Regex.Replace(m_szSelfCertReportProductname + m_szSelfCertDriverVersion, "[^.a-zA-Z0-9]", "_"));
                         szFolder = Path.Combine(szFolder, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                     }
                     if (!Directory.Exists(szFolder))
                     {
                         Directory.CreateDirectory(szFolder);
                     }
-                    m_szSelfCertReportPath = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname, "[^.a-zA-Z0-9]", "_")) + ".txt";
+                    m_szSelfCertReportPath = Path.Combine(szFolder, Regex.Replace(m_szSelfCertReportProductname + m_szSelfCertDriverVersion, "[^.a-zA-Z0-9]", "_")) + ".txt";
                     File.WriteAllText(m_szSelfCertReportPath, m_stringbuilderSelfCertReport.ToString());
                 }
                 catch (Exception exception)
@@ -4658,6 +4696,192 @@ namespace twaincscert
         #region Private Methods (misc)
 
         /// <summary>
+        /// Create or overwrite the data folder used for certification...
+        /// </summary>
+        private bool CreateTwainSelfCertDataFolder(bool a_blCertifying)
+        {
+            // Init stuff...
+            bool blUpdate = false;
+            string szOriginalFolder = Directory.GetCurrentDirectory();
+            m_szTwainSelfCertFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "TWAIN Self Certification");
+
+            try
+            {
+                // Go somewhere else for a bit so we don't lock up the data folder...
+                Directory.SetCurrentDirectory(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
+
+                // Do this if certifying, we always overwrite the files...
+                if (a_blCertifying)
+                {
+                    blUpdate = true;
+                }
+
+                // Otherwise only create or update if we can't find it, or if we
+                // detect an older version...
+                else
+                {
+                    // Create our certification folder, if it doesn't exist...
+                    if (!Directory.Exists(m_szTwainSelfCertFolder))
+                    {
+                        Directory.CreateDirectory(m_szTwainSelfCertFolder);
+                    }
+
+                    // If we don't have the version.txt file, we're updating...
+                    if (!File.Exists(Path.Combine(m_szTwainSelfCertFolder, "data", "version.txt")))
+                    {
+                        blUpdate = true;
+                    }
+
+                    // Check if the data version is older than us...
+                    else
+                    {
+                        int iMajor = 0;
+                        int iMinor = 0;
+                        int iRevision = 0;
+                        int iBuild = 0;
+                        int iVersionTxt = 0;
+                        int iVersionCurrent = 0;
+
+                        // Get the assembly file version info from the data/version.txt file...
+                        string szVersionTxt = File.ReadAllText(Path.Combine(m_szTwainSelfCertFolder, "data", "version.txt"));
+                        szVersionTxt = szVersionTxt.Trim().Replace("\r", "").Replace("\n", "");
+                        string[] aszVersionTxt = szVersionTxt.Split('.');
+
+                        // Get our current version file version info...
+                        Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                        FileVersionInfo fileversioninfo = FileVersionInfo.GetVersionInfo(assembly.Location);
+                        string[] aszVersionCurrent = fileversioninfo.FileVersion.Split('.');
+
+                        // Panic mode...
+                        if ((aszVersionTxt.Length != 4) || (aszVersionCurrent.Length != 4))
+                        {
+                            blUpdate = true;
+                        }
+
+                        // Keep going...
+                        else
+                        {
+                            // Convert...
+                            if (int.TryParse(aszVersionTxt[0], out iMajor) && int.TryParse(aszVersionTxt[1], out iMinor) && int.TryParse(aszVersionTxt[2], out iRevision) && int.TryParse(aszVersionTxt[3], out iBuild))
+                            {
+                                iVersionTxt = (iMajor * 1000000) + (iMinor * 10000) + (iRevision * 100) + iBuild;
+                            }
+                            if (int.TryParse(aszVersionCurrent[0], out iMajor) && int.TryParse(aszVersionCurrent[1], out iMinor) && int.TryParse(aszVersionCurrent[2], out iRevision) && int.TryParse(aszVersionCurrent[3], out iBuild))
+                            {
+                                iVersionCurrent = (iMajor * 1000000) + (iMinor * 10000) + (iRevision * 100) + iBuild;
+                            }
+
+                            // Compare...
+                            if ((iVersionTxt <= 0) || (iVersionCurrent <= 0) || (iVersionTxt < iVersionCurrent))
+                            {
+                                blUpdate = true;
+                            }
+                        }
+                    }
+                }
+
+                // We're creating or updating...
+                if (blUpdate)
+                {
+                    // Some info...
+                    Display((a_blCertifying ? "  " : "") + "Creating/updating the TWAIN Self Certification data folder...");
+                    Log.Info("Creating/updating the TWAIN Self Certification data folder...");
+
+                    // Create our certification folder, if it doesn't exist...
+                    if (!Directory.Exists(m_szTwainSelfCertFolder))
+                    {
+                        Directory.CreateDirectory(m_szTwainSelfCertFolder);
+                    }
+
+                    // Delete the temporary data folder, if it exists...
+                    string szDataTmp = Path.Combine(m_szTwainSelfCertFolder, "data.tmp");
+                    if (Directory.Exists(szDataTmp))
+                    {
+                        Directory.Delete(szDataTmp, true);
+                    }
+
+                    // Create our temporary data folder...
+                    if (!Directory.Exists(szDataTmp))
+                    {
+                        string szDataZip = Path.Combine(szDataTmp, "data.zip");
+                        Directory.CreateDirectory(szDataTmp);
+                        File.WriteAllBytes(szDataZip, twaincscert.Properties.Resources.data);
+                        ZipFile.ExtractToDirectory(szDataZip, szDataTmp);
+                    }
+
+                    // Copy the temporary data folder to the data folder...
+                    if (!CopyFolder(Path.Combine(m_szTwainSelfCertFolder, "data"), Path.Combine(szDataTmp, "data")))
+                    {
+                        Log.Error("Couldn't merge the data folder...");
+                        Directory.Delete(szDataTmp, true);
+                        Directory.SetCurrentDirectory(szOriginalFolder);
+                        return (false);
+                    }
+
+                    // Cleanup...
+                    Directory.Delete(szDataTmp, true);
+                }
+            }
+            catch (Exception exception)
+            {
+                DisplayRed("Couldn't create or update the data folder - " + exception.Message);
+                Log.Error("Couldn't create or update the data folder - " + exception.Message);
+                Directory.SetCurrentDirectory(szOriginalFolder);
+                return (false);
+            }
+
+            // All done...
+            Directory.SetCurrentDirectory(szOriginalFolder);
+            return (true);
+        }
+
+        /// <summary>
+        /// Copy one folder to another...
+        /// </summary>
+        /// <param name="a_szDst"></param>
+        /// <param name="a_szSrc"></param>
+        public bool CopyFolder(string a_szDst, string a_szSrc)
+        {
+            DirectoryInfo directoryinfoSrc = new DirectoryInfo(a_szSrc);
+            DirectoryInfo directoryinfoDst = new DirectoryInfo(a_szDst);
+            return (CopyAllFiles(directoryinfoDst, directoryinfoSrc));
+        }
+
+        /// <summary>
+        /// Copy files, with recursion...
+        /// </summary>
+        /// <param name="a_directoryinfoSrc"></param>
+        /// <param name="a_directoryinfoDst"></param>
+        public bool CopyAllFiles(DirectoryInfo a_directoryinfoDst, DirectoryInfo a_directoryinfoSrc)
+        {
+            try
+            {
+                Directory.CreateDirectory(a_directoryinfoDst.FullName);
+
+                // Copy each file into the new directory.
+                foreach (FileInfo fileinfo in a_directoryinfoSrc.GetFiles())
+                {
+                    fileinfo.CopyTo(Path.Combine(a_directoryinfoDst.FullName, fileinfo.Name), true);
+                }
+
+                // Copy each subdirectory using recursion.
+                foreach (DirectoryInfo directoryinfoSrcSubDir in a_directoryinfoSrc.GetDirectories())
+                {
+                    DirectoryInfo directoryinfoDstSubDir = a_directoryinfoDst.CreateSubdirectory(directoryinfoSrcSubDir.Name);
+                    CopyAllFiles(directoryinfoSrcSubDir, directoryinfoDstSubDir);
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.Error("copy failed - " + exception.Message);
+                return (false);
+            }
+
+            // All done...
+            return (true);
+        }
+
+        /// <summary>
         /// Display text (if allowed)...
         /// </summary>
         /// <param name="a_szText">the text to display</param>
@@ -5080,7 +5304,7 @@ namespace twaincscert
                                 if (aszDs.Length >= 12)
                                 {
                                     szValue = m_szTwainSelfCertFolder;
-                                    szValue = Path.Combine(szValue, Regex.Replace(aszDs[11], "[^.a-zA-Z0-9]", "_"));
+                                    szValue = Path.Combine(szValue, Regex.Replace(aszDs[11] + m_szSelfCertDriverVersion, "[^.a-zA-Z0-9]", "_"));
                                     szValue = Path.Combine(szValue, TWAIN.GetPlatform() + "_" + TWAIN.GetMachineWordBitSize());
                                 }
                             }
@@ -5647,6 +5871,7 @@ namespace twaincscert
         private string m_szSelfCertReportPath;
         private string m_szSelfCertReportProductname;
         private string m_szTwainSelfCertFolder;
+        private string m_szSelfCertDriverVersion;
 
         /// <summary>
         /// The opening banner (program, version, etc)...
