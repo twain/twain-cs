@@ -36,7 +36,6 @@ using System.IO;
 using System.Security.Permissions;
 using System.Windows.Forms;
 using TWAINWorkingGroup;
-using TWAINWorkingGroupToolkit;
 
 namespace TWAINCSScan
 {
@@ -58,7 +57,7 @@ namespace TWAINCSScan
         /// </summary>
         /// <param name="a_twaincstool"></param>
         [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
-        public FormSetup(ref TWAINCSToolkit a_twaincstoolkit, string a_szProductDirectory)
+        public FormSetup(FormScan a_formscan, ref TWAIN a_twain, string a_szProductDirectory)
         {
             TWAIN.STS sts;
             string szStatus;
@@ -75,7 +74,8 @@ namespace TWAINCSScan
             // Windows:     C:\Users\USERNAME\AppData\Roaming (or C:\Documents and Settings\USERNAME\Application Data on XP)
             // Linux:       /home/USERNAME/.config (or /root/.config for superuser)
             // Mac OS X:    /Users/USERNAME/.config (or /var/root/.config for superuser)
-            m_twaincstoolkit = a_twaincstoolkit;
+            m_formscan = a_formscan;
+            m_twain = a_twain;
             m_szTwainscanFolder = Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal),"twain"),"twaincsscan");
             m_szSettingsFolder = Path.Combine(m_szTwainscanFolder,"settings");
             m_szSettingsFolder = Path.Combine(m_szSettingsFolder, a_szProductDirectory);
@@ -96,14 +96,13 @@ namespace TWAINCSScan
             m_textboxFolder.Text = RestoreFolder();
             m_textboxUseUiSettings.Text = "";
 
-            // Make sure we prime the value...
-            m_twaincstoolkit.SetImagePath(m_textboxFolder.Text,0);
-
             // Check for support of Custom DS Data...
             szStatus = "";
-            szCapability = "CAP_CUSTOMDSDATA";
-            sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_CAPABILITY", "MSG_GETCURRENT", ref szCapability, ref szStatus);
-            if ((sts != TWAIN.STS.SUCCESS) || !szCapability.EndsWith(",1"))
+            TWAIN.TW_CAPABILITY twcapability = default(TWAIN.TW_CAPABILITY);
+            m_twain.CsvToCapability(ref twcapability, ref szStatus, "CAP_CUSTOMDSDATA,0,0,0");
+            sts = m_twain.DatCapability(TWAIN.DG.CONTROL, TWAIN.MSG.GETCURRENT, ref twcapability);
+            szCapability = m_twain.CapabilityToCsv(twcapability);
+            if ((sts != TWAIN.STS.SUCCESS) || (!szCapability.EndsWith(",1") && !szCapability.EndsWith(",TRUE")))
             {
                 m_labelUseUiSettings.Enabled = false;
                 m_textboxUseUiSettings.Enabled = false;
@@ -120,7 +119,7 @@ namespace TWAINCSScan
                     szUsrUiSettings = Path.Combine(m_szSettingsFolder, m_textboxUseUiSettings.Text);
                     if (File.Exists(szUsrUiSettings))
                     {
-                        m_twaincstoolkit.RestoreSnapshot(szUsrUiSettings);
+                        m_formscan.RestoreSnapshot(szUsrUiSettings);
                     }
                     else
                     {
@@ -139,6 +138,15 @@ namespace TWAINCSScan
             return (m_buttonUseUiSettings.Enabled);
         }
 
+        /// <summary>
+        /// Place to put images (empty is okay)...
+        /// </summary>
+        /// <returns></returns>
+        public string GetImageFolder()
+        {
+            return (m_textboxFolder.Text);
+        }
+
         #endregion
 
 
@@ -154,7 +162,7 @@ namespace TWAINCSScan
         /// <param name="e"></param>
         private void FormSetup_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if ((m_twaincstoolkit.GetImagePath() != "") && !Directory.Exists(m_twaincstoolkit.GetImagePath()))
+            if ((m_textboxFolder.Text != "") && !Directory.Exists(m_textboxFolder.Text))
             {
                 MessageBox.Show("Please enter a valid Destination Folder.");
                 e.Cancel = true;
@@ -283,7 +291,6 @@ namespace TWAINCSScan
             if (folderbrowserdialog.ShowDialog() == DialogResult.OK)
             {
                 m_textboxFolder.Text = folderbrowserdialog.SelectedPath;
-                m_twaincstoolkit.SetImagePath(folderbrowserdialog.SelectedPath, 0);
                 SaveFolder(m_textboxFolder.Text);
             }
         }
@@ -364,7 +371,7 @@ namespace TWAINCSScan
             if (savefiledialog.ShowDialog() == DialogResult.OK)
             {
                 m_textboxUseUiSettings.Text = Path.GetFileName(savefiledialog.FileName);
-                m_twaincstoolkit.SaveSnapshot(Path.Combine(m_szSettingsFolder,m_textboxUseUiSettings.Text));
+                m_formscan.SaveSnapshot(Path.Combine(m_szSettingsFolder,m_textboxUseUiSettings.Text));
                 SaveSetting(m_textboxUseUiSettings.Text);
             }
         }
@@ -376,10 +383,10 @@ namespace TWAINCSScan
         /// <param name="e"></param>
         private void m_buttonSetup_Click(object sender, EventArgs e)
         {
-            string szTwmemref = "1,0," + Handle;
-            string szStatus = "";
-            TWAIN.STS sts;
-            sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDSUIONLY", ref szTwmemref, ref szStatus);
+            m_formscan.ClearEvents();
+            TWAIN.TW_USERINTERFACE twuserinterface = default(TWAIN.TW_USERINTERFACE);
+            m_twain.CsvToUserinterface(ref twuserinterface, "TRUE,FALSE," + Handle);
+            m_twain.DatUserinterface(TWAIN.DG.CONTROL, TWAIN.MSG.ENABLEDSUIONLY, ref twuserinterface);
         }
 
         /// <summary>
@@ -412,7 +419,7 @@ namespace TWAINCSScan
             if (openfiledialog.ShowDialog() == DialogResult.OK)
             {
                 m_textboxUseUiSettings.Text = Path.GetFileName(openfiledialog.FileName);
-                m_twaincstoolkit.RestoreSnapshot(Path.Combine(m_szSettingsFolder, m_textboxUseUiSettings.Text));
+                m_formscan.RestoreSnapshot(Path.Combine(m_szSettingsFolder, m_textboxUseUiSettings.Text));
                 SaveSetting(m_textboxUseUiSettings.Text);
             }
         }
@@ -424,7 +431,6 @@ namespace TWAINCSScan
         /// <param name="e"></param>
         private void m_textboxFolder_TextChanged(object sender, EventArgs e)
         {
-            m_twaincstoolkit.SetImagePath(m_textboxFolder.Text, 0);
             SaveFolder(m_textboxFolder.Text);
         }
 
@@ -449,7 +455,12 @@ namespace TWAINCSScan
         /// <summary>
         /// Access to the TWAIN driver...
         /// </summary>
-        private TWAINCSToolkit m_twaincstoolkit;
+        private TWAIN m_twain;
+
+        /// <summary>
+        /// Access to our main form...
+        /// </summary>
+        private FormScan m_formscan;
 
         #endregion
     }

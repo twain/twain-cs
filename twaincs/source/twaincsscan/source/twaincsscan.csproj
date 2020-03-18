@@ -110,10 +110,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\bin\$(Platform)\$(Configuration)\TWAIN.dll</HintPath>
     </Reference>
-    <Reference Include="TWAINCSToolkit">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\twaincstool\source\bin\$(Platform)\$(Configuration)\TWAINCSToolkit.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FormScan.cs">

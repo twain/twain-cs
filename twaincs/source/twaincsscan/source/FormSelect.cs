@@ -33,12 +33,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
-using TWAINWorkingGroupToolkit;
+using TWAINWorkingGroup;
 
 namespace TWAINCSScan
 {
@@ -52,9 +48,9 @@ namespace TWAINCSScan
         /// <summary>
         /// Our constructor...
         /// </summary>
-        /// <param name="a_aszIdentity">list of scanners to show</param>
+        /// <param name="a_lszIdentity">list of scanners to show</param>
         /// <param name="a_szDefault">the default selection</param>
-        public FormSelect(string[] a_aszIdentity, string a_szDefault)
+        public FormSelect(List<string> a_lszIdentity, string a_szDefault)
         {
             string[] aszIdentity;
             string[] aszDefault;
@@ -63,15 +59,15 @@ namespace TWAINCSScan
             InitializeComponent();
 
             // Explode the default...
-            aszDefault = TWAINCSToolkit.CsvParse(a_szDefault);
+            aszDefault = CSV.Parse(a_szDefault);
 
             // Suspend updating...
             m_listboxSelect.BeginUpdate();
 
             // Populate our driver list...
-            foreach (string sz in a_aszIdentity)
+            foreach (string sz in a_lszIdentity)
             {
-                aszIdentity = TWAINCSToolkit.CsvParse(sz);
+                aszIdentity = CSV.Parse(sz);
                 m_listboxSelect.Items.Add(aszIdentity[11].ToString());
             }
 

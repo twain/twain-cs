@@ -1143,9 +1143,6 @@ namespace twaincscert
                 {
                     break;
                 }
-
-                // Process what we got...
-                //WriteOutput("*** DeviceEvent: " + m_twain.DeviceeventToCsv(twdeviceevent) + Environment.NewLine);
             }
 
             // Return a status, in case we ever need it for anything...
@@ -2656,6 +2653,7 @@ namespace twaincscert
                 // Close the DSM...
                 functionarguments = new Interpreter.FunctionArguments();
                 functionarguments.aszCmd = new string[] { "dsmentry", "src", "null", "dg_control", "dat_parent", "msg_closedsm", "hwnd" };
+                CmdDsmEntry(ref functionarguments);
 
                 // Unload the DSM...
                 functionarguments = new Interpreter.FunctionArguments();
@@ -3316,7 +3314,7 @@ namespace twaincscert
                         TWAIN.TiffBitonalUncompressed tiffbitonaluncompressed;
                         tiffbitonaluncompressed = new TWAIN.TiffBitonalUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)keyvalue.iBytes);
                         intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(Marshal.SizeOf(tiffbitonaluncompressed) + keyvalue.iBytes));
-                        NativeMethods.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffbitonaluncompressed)), intptrPtr, keyvalue.iBytes);
+                        TWAIN.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffbitonaluncompressed)), intptrPtr, keyvalue.iBytes);
                         Marshal.StructureToPtr(tiffbitonaluncompressed, intptrPtr, true);
                         SetVariable(keyvalue.szKey, keyvalue.szValue, (int)(Marshal.SizeOf(tiffbitonaluncompressed) + keyvalue.iBytes), VariableScope.Local);
                     }
@@ -3327,7 +3325,7 @@ namespace twaincscert
                         TWAIN.TiffBitonalG4 tiffbitonalg4;
                         tiffbitonalg4 = new TWAIN.TiffBitonalG4((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)keyvalue.iBytes);
                         intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(Marshal.SizeOf(tiffbitonalg4) + keyvalue.iBytes));
-                        NativeMethods.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffbitonalg4)), intptrPtr, keyvalue.iBytes);
+                        TWAIN.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffbitonalg4)), intptrPtr, keyvalue.iBytes);
                         Marshal.StructureToPtr(tiffbitonalg4, intptrPtr, true);
                         SetVariable(keyvalue.szKey, keyvalue.szValue, (int)(Marshal.SizeOf(tiffbitonalg4) + keyvalue.iBytes), VariableScope.Local);
                     }
@@ -3338,7 +3336,7 @@ namespace twaincscert
                         TWAIN.TiffGrayscaleUncompressed tiffgrayscaleuncompressed;
                         tiffgrayscaleuncompressed = new TWAIN.TiffGrayscaleUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)keyvalue.iBytes);
                         intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(Marshal.SizeOf(tiffgrayscaleuncompressed) + keyvalue.iBytes));
-                        NativeMethods.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffgrayscaleuncompressed)), intptrPtr, keyvalue.iBytes);
+                        TWAIN.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffgrayscaleuncompressed)), intptrPtr, keyvalue.iBytes);
                         Marshal.StructureToPtr(tiffgrayscaleuncompressed, intptrPtr, true);
                         SetVariable(keyvalue.szKey, keyvalue.szValue, (int)(Marshal.SizeOf(tiffgrayscaleuncompressed) + keyvalue.iBytes), VariableScope.Local);
                     }
@@ -3355,7 +3353,7 @@ namespace twaincscert
                         TWAIN.TiffColorUncompressed tiffcoloruncompressed;
                         tiffcoloruncompressed = new TWAIN.TiffColorUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)keyvalue.iBytes);
                         intptrPtr = Marshal.ReAllocHGlobal(intptrPtr, (IntPtr)(Marshal.SizeOf(tiffcoloruncompressed) + keyvalue.iBytes));
-                        NativeMethods.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffcoloruncompressed)), intptrPtr, keyvalue.iBytes);
+                        TWAIN.MemMove((IntPtr)((UInt64)intptrPtr + (UInt64)Marshal.SizeOf(tiffcoloruncompressed)), intptrPtr, keyvalue.iBytes);
                         Marshal.StructureToPtr(tiffcoloruncompressed, intptrPtr, true);
                         SetVariable(keyvalue.szKey, keyvalue.szValue, (int)(Marshal.SizeOf(tiffcoloruncompressed) + keyvalue.iBytes), VariableScope.Local);
                     }
@@ -3398,7 +3396,7 @@ namespace twaincscert
                         return (false);
                     }
 
-                    // Only do this bit of there's something to do...
+                    // Only do this bit if there's something to do...
                     if (twimagememxfer.BytesWritten > 0)
                     {
                         keyvalue.szKey = a_functionarguments.aszCmd[2];
@@ -3414,7 +3412,7 @@ namespace twaincscert
                                     DisplayError("alloc failed <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
                                     return (false);
                                 }
-                                NativeMethods.MemCpy(intptrPtr, twimagememxfer.Memory.TheMem, (int)twimagememxfer.BytesWritten);
+                                TWAIN.MemCpy(intptrPtr, twimagememxfer.Memory.TheMem, (int)twimagememxfer.BytesWritten);
                                 SetVariable(keyvalue.szKey, intptrPtr.ToString(), (int)twimagememxfer.BytesWritten, VariableScope.Local);
                             }
                             // We're appending...
@@ -3427,7 +3425,7 @@ namespace twaincscert
                                     DisplayError("alloc failed <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
                                     return (false);
                                 }
-                                NativeMethods.MemCpy((IntPtr)((UInt64)intptrPtr + (UInt64)keyvalue.iBytes), twimagememxfer.Memory.TheMem, (int)twimagememxfer.BytesWritten);
+                                TWAIN.MemCpy((IntPtr)((UInt64)intptrPtr + (UInt64)keyvalue.iBytes), twimagememxfer.Memory.TheMem, (int)twimagememxfer.BytesWritten);
                                 SetVariable(keyvalue.szKey, intptrPtr.ToString(), keyvalue.iBytes + (int)twimagememxfer.BytesWritten, VariableScope.Local);
                             }
                         }
@@ -3557,7 +3555,7 @@ namespace twaincscert
 
                         case "memfile":
                         case "memory":
-                            iResult = NativeMethods.WriteImageFile(szFolder, intptrPtr, keyvalue.iBytes, out szFilename);
+                            iResult = TWAIN.WriteImageFile(szFolder, intptrPtr, keyvalue.iBytes, out szFilename);
                             if (iResult == -1)
                             {
                                 DisplayError("image save failed <" + szFolder + ">", a_functionarguments);
@@ -9580,147 +9578,6 @@ namespace twaincscert
 
         [DllImport("user32.dll")]
         public static extern IntPtr DefWindowProc(IntPtr hWnd, int iMsg, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("kernel32.dll", EntryPoint = "CopyMemory", SetLastError = false)]
-        private static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
-
-        [DllImport("libc", EntryPoint = "memcpy", SetLastError = false)]
-        private static extern void memcpy(IntPtr dest, IntPtr src, IntPtr count);
-
-        /// <summary>
-        /// Copy intptr to intptr...
-        /// </summary>
-        /// <param name="dest"></param>
-        /// <param name="src"></param>
-        /// <param name="count"></param>
-        public static void MemCpy(IntPtr dest, IntPtr src, int count)
-        {
-            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
-            {
-                CopyMemory(dest, src, (uint)count);
-            }
-            else
-            {
-                memcpy(dest, src, (IntPtr)count);
-            }
-        }
-
-        [DllImport("kernel32.dll", EntryPoint = "MoveMemory", SetLastError = false)]
-        private static extern void MoveMemory(IntPtr dest, IntPtr src, uint count);
-
-        [DllImport("libc", EntryPoint = "memmove", SetLastError = false)]
-        private static extern void memmove(IntPtr dest, IntPtr src, IntPtr count);
-
-        /// <summary>
-        /// Safely move intptr to intptr...
-        /// </summary>
-        /// <param name="dest"></param>
-        /// <param name="src"></param>
-        /// <param name="count"></param>
-        public static void MemMove(IntPtr dest, IntPtr src, int count)
-        {
-            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
-            {
-                MoveMemory(dest, src, (uint)count);
-            }
-            else
-            {
-                memmove(dest, src, (IntPtr)count);
-            }
-        }
-
-        [DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern Int32 _wfopen_s(out IntPtr pFile, string filename, string mode);
-
-        [DllImport("libc", CharSet = CharSet.Ansi, SetLastError = true, BestFitMapping=false, ThrowOnUnmappableChar = true)]
-        private static extern IntPtr fopen([MarshalAs(UnmanagedType.LPStr)] string filename, [MarshalAs(UnmanagedType.LPStr)] string mode);
-
-        [DllImport("msvcrt.dll", EntryPoint = "fwrite", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
-        private static extern IntPtr fwriteWin(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
-
-        [DllImport("libc", EntryPoint = "fwrite", SetLastError = true)]
-        private static extern IntPtr fwrite(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
-
-        [DllImport("msvcrt.dll", EntryPoint = "fclose", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
-        private static extern IntPtr fcloseWin(IntPtr file);
-
-        [DllImport("libc", EntryPoint = "fclose", SetLastError = true)]
-        private static extern IntPtr fclose(IntPtr file);
-
-        /// <summary>
-        /// Write stuff to a file without having to rebuffer it...
-        /// </summary>
-        /// <param name="a_szFilename"></param>
-        /// <param name="a_intptrPtr"></param>
-        /// <param name="a_iBytes"></param>
-        /// <returns></returns>
-        public static int WriteImageFile(string a_szFilename, IntPtr a_intptrPtr, int a_iBytes, out string a_szFinalFilename)
-        {
-            // Init stuff...
-            a_szFinalFilename = "";
-
-            // Try to write our file...
-            try
-            {
-                // If we don't have an extension, try to add one...
-                if (!Path.GetFileName(a_szFilename).Contains(".") && (a_iBytes >= 2))
-                {
-                    byte[] abData = new byte[2];
-                    Marshal.Copy(a_intptrPtr, abData, 0, 2);
-                    // BMP
-                    if ((abData[0] == 0x42) && (abData[1] == 0x4D))
-                    {
-                        a_szFilename += ".bmp";
-                    }
-                    else if ((abData[0] == 0x49) && (abData[1] == 0x49))
-                    {
-                        a_szFilename += ".tif";
-                    }
-                    else if ((abData[0] == 0xFF) && (abData[1] == 0xD8))
-                    {
-                        a_szFilename += ".jpg";
-                    }
-                }
-
-                // For the caller...
-                a_szFinalFilename = a_szFilename;
-
-                // Handle Windows...
-                if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
-                {
-                    IntPtr intptrFile;
-                    IntPtr intptrBytes = (IntPtr)a_iBytes;
-                    IntPtr intptrCount = (IntPtr)1;
-                    if (_wfopen_s(out intptrFile, a_szFilename, "wb") != 0)
-                    {
-                        return (-1);
-                    }
-                    intptrBytes = fwriteWin(a_intptrPtr, intptrBytes, intptrCount, intptrFile);
-                    fcloseWin(intptrFile);
-                    return ((int)intptrBytes);
-                }
-
-                // Handle everybody else...
-                else
-                {
-                    IntPtr intptrFile;
-                    IntPtr intptrBytes;
-                    intptrFile = fopen(a_szFilename, "w");
-                    if (intptrFile == IntPtr.Zero)
-                    {
-                        return (-1);
-                    }
-                    intptrBytes = fwrite(a_intptrPtr, (IntPtr)a_iBytes, (IntPtr)1, intptrFile);
-                    fclose(intptrFile);
-                    return ((int)intptrBytes);
-                }
-            }
-            catch (Exception exception)
-            {
-                Log.Error("Write file failed <" + a_szFilename + "> - " + exception.Message);
-                return (-1);
-            }
-        }
 
         #endregion
     }

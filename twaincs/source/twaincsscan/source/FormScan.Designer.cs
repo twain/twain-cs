@@ -107,7 +107,7 @@
             this.Controls.Add(this.m_buttonScan);
             this.Controls.Add(this.m_pictureboxImage1);
             this.Name = "FormScan";
-            this.Text = "FormScan";
+            this.Text = "TWAIN C# Scan";
             ((System.ComponentModel.ISupportInitialize)(this.m_pictureboxImage1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.m_pictureboxImage2)).EndInit();
             this.ResumeLayout(false);

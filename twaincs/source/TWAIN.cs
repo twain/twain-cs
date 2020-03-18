@@ -344,6 +344,7 @@ namespace TWAINWorkingGroup
             }
 
             // Activate our thread...
+            /*
             if (m_threadTwain == null)
             {
                 m_twaincommand = new TwainCommand();
@@ -363,6 +364,7 @@ namespace TWAINWorkingGroup
                     }
                 }
             }
+            */
         }
 
         /// <summary>
@@ -772,7 +774,7 @@ namespace TWAINWorkingGroup
             // Allocate memory that we can give to the driver...
             if (m_tweventPreFilterMessage.pEvent == IntPtr.Zero)
             {
-                m_tweventPreFilterMessage.pEvent = Marshal.AllocHGlobal(Marshal.SizeOf(msg));
+                m_tweventPreFilterMessage.pEvent = Marshal.AllocHGlobal(Marshal.SizeOf(msg) + 65536);
             }
             Marshal.StructureToPtr(msg, m_tweventPreFilterMessage.pEvent, true);
 
@@ -802,11 +804,23 @@ namespace TWAINWorkingGroup
             STS sts;
             STATE stateStart;
 
+            // Nothing to do here...
+            if (m_state <= STATE.S2)
+            {
+                return (m_state);
+            }
+
             // Submit the work to the TWAIN thread...
             if (m_runinuithreaddelegate != null)
             {
                 lock (m_lockTwain)
                 {
+                    // No point in continuing...
+                    if (m_twaincommand == null)
+                    {
+                        return (m_state);
+                    }
+
                     // Set the command variables...
                     ThreadData threaddata = default(ThreadData);
                     threaddata.blExitThread = true;
@@ -828,6 +842,12 @@ namespace TWAINWorkingGroup
             {
                 lock (m_lockTwain)
                 {
+                    // No point in continuing...
+                    if (m_twaincommand == null)
+                    {
+                        return (m_state);
+                    }
+
                     // Set the command variables...
                     ThreadData threaddata = default(ThreadData);
                     threaddata.stateRollback = a_stateTarget;
@@ -949,6 +969,117 @@ namespace TWAINWorkingGroup
         // functions that do that are located here...
         ///////////////////////////////////////////////////////////////////////////////
         #region Public Helper Functions...
+
+        /// <summary>
+        /// Copy intptr to intptr...
+        /// </summary>
+        /// <param name="dest"></param>
+        /// <param name="src"></param>
+        /// <param name="count"></param>
+        public static void MemCpy(IntPtr dest, IntPtr src, int count)
+        {
+            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+            {
+                NativeMethods.CopyMemory(dest, src, (uint)count);
+            }
+            else
+            {
+                NativeMethods.memcpy(dest, src, (IntPtr)count);
+            }
+        }
+
+        /// <summary>
+        /// Safely move intptr to intptr...
+        /// </summary>
+        /// <param name="dest"></param>
+        /// <param name="src"></param>
+        /// <param name="count"></param>
+        public static void MemMove(IntPtr dest, IntPtr src, int count)
+        {
+            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+            {
+                NativeMethods.MoveMemory(dest, src, (uint)count);
+            }
+            else
+            {
+                NativeMethods.memmove(dest, src, (IntPtr)count);
+            }
+        }
+
+        /// <summary>
+        /// Write stuff to a file without having to rebuffer it...
+        /// </summary>
+        /// <param name="a_szFilename"></param>
+        /// <param name="a_intptrPtr"></param>
+        /// <param name="a_iBytes"></param>
+        /// <returns></returns>
+        public static int WriteImageFile(string a_szFilename, IntPtr a_intptrPtr, int a_iBytes, out string a_szFinalFilename)
+        {
+            // Init stuff...
+            a_szFinalFilename = "";
+
+            // Try to write our file...
+            try
+            {
+                // If we don't have an extension, try to add one...
+                if (!Path.GetFileName(a_szFilename).Contains(".") && (a_iBytes >= 2))
+                {
+                    byte[] abData = new byte[2];
+                    Marshal.Copy(a_intptrPtr, abData, 0, 2);
+                    // BMP
+                    if ((abData[0] == 0x42) && (abData[1] == 0x4D))
+                    {
+                        a_szFilename += ".bmp";
+                    }
+                    else if ((abData[0] == 0x49) && (abData[1] == 0x49))
+                    {
+                        a_szFilename += ".tif";
+                    }
+                    else if ((abData[0] == 0xFF) && (abData[1] == 0xD8))
+                    {
+                        a_szFilename += ".jpg";
+                    }
+                }
+
+                // For the caller...
+                a_szFinalFilename = a_szFilename;
+
+                // Handle Windows...
+                if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
+                {
+                    IntPtr intptrFile;
+                    IntPtr intptrBytes = (IntPtr)a_iBytes;
+                    IntPtr intptrCount = (IntPtr)1;
+                    if (NativeMethods._wfopen_s(out intptrFile, a_szFilename, "wb") != 0)
+                    {
+                        return (-1);
+                    }
+                    intptrBytes = NativeMethods.fwriteWin(a_intptrPtr, intptrBytes, intptrCount, intptrFile);
+                    NativeMethods.fcloseWin(intptrFile);
+                    return ((int)intptrBytes);
+                }
+
+                // Handle everybody else...
+                else
+                {
+                    IntPtr intptrFile;
+                    IntPtr intptrBytes;
+                    intptrFile = NativeMethods.fopen(a_szFilename, "w");
+                    if (intptrFile == IntPtr.Zero)
+                    {
+                        return (-1);
+                    }
+                    intptrBytes = NativeMethods.fwrite(a_intptrPtr, (IntPtr)a_iBytes, (IntPtr)1, intptrFile);
+                    NativeMethods.fclose(intptrFile);
+                    return ((int)intptrBytes);
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.Error("Write file failed <" + a_szFilename + "> - " + exception.Message);
+                return (-1);
+            }
+        }
 
         /// <summary>
         /// Convert the contents of an audio info to a string that we can show in
@@ -11967,9 +12098,16 @@ namespace TWAINWorkingGroup
                                 m_blAcceptXferReady = false;
                             }
 
+                            // Bump our state up...
                             m_state = STATE.S6;
                             m_blIsMsgxferready = true;
                             CallerToThreadSet();
+
+                            // Kick off the scan engine...
+                            if (m_scancallback != null)
+                            {
+                                m_scancallback(false);
+                            }
                         }
                     }
                     break;
@@ -11978,12 +12116,20 @@ namespace TWAINWorkingGroup
                 case MSG.CLOSEDSREQ:
                     m_blIsMsgclosedsreq = true;
                     CallerToThreadSet();
+                    if (m_scancallback != null)
+                    {
+                        m_scancallback(false);
+                    }
                     break;
 
                 // The OK button was pressed...
                 case MSG.CLOSEDSOK:
                     m_blIsMsgclosedsok = true;
                     CallerToThreadSet();
+                    if (m_scancallback != null)
+                    {
+                        m_scancallback(false);
+                    }
                     break;
 
                 // A device event arrived...

@@ -42,6 +42,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -4577,16 +4578,46 @@ namespace TWAINWorkingGroup
         internal static extern bool GlobalUnlock(IntPtr hMem);
 
         [DllImport("kernel32.dll")]
-        public static extern UIntPtr GlobalSize(IntPtr hMem);
+        internal static extern UIntPtr GlobalSize(IntPtr hMem);
 
         [DllImport("msvcrt.dll")]
-        public static extern UIntPtr _msize(IntPtr ptr);
+        internal static extern UIntPtr _msize(IntPtr ptr);
 
         [DllImport("libc.so")]
-        public static extern UIntPtr malloc_usable_size(IntPtr ptr);
+        internal static extern UIntPtr malloc_usable_size(IntPtr ptr);
 
         [DllImport("libSystem.dylib")]
-        public static extern UIntPtr malloc_size(IntPtr ptr);
+        internal static extern UIntPtr malloc_size(IntPtr ptr);
+
+        [DllImport("kernel32.dll", EntryPoint = "CopyMemory", SetLastError = false)]
+        internal static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
+
+        [DllImport("libc", EntryPoint = "memcpy", SetLastError = false)]
+        internal static extern void memcpy(IntPtr dest, IntPtr src, IntPtr count);
+
+        [DllImport("kernel32.dll", EntryPoint = "MoveMemory", SetLastError = false)]
+        internal static extern void MoveMemory(IntPtr dest, IntPtr src, uint count);
+
+        [DllImport("libc", EntryPoint = "memmove", SetLastError = false)]
+        internal static extern void memmove(IntPtr dest, IntPtr src, IntPtr count);
+
+        [DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, SetLastError = true)]
+        internal static extern Int32 _wfopen_s(out IntPtr pFile, string filename, string mode);
+
+        [DllImport("libc", CharSet = CharSet.Ansi, SetLastError = true, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+        internal static extern IntPtr fopen([MarshalAs(UnmanagedType.LPStr)] string filename, [MarshalAs(UnmanagedType.LPStr)] string mode);
+
+        [DllImport("msvcrt.dll", EntryPoint = "fwrite", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+        internal static extern IntPtr fwriteWin(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
+
+        [DllImport("libc", EntryPoint = "fwrite", SetLastError = true)]
+        internal static extern IntPtr fwrite(IntPtr buffer, IntPtr size, IntPtr number, IntPtr file);
+
+        [DllImport("msvcrt.dll", EntryPoint = "fclose", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+        internal static extern IntPtr fcloseWin(IntPtr file);
+
+        [DllImport("libc", EntryPoint = "fclose", SetLastError = true)]
+        internal static extern IntPtr fclose(IntPtr file);
 
         #endregion
 
