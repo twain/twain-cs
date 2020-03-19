@@ -2663,6 +2663,36 @@ namespace TWAINWorkingGroup
         }
 
         /// <summary>
+        /// Convert the contents of a string to a pendingxfers structure...
+        /// </summary>
+        /// <param name="a_twpassthru">A TWAIN structure</param>
+        /// <param name="a_szPassthru">A CSV string of the TWAIN structure</param>
+        /// <returns>True if the conversion is successful</returns>
+        public bool CsvToPendingXfers(ref TW_PENDINGXFERS a_twpendingxfers, string a_szPendingxfers)
+        {
+            // Init stuff...
+            a_twpendingxfers = default(TW_PENDINGXFERS);
+
+            // Build the string...
+            try
+            {
+                string[] asz = CSV.Parse(a_szPendingxfers);
+
+                // Sort out the frame...
+                a_twpendingxfers.Count = ushort.Parse(asz[0]);
+                a_twpendingxfers.EOJ = uint.Parse(asz[1]);
+            }
+            catch (Exception exception)
+            {
+                Log.Error("***error*** - " + exception.Message);
+                return (false);
+            }
+
+            // All done...
+            return (true);
+        }
+
+        /// <summary>
         /// Convert the contents of a setup file xfer structure to a string that
         /// we can show in our simple GUI...
         /// </summary>
@@ -2737,6 +2767,37 @@ namespace TWAINWorkingGroup
                 Log.Error("***error*** - " + exception.Message);
                 return ("***error***");
             }
+        }
+
+        /// <summary>
+        /// Convert a string to a setupmemxfer...
+        /// </summary>
+        /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
+        /// <param name="a_szSetupfilexfer">A CSV string of the TWAIN structure</param>
+        /// <returns>True if the conversion is successful</returns>
+        public bool CsvToSetupmemxfer(ref TW_SETUPMEMXFER a_twsetupmemxfer, string a_szSetupmemxfer)
+        {
+            // Init stuff...
+            a_twsetupmemxfer = default(TW_SETUPMEMXFER);
+
+            // Build the string...
+            try
+            {
+                string[] asz = CSV.Parse(a_szSetupmemxfer);
+
+                // Sort out the values...
+                a_twsetupmemxfer.MinBufSize = uint.Parse(asz[0]);
+                a_twsetupmemxfer.MaxBufSize = uint.Parse(asz[1]);
+                a_twsetupmemxfer.Preferred = uint.Parse(asz[2]);
+            }
+            catch (Exception exception)
+            {
+                Log.Error("***error*** - " + exception.Message);
+                return (false);
+            }
+
+            // All done...
+            return (true);
         }
 
         /// <summary>

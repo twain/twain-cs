@@ -207,7 +207,7 @@ namespace TWAINCSScan
             // 3 --> 2
             if ((m_twain.GetState() == TWAIN.STATE.S3) && (a_state < TWAIN.STATE.S3))
             {
-                m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.CLOSEDSM, ref m_imtptrHwnd);
+                m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.CLOSEDSM, ref m_intptrHwnd);
             }
         }
 
@@ -989,8 +989,8 @@ namespace TWAINCSScan
             TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
 
             // Get the default driver...
-            m_imtptrHwnd = this.Handle;
-            sts = m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.OPENDSM, ref m_imtptrHwnd);
+            m_intptrHwnd = this.Handle;
+            sts = m_twain.DatParent(TWAIN.DG.CONTROL, TWAIN.MSG.OPENDSM, ref m_intptrHwnd);
             if (sts != TWAIN.STS.SUCCESS)
             {
                 MessageBox.Show("OPENDSM failed...");
@@ -1172,7 +1172,7 @@ namespace TWAINCSScan
         /// Our interface to TWAIN...
         /// </summary>
         private TWAIN m_twain;
-        private IntPtr m_imtptrHwnd;
+        private IntPtr m_intptrHwnd;
         private bool m_blDisableDsSent = false;
         private bool m_blXferReadySent = false;
         private IntPtr m_intptrXfer = IntPtr.Zero;

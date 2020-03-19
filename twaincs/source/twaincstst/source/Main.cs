@@ -41,23 +41,23 @@
 ///////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Globalization;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Windows.Forms;
 using TWAINWorkingGroup;
-using TWAINWorkingGroupToolkit;
 
 namespace TWAINCSTst
 {
     /// <summary>
     /// Here's a form for us to tinker with.  We're using this to exercise the
-    /// TWAIN object.  A TWAINCSToolkit class has been created to hide the
-    /// details of TWAIN from the main application.  This abstraction creates
-    /// additional code, but protects the main app from the details of the
-    /// TWAIN interface.
+    /// TWAIN object.
     /// </summary>
     public partial class FormMain : Form, IMessageFilter, IDisposable
     {
@@ -91,18 +91,18 @@ namespace TWAINCSTst
             // various operating systems.
 
             // Windows controls...
-            if (TWAINCSToolkit.GetPlatform() == "WINDOWS")
+            if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
             {
                 // Choose between TWAIN_32 and TWAINDSM, note that we always default
                 // to the open source TWAIN DSM...
-                m_checkboxUseTwain32.Enabled = (TWAINCSToolkit.GetMachineWordBitSize() == 32);
+                m_checkboxUseTwain32.Enabled = (TWAIN.GetMachineWordBitSize() == 32);
                 m_checkboxUseCallbacks.Enabled = true;
                 m_checkboxUseTwain32.Checked = false;
                 m_checkboxUseCallbacks.Checked = true;
             }
 
             // Linux controls...
-            else if (TWAINCSToolkit.GetPlatform() == "LINUX")
+            else if (TWAIN.GetPlatform() == TWAIN.Platform.LINUX)
             {
                 // We don't give the user control between the DSM versions, because
                 // the 64-bit problem is handled as seamlessly as possible...
@@ -113,7 +113,7 @@ namespace TWAINCSTst
             }
 
             // Mac OS X controls...
-            else if (TWAINCSToolkit.GetPlatform() == "MACOSX")
+            else if (TWAIN.GetPlatform() == TWAIN.Platform.MACOSX)
             {
                 // Choose between /System/Library/Frameworks/TWAIN.framework and
                 // /Library/Frameworks/TWAINDSM.framework, note that we always default
@@ -129,15 +129,20 @@ namespace TWAINCSTst
             m_richtextboxOutput.SelectionProtected = false;
 
             // Init other stuff...
-            m_twaincstoolkit = null;
+            m_twain = null;
+            m_intptrHwnd = Handle;
 
             // Init our image controls...
             InitImage();
 
             // Load our triplet dropdown...
-            this.m_comboboxDG.Items.AddRange(TWAINCSToolkit.GetTwainDg());
-            this.m_comboboxDAT.Items.AddRange(TWAINCSToolkit.GetTwainDat());
-            this.m_comboboxMSG.Items.AddRange(TWAINCSToolkit.GetTwainMsg());
+            List<string> aszDat = new List<string>();
+            List<string> aszMsg = new List<string>();
+            foreach (string szDat in (string[])Enum.GetNames(typeof(TWAIN.DAT))) aszDat.Add("DAT_" + szDat);
+            foreach (string szMsg in (string[])Enum.GetNames(typeof(TWAIN.MSG))) aszMsg.Add("MSG_" + szMsg);
+            this.m_comboboxDG.Items.AddRange(new string[] { "DG_AUDIO", "DG_CONTROL", "DG_IMAGE" });
+            this.m_comboboxDAT.Items.AddRange(aszDat.ToArray());
+            this.m_comboboxMSG.Items.AddRange(aszMsg.ToArray());
 
             // Init our triplet dropdown...
             AutoDropdown("", "", "");
@@ -178,14 +183,6 @@ namespace TWAINCSTst
         }
 
         /// <summary>
-        /// Cleanup...
-        /// </summary>
-        public new void Dispose()
-        {
-            Dispose(true);
-        }
-
-        /// <summary>
         /// Call the form's filter function to catch stuff like MSG.XFERREADY...
         /// </summary>
         /// <param name="a_message">Message to process</param>
@@ -193,11 +190,483 @@ namespace TWAINCSTst
         [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         public bool PreFilterMessage(ref Message a_message)
         {
-            if (m_twaincstoolkit != null)
+            if (m_twain != null)
             {
-                return (m_twaincstoolkit.PreFilterMessage(a_message.HWnd, a_message.Msg, a_message.WParam, a_message.LParam));
+                return (m_twain.PreFilterMessage(a_message.HWnd, a_message.Msg, a_message.WParam, a_message.LParam));
             }
             return (true);
+        }
+
+        /// <summary>
+        /// Our scan callback event, used to drive the engine when scanning...
+        /// </summary>
+        public delegate void ScanCallbackEvent();
+
+        /// <summary>
+        /// Our event handler for the scan callback event.  This will be
+        /// called once by ScanCallbackTrigger on receipt of an event
+        /// like MSG_XFERREADY, and then will be reissued on every call
+        /// into ScanCallback until we're done and get back to state 4.
+        ///  
+        /// This helps to make sure we're always running in the context
+        /// of FormMain on Windows, which is critical if we want drivers
+        /// to work properly.  It also gives a way to break up the calls
+        /// so the message pump is still reponsive.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ScanCallbackEventHandler(object sender, EventArgs e)
+        {
+            ScanCallback((m_twain == null) ? true : (m_twain.GetState() <= TWAIN.STATE.S3));
+        }
+
+        /// <summary>
+        /// Rollback the TWAIN state to whatever is requested...
+        /// </summary>
+        /// <param name="a_state"></param>
+        public void Rollback(TWAIN.STATE a_state)
+        {
+            string szTwmemref = "";
+            string szStatus = "";
+            TWAIN.STS sts;
+
+            // Make sure we have something to work with...
+            if (m_twain == null)
+            {
+                return;
+            }
+
+            // Walk the states, we don't care about the status returns.  Basically,
+            // these need to work, or we're guaranteed to hang...
+
+            // 7 --> 6
+            if ((m_twain.GetState() == TWAIN.STATE.S7) && (a_state < TWAIN.STATE.S7))
+            {
+                szTwmemref = "0,0";
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", ref szTwmemref, ref szStatus);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+            }
+
+            // 6 --> 5
+            if ((m_twain.GetState() == TWAIN.STATE.S6) && (a_state < TWAIN.STATE.S6))
+            {
+                szTwmemref = "0,0";
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_RESET", ref szTwmemref, ref szStatus);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_RESET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+            }
+
+            // 5 --> 4
+            if ((m_twain.GetState() == TWAIN.STATE.S5) && (a_state < TWAIN.STATE.S5))
+            {
+                szTwmemref = "0,0," + m_intptrHwnd;
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_DISABLEDS", ref szTwmemref, ref szStatus);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_USERINTERFACE", "MSG_DISABLEDS", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+            }
+
+            // 4 --> 3
+            if ((m_twain.GetState() == TWAIN.STATE.S4) && (a_state < TWAIN.STATE.S4))
+            {
+                if (!m_checkboxUseCallbacks.Checked)
+                {
+                    Application.RemoveMessageFilter(this);
+                }
+                szTwmemref = m_twain.GetDsIdentity();
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_IDENTITY", "MSG_CLOSEDS", ref szTwmemref, ref szStatus);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_IDENTITY", "MSG_CLOSEDS", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+            }
+
+            // 3 --> 2
+            if ((m_twain.GetState() == TWAIN.STATE.S3) && (a_state < TWAIN.STATE.S3))
+            {
+                szTwmemref = m_intptrHwnd.ToString();
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_PARENT", "MSG_CLOSEDSM", ref szTwmemref, ref szStatus);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_PARENT", "MSG_CLOSEDSM", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+            }
+
+            // 2 --> 1
+            if ((m_twain.GetState() == TWAIN.STATE.S2) && (a_state < TWAIN.STATE.S2))
+            {
+                m_twain.Dispose();
+                m_twain = null;
+            }
+        }
+
+        /// <summary>
+        /// Our scanning callback function.  We appeal directly to the supporting
+        /// TWAIN object.  This way we don't have to maintain some kind of a loop
+        /// inside of the application, which is the source of most problems that
+        /// developers run into.
+        /// 
+        /// While it looks scary at first, there's really not a lot going on in
+        /// here.  We do some sanity checks, we watch for certain kinds of events,
+        /// we support the four methods of transferring images, and we dump out
+        /// some meta-data about the transferred image.  However, because it does
+        /// look scary I dropped in some region pragmas to break things up...
+        /// </summary>
+        /// <param name="a_blClosing">We're shutting down</param>
+        /// <returns>TWAIN status</returns>
+        private TWAIN.STS ScanCallbackTrigger(bool a_blClosing)
+        {
+            BeginInvoke(new MethodInvoker(delegate { ScanCallbackEventHandler(this, new EventArgs()); }));
+            return (TWAIN.STS.SUCCESS);
+        }
+        private TWAIN.STS ScanCallback(bool a_blClosing)
+        {
+            TWAIN.STS sts;
+
+            // Scoot...
+            if (m_twain == null)
+            {
+                return (TWAIN.STS.FAILURE);
+            }
+
+            // We're superfluous...
+            if (m_twain.GetState() <= TWAIN.STATE.S4)
+            {
+                return (TWAIN.STS.SUCCESS);
+            }
+
+            // We're leaving...
+            if (a_blClosing)
+            {
+                return (TWAIN.STS.SUCCESS);
+            }
+
+            // Do this in the right thread, we'll usually be in the
+            // right spot, save maybe on the first call...
+            if (this.InvokeRequired)
+            {
+                return
+                (
+                    (TWAIN.STS)Invoke
+                    (
+                        (Func<TWAIN.STS>)delegate
+                        {
+                            return (ScanCallback(a_blClosing));
+                        }
+                    )
+                );
+            }
+
+            // Handle DAT_NULL/MSG_XFERREADY...
+            if (m_twain.IsMsgXferReady() && !m_blXferReadySent)
+            {
+                m_blXferReadySent = true;
+
+                // Get the amount of memory needed...
+                string szTwmemref = "0,0,0";
+                string szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_SETUPMEMXFER", "MSG_GET", ref szTwmemref, ref szStatus);
+                m_twain.CsvToSetupmemxfer(ref m_twsetupmemxfer, szTwmemref);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_SETUPMEMXFER", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+                if ((sts != TWAIN.STS.SUCCESS) || (m_twsetupmemxfer.Preferred == 0))
+                {
+                    m_blXferReadySent = false;
+                    if (!m_blDisableDsSent)
+                    {
+                        m_blDisableDsSent = true;
+                        Rollback(TWAIN.STATE.S4);
+                    }
+                }
+
+                // Allocate the transfer memory (with a little extra to protect ourselves)...
+                m_intptrXfer = Marshal.AllocHGlobal((int)m_twsetupmemxfer.Preferred + 65536);
+                if (m_intptrXfer == IntPtr.Zero)
+                {
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                }
+            }
+
+            // Handle DAT_NULL/MSG_CLOSEDSREQ...
+            if (m_twain.IsMsgCloseDsReq() && !m_blDisableDsSent)
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+            }
+
+            // Handle DAT_NULL/MSG_CLOSEDSOK...
+            if (m_twain.IsMsgCloseDsOk() && !m_blDisableDsSent)
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+            }
+
+            // This is where the statemachine runs that transfers and optionally
+            // saves the images to disk (it also displays them).  It'll go back
+            // and forth between states 6 and 7 until an error occurs, or until
+            // we run out of images...
+            if (m_blXferReadySent && !m_blDisableDsSent)
+            {
+                CaptureImages();
+            }
+
+            // Trigger the next event, this is where things all chain together.
+            // We need begininvoke to prevent blockking, so that we don't get
+            // backed up into a messy kind of recursion.  We need DoEvents,
+            // because if things really start moving fast it's really hard for
+            // application events, like button clicks to break through...
+            Application.DoEvents();
+            BeginInvoke(new MethodInvoker(delegate { ScanCallbackEventHandler(this, new EventArgs()); }));
+
+            // All done...
+            return (TWAIN.STS.SUCCESS);
+        }
+
+        /// <summary>
+        /// Go through the sequence needed to capture images...
+        /// </summary>
+        private void CaptureImages()
+        {
+            string szTwmemref = "";
+            string szStatus = "";
+            TWAIN.STS sts;
+            TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
+            TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
+            TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
+
+            // Dispatch on the state...
+            switch (m_twain.GetState())
+            {
+                // Not a good state, just scoot...
+                default:
+                    return;
+
+                // We're on our way out...
+                case TWAIN.STATE.S5:
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+
+                // Memory transfers...
+                case TWAIN.STATE.S6:
+                case TWAIN.STATE.S7:
+                    szTwmemref = "0,0,0,0,0,0,0," + ((int)TWAIN.TWMF.APPOWNS | (int)TWAIN.TWMF.POINTER) + "," + m_twsetupmemxfer.Preferred + "," + m_intptrXfer;
+                    szStatus = "";
+                    sts = Send("DG_IMAGE", "DAT_IMAGEMEMXFER", "MSG_GET", ref szTwmemref, ref szStatus);
+                    m_twain.CsvToImagememxfer(ref twimagememxfer, szTwmemref);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_IMAGE", "DAT_IMAGEMEMXFER", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+                    break;
+            }
+
+            // Handle problems...
+            if ((sts != TWAIN.STS.SUCCESS) && (sts != TWAIN.STS.XFERDONE))
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+                return;
+            }
+
+            // Allocate or grow the image memory...
+            if (m_intptrImage == IntPtr.Zero)
+            {
+                m_intptrImage = Marshal.AllocHGlobal((int)twimagememxfer.BytesWritten);
+            }
+            else
+            {
+                m_intptrImage = Marshal.ReAllocHGlobal(m_intptrImage, (IntPtr)(m_iImageBytes + twimagememxfer.BytesWritten));
+            }
+
+            // Ruh-roh...
+            if (m_intptrImage == IntPtr.Zero)
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+                return;
+            }
+
+            // Copy into the buffer, and bump up our byte tally...
+            TWAIN.MemCpy(m_intptrImage + m_iImageBytes, m_intptrXfer, (int)twimagememxfer.BytesWritten);
+            m_iImageBytes += (int)twimagememxfer.BytesWritten;
+
+            // If we saw XFERDONE we can save the image, display it,
+            // end the transfer, and see if we have more images...
+            if (sts == TWAIN.STS.XFERDONE)
+            {
+                // Bump up our image counter, this always grows for the
+                // life of the entire session...
+                m_iImageCount += 1;
+
+                // Get the image info...
+                szTwmemref = "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0";
+                szStatus = "";
+                sts = Send("DG_IMAGE", "DAT_IMAGEINFO", "MSG_GET", ref szTwmemref, ref szStatus);
+                m_twain.CsvToImageinfo(ref twimageinfo, szTwmemref);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_IMAGE", "DAT_IMAGEINFO", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+                // Add the appropriate header...
+
+                // Bitonal uncompressed...
+                if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.BW) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.NONE))
+                {
+                    TWAIN.TiffBitonalUncompressed tiffbitonaluncompressed;
+                    tiffbitonaluncompressed = new TWAIN.TiffBitonalUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)m_iImageBytes);
+                    m_intptrImage = Marshal.ReAllocHGlobal(m_intptrImage, (IntPtr)(Marshal.SizeOf(tiffbitonaluncompressed) + m_iImageBytes));
+                    TWAIN.MemMove((IntPtr)((UInt64)m_intptrImage + (UInt64)Marshal.SizeOf(tiffbitonaluncompressed)), m_intptrImage, m_iImageBytes);
+                    Marshal.StructureToPtr(tiffbitonaluncompressed, m_intptrImage, true);
+                    m_iImageBytes += (int)Marshal.SizeOf(tiffbitonaluncompressed);
+                }
+
+                // Bitonal GROUP4...
+                else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.BW) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.GROUP4))
+                {
+                    TWAIN.TiffBitonalG4 tiffbitonalg4;
+                    tiffbitonalg4 = new TWAIN.TiffBitonalG4((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)m_iImageBytes);
+                    m_intptrImage = Marshal.ReAllocHGlobal(m_intptrImage, (IntPtr)(Marshal.SizeOf(tiffbitonalg4) + m_iImageBytes));
+                    TWAIN.MemMove((IntPtr)((UInt64)m_intptrImage + (UInt64)Marshal.SizeOf(tiffbitonalg4)), m_intptrImage, m_iImageBytes);
+                    Marshal.StructureToPtr(tiffbitonalg4, m_intptrImage, true);
+                    m_iImageBytes += (int)Marshal.SizeOf(tiffbitonalg4);
+                }
+
+                // Gray uncompressed...
+                else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.GRAY) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.NONE))
+                {
+                    TWAIN.TiffGrayscaleUncompressed tiffgrayscaleuncompressed;
+                    tiffgrayscaleuncompressed = new TWAIN.TiffGrayscaleUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)m_iImageBytes);
+                    m_intptrImage = Marshal.ReAllocHGlobal(m_intptrImage, (IntPtr)(Marshal.SizeOf(tiffgrayscaleuncompressed) + m_iImageBytes));
+                    TWAIN.MemMove((IntPtr)((UInt64)m_intptrImage + (UInt64)Marshal.SizeOf(tiffgrayscaleuncompressed)), m_intptrImage, m_iImageBytes);
+                    Marshal.StructureToPtr(tiffgrayscaleuncompressed, m_intptrImage, true);
+                    m_iImageBytes += (int)Marshal.SizeOf(tiffgrayscaleuncompressed);
+                }
+
+                // Gray JPEG...
+                else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.GRAY) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.JPEG))
+                {
+                    // No work to be done, we'll output JPEG...
+                }
+
+                // RGB uncompressed...
+                else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.RGB) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.NONE))
+                {
+                    TWAIN.TiffColorUncompressed tiffcoloruncompressed;
+                    tiffcoloruncompressed = new TWAIN.TiffColorUncompressed((uint)twimageinfo.ImageWidth, (uint)twimageinfo.ImageLength, (uint)twimageinfo.XResolution.Whole, (uint)m_iImageBytes);
+                    m_intptrImage = Marshal.ReAllocHGlobal(m_intptrImage, (IntPtr)(Marshal.SizeOf(tiffcoloruncompressed) + m_iImageBytes));
+                    TWAIN.MemMove((IntPtr)((UInt64)m_intptrImage + (UInt64)Marshal.SizeOf(tiffcoloruncompressed)), m_intptrImage, m_iImageBytes);
+                    Marshal.StructureToPtr(tiffcoloruncompressed, m_intptrImage, true);
+                    m_iImageBytes += (int)Marshal.SizeOf(tiffcoloruncompressed);
+                }
+
+                // RGB JPEG...
+                else if (((TWAIN.TWPT)twimageinfo.PixelType == TWAIN.TWPT.RGB) && ((TWAIN.TWCP)twimageinfo.Compression == TWAIN.TWCP.JPEG))
+                {
+                    // No work to be done, we'll output JPEG...
+                }
+
+                // Oh well...
+                else
+                {
+                    TWAINWorkingGroup.Log.Error("unsupported format <" + twimageinfo.PixelType + "," + twimageinfo.Compression + ">");
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+                }
+
+                // Save the image to disk, if we're doing that...
+                /*
+                if (!string.IsNullOrEmpty(m_formsetup.GetImageFolder()))
+                {
+                    // Create the directory, if needed...
+                    if (!Directory.Exists(m_formsetup.GetImageFolder()))
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(m_formsetup.GetImageFolder());
+                        }
+                        catch (Exception exception)
+                        {
+                            TWAINWorkingGroup.Log.Error("CreateDirectory failed - " + exception.Message);
+                        }
+                    }
+
+                    // Write it out...
+                    string szFilename = Path.Combine(m_formsetup.GetImageFolder(), "img" + string.Format("{0:D6}", m_iImageCount));
+                    TWAIN.WriteImageFile(szFilename, m_intptrImage, m_iImageBytes, out szFilename);
+                }
+                */
+
+                // Turn the image into a byte array, and free the original memory...
+                byte[] abImage = new byte[m_iImageBytes];
+                Marshal.Copy(m_intptrImage, abImage, 0, m_iImageBytes);
+                Marshal.FreeHGlobal(m_intptrImage);
+                m_intptrImage = IntPtr.Zero;
+                m_iImageBytes = 0;
+
+                // Turn the byte array into a stream...
+                MemoryStream memorystream = new MemoryStream(abImage);
+                Bitmap bitmap = (Bitmap)Image.FromStream(memorystream);
+
+                // Display the image...
+
+                // Display the image...
+                switch (m_iCurrentPictureBox)
+                {
+                    default:
+                    case 0:
+                        LoadImage(ref m_pictureboxImage1, ref m_graphics1, ref m_bitmapGraphic1, bitmap);
+                        break;
+                    case 1:
+                        LoadImage(ref m_pictureboxImage2, ref m_graphics2, ref m_bitmapGraphic2, bitmap);
+                        break;
+                    case 2:
+                        LoadImage(ref m_pictureboxImage3, ref m_graphics3, ref m_bitmapGraphic3, bitmap);
+                        break;
+                    case 3:
+                        LoadImage(ref m_pictureboxImage4, ref m_graphics4, ref m_bitmapGraphic4, bitmap);
+                        break;
+                    case 4:
+                        LoadImage(ref m_pictureboxImage5, ref m_graphics5, ref m_bitmapGraphic5, bitmap);
+                        break;
+                    case 5:
+                        LoadImage(ref m_pictureboxImage6, ref m_graphics6, ref m_bitmapGraphic6, bitmap);
+                        break;
+                    case 6:
+                        LoadImage(ref m_pictureboxImage7, ref m_graphics7, ref m_bitmapGraphic7, bitmap);
+                        break;
+                    case 7:
+                        LoadImage(ref m_pictureboxImage8, ref m_graphics8, ref m_bitmapGraphic8, bitmap);
+                        break;
+                }
+
+                // Next picture box...
+                if (++m_iCurrentPictureBox >= 8)
+                {
+                    m_iCurrentPictureBox = 0;
+                }
+
+                // Cleanup...
+                bitmap.Dispose();
+                memorystream = null; // disposed by the bitmap
+                abImage = null;
+
+                // End the transfer...
+                szTwmemref = "0,0";
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", ref szTwmemref, ref szStatus);
+                m_twain.CsvToPendingXfers(ref twpendingxfers, szTwmemref);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+                // Looks like we're done!
+                if (twpendingxfers.Count == 0)
+                {
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+                }
+            }
         }
 
         #endregion
@@ -226,10 +695,10 @@ namespace TWAINCSTst
                 }
 
                 // Cleanup...
-                if (m_twaincstoolkit != null)
+                if (m_twain != null)
                 {
-                    m_twaincstoolkit.Dispose();
-                    m_twaincstoolkit = null;
+                    m_twain.Dispose();
+                    m_twain = null;
                 }
                 if (m_bitmapGraphic1 != null)
                 {
@@ -290,10 +759,9 @@ namespace TWAINCSTst
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             m_blClosing = true;
-            if (m_twaincstoolkit != null)
+            if (m_twain != null)
             {
-                m_twaincstoolkit.Cleanup();
-                m_twaincstoolkit = null;
+                Rollback(TWAIN.STATE.S1);
             }
             CleanImage();
             TWAINWorkingGroup.Log.Close();
@@ -589,92 +1057,6 @@ namespace TWAINCSTst
         }
 
         /// <summary>
-        /// Handle an image.  a_bitmap is passed by reference so that this function can
-        /// dispose and null it out to gain access to the file that's backing it.  The
-        /// calling toolkit function will never perform any action with a_bitmap after
-        /// this function returns.
-        /// </summary>
-        /// <param name="a_szDg">Data group that preceeded this call</param>
-        /// <param name="a_szDat">Data argument type that preceeded this call</param>
-        /// <param name="a_szMsg">Message that preceeded this call</param>
-        /// <param name="a_sts">Current status</param>
-        /// <param name="a_bitmap">C# bitmap of the image</param>
-        /// <param name="a_szFile">File name, if doing a file transfer</param>
-        /// <param name="a_szTwimageinfo">data collected for us</param>
-        /// <param name="a_abImage">a byte array of the image</param>
-        /// <param name="a_iImageOffset">byte offset where the image data begins</param>
-        public TWAINCSToolkit.MSG ReportImage
-        (
-            string a_szTag,
-            string a_szDg,
-            string a_szDat,
-            string a_szMsg,
-            TWAIN.STS a_sts,
-            Bitmap a_bitmap,
-            string a_szFile,
-            string a_szTwimageinfo,
-            byte[] a_abImage,
-            int a_iImageOffset
-        )
-        {
-            // We're leaving...
-            if (m_blClosing || (m_graphics1 == null) || (a_bitmap == null))
-            {
-                return (TWAINCSToolkit.MSG.RESET);
-            }
-
-            // Let us be called from any thread...
-            if (this.InvokeRequired)
-            {
-                // We need a copy of the bitmap, because we're not going to wait
-                // for the thread to return.  Be careful when using EndInvoke.
-                // It's possible to create a deadlock situation with the Stop
-                // button press.
-                BeginInvoke(new MethodInvoker(delegate() { ReportImage(a_szTag, a_szDg, a_szDat, a_szMsg, a_sts, a_bitmap, a_szFile, a_szTwimageinfo, a_abImage, a_iImageOffset); }));
-                return (TWAINCSToolkit.MSG.ENDXFER);
-            }
-
-            // Display the image...
-            switch (m_iCurrentPictureBox)
-            {
-                default:
-                case 0:
-                    LoadImage(ref m_pictureboxImage1, ref m_graphics1, ref m_bitmapGraphic1, a_bitmap);
-                    break;
-                case 1:
-                    LoadImage(ref m_pictureboxImage2, ref m_graphics2, ref m_bitmapGraphic2, a_bitmap);
-                    break;
-                case 2:
-                    LoadImage(ref m_pictureboxImage3, ref m_graphics3, ref m_bitmapGraphic3, a_bitmap);
-                    break;
-                case 3:
-                    LoadImage(ref m_pictureboxImage4, ref m_graphics4, ref m_bitmapGraphic4, a_bitmap);
-                    break;
-                case 4:
-                    LoadImage(ref m_pictureboxImage5, ref m_graphics5, ref m_bitmapGraphic5, a_bitmap);
-                    break;
-                case 5:
-                    LoadImage(ref m_pictureboxImage6, ref m_graphics6, ref m_bitmapGraphic6, a_bitmap);
-                    break;
-                case 6:
-                    LoadImage(ref m_pictureboxImage7, ref m_graphics7, ref m_bitmapGraphic7, a_bitmap);
-                    break;
-                case 7:
-                    LoadImage(ref m_pictureboxImage8, ref m_graphics8, ref m_bitmapGraphic8, a_bitmap);
-                    break;
-            }
-
-            // Next picture box...
-            if (++m_iCurrentPictureBox >= 8)
-            {
-                m_iCurrentPictureBox = 0;
-            }
-
-            // All done...
-            return (TWAINCSToolkit.MSG.ENDXFER);
-        }
-
-        /// <summary>
         /// Debugging output that we can monitor...
         /// </summary>
         /// <param name="a_szOutput">Text to display to the user</param>
@@ -713,12 +1095,6 @@ namespace TWAINCSTst
             string szDg;
             string szDat;
             string szMsg;
-
-            // We're leaving...
-            if (m_blClosing)
-            {
-                return;
-            }
 
             // Let us be called from any thread.  We don't care if a_szOutput changes
             // on the fly (it's incredibly unlikely that it will), so we're not going
@@ -780,7 +1156,10 @@ namespace TWAINCSTst
             // After OPENDSM we have a choice, based on the DSM that was used...
             else if ((a_szDg == "DG_CONTROL") && (a_szDat == "DAT_PARENT") && (a_szMsg == "MSG_OPENDSM"))
             {
-                if (m_twaincstoolkit.IsDsm2())
+                string[] aszAppIdentity = CSV.Parse(m_twain.GetAppIdentity());
+                int iSupportedGroups;
+                int.TryParse(aszAppIdentity[8], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iSupportedGroups);
+                if ((iSupportedGroups & ((int)TWAIN.DG.DSM2 | (int)TWAIN.DG.APP2)) == ((int)TWAIN.DG.DSM2 | (int)TWAIN.DG.APP2))
                 {
                     m_comboboxDG.SelectedItem = "DG_CONTROL";
                     m_comboboxDAT.SelectedItem = "DAT_ENTRYPOINT";
@@ -888,100 +1267,592 @@ namespace TWAINCSTst
             }
 
             // Handle creation and destruction of our image capture object...
-            if (    (szDg == "DG_CONTROL") && (szDat == "DAT_PARENT")
-                && ((szMsg == "MSG_OPENDSM") || (szDat == "MSG_CLOSEDSM")))
+            if (   (szDg == "DG_CONTROL")
+                && (szDat == "DAT_PARENT")
+                && ((szMsg == "MSG_OPENDSM") || (szMsg == "MSG_CLOSEDSM")))
             {
-                ManageToolkit(szDg,szDat,szMsg);
+                ManageTWAIN(szDg, szDat, szMsg);
                 return;
             }
 
             // Validate...
-            if (m_twaincstoolkit == null)
+            if (m_twain == null)
             {
                 WriteTriplet(szDg, szDat, szMsg, "(DSM is not open)");
                 return;
             }
 
             // Look for an @-command...
+            /*
             if (m_twaincstoolkit.AtCommand(m_richtextboxCapability.Text))
             {
                 return;
             }
+            */
 
-            // We need to handle MSG_CLOSEDS ourselves...
-            if ((szDg == "DG_CONTROL") && (szDat == "DAT_IDENTITY") && (szMsg == "MSG_CLOSEDS"))
+            // Everything else can go to TWAIN...
+            string szResult;
+            string szTwmemref;
+            TWAIN.STS sts;
+
+            // Grab the data from the cap box...
+            szTwmemref = m_richtextboxCapability.Text;
+
+            // Issue the command to TWAIN...
+            szResult = "";
+            sts = Send(szDg, szDat, szMsg, ref szTwmemref, ref szResult);
+
+            // If the command succeeded, then update the cap box with the result...
+            m_richtextboxCapability.Text = szTwmemref;
+
+            // Tweak the result...
+            if (szResult == "")
             {
-                m_buttonCloseDS_Click(szDg, szDat, szMsg);
-                // Filter for TWAIN messages...
-                if (!m_checkboxUseCallbacks.Checked)
-                {
-                    Application.RemoveMessageFilter(this);
-                }
-
-                // Issue the command...
-                if (m_twaincstoolkit != null)
-                {
-                    m_twaincstoolkit.CloseDriver();
-                }
-                WriteTriplet(szDg, szDat, szMsg, TWAIN.STS.SUCCESS.ToString());
+                szResult = sts.ToString();
             }
-
-            // Everything else can go to the image capture object...
             else
             {
-                string szResult;
-                string szTwmemref;
-                TWAIN.STS sts;
+                szResult = sts.ToString() + " - " + szResult;
+            }
 
-                // Grab the data from the cap box...
-                szTwmemref = m_richtextboxCapability.Text;
+            // And write what happened to the output box...
+            if (szTwmemref == "")
+            {
+                WriteTriplet(szDg, szDat, szMsg, szResult);
+            }
+            else
+            {
+                WriteTriplet(szDg, szDat, szMsg, szResult + Environment.NewLine + szTwmemref);
+            }
 
-                // Issue the command to TWAIN...
-                szResult = "";
-                sts = m_twaincstoolkit.Send(szDg, szDat, szMsg, ref szTwmemref, ref szResult);
-
-                // If the command succeeded, then update the cap box with the result...
-                m_richtextboxCapability.Text = szTwmemref;
-
-                // Tweak the result...
-                if (szResult == "")
-                {
-                    szResult = sts.ToString();
-                }
-                else
-                {
-                    szResult = sts.ToString() + " - " + szResult;
-                }
-
-                // And write what happened to the output box...
-                if (szTwmemref == "")
-                {
-                    WriteTriplet(szDg, szDat, szMsg, szResult);
-                }
-                else
-                {
-                    WriteTriplet(szDg, szDat, szMsg, szResult + Environment.NewLine + szTwmemref);
-                }
-
-                // Convenience settings, we do these to make it less painful
-                // to work with the dropdown interface.  I've got them all
-                // here, even though some are currently being handled inside
-                // of other functions, like SendDatParent...
-                if (sts == TWAIN.STS.SUCCESS)
-                {
-                    AutoDropdown(szDg, szDat, szMsg);
-                }
+            // Convenience settings, we do these to make it less painful
+            // to work with the dropdown interface.  I've got them all
+            // here, even though some are currently being handled inside
+            // of other functions, like SendDatParent...
+            if (sts == TWAIN.STS.SUCCESS)
+            {
+                AutoDropdown(szDg, szDat, szMsg);
             }
         }
 
         /// <summary>
-        /// Create and destroy our toolkit object, as needed...
+        /// Send a command to the currently loaded DSM...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private TWAIN.STS Send(string a_szDg, string a_szDat, string a_szMsg, ref string a_szTwmemref, ref string a_szResult)
+        {
+            int iDg;
+            int iDat;
+            int iMsg;
+            TWAIN.STS sts;
+            TWAIN.DG dg = TWAIN.DG.MASK;
+            TWAIN.DAT dat = TWAIN.DAT.NULL;
+            TWAIN.MSG msg = TWAIN.MSG.NULL;
+
+            // Init stuff...
+            iDg = 0;
+            iDat = 0;
+            iMsg = 0;
+            sts = TWAIN.STS.BADPROTOCOL;
+            a_szResult = "";
+
+            // Validate at the top level...
+            if (m_twain == null)
+            {
+                WriteOutput("***ERROR*** - dsmload wasn't run, so we is having no braims");
+                return (TWAIN.STS.SEQERROR);
+            }
+
+            // Look for DG...
+            if (!a_szDg.ToLowerInvariant().StartsWith("dg_"))
+            {
+                WriteOutput("Unrecognized dg - <" + a_szDg + ">");
+                return (TWAIN.STS.BADPROTOCOL);
+            }
+            else
+            {
+                // Look for hex number (take anything)...
+                if (a_szDg.ToLowerInvariant().StartsWith("dg_0x"))
+                {
+                    if (!int.TryParse(a_szDg.ToLowerInvariant().Substring(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iDg))
+                    {
+                        WriteOutput("Badly constructed dg - <" + a_szDg + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                }
+                else
+                {
+                    if (!Enum.TryParse(a_szDg.ToUpperInvariant().Substring(3), out dg))
+                    {
+                        WriteOutput("Unrecognized dg - <" + a_szDg + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                    iDg = (int)dg;
+                }
+            }
+
+            // Look for DAT...
+            if (!a_szDat.ToLowerInvariant().StartsWith("dat_"))
+            {
+                WriteOutput("Unrecognized dat - <" + a_szDat + ">");
+                return (TWAIN.STS.BADPROTOCOL);
+            }
+            else
+            {
+                // Look for hex number (take anything)...
+                if (a_szDat.ToLowerInvariant().StartsWith("dat_0x"))
+                {
+                    if (!int.TryParse(a_szDat.ToLowerInvariant().Substring(4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iDat))
+                    {
+                        WriteOutput("Badly constructed dat - <" + a_szDat + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                }
+                else
+                {
+                    if (!Enum.TryParse(a_szDat.ToUpperInvariant().Substring(4), out dat))
+                    {
+                        WriteOutput("Unrecognized dat - <" + a_szDat + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                    iDat = (int)dat;
+                }
+            }
+
+            // Look for MSG...
+            if (!a_szMsg.ToLowerInvariant().StartsWith("msg_"))
+            {
+                WriteOutput("Unrecognized msg - <" + a_szMsg + ">");
+                return (TWAIN.STS.BADPROTOCOL);
+            }
+            else
+            {
+                // Look for hex number (take anything)...
+                if (a_szMsg.ToLowerInvariant().StartsWith("msg_0x"))
+                {
+                    if (!int.TryParse(a_szMsg.ToLowerInvariant().Substring(4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iMsg))
+                    {
+                        WriteOutput("Badly constructed dat - <" + a_szMsg + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                }
+                else
+                {
+                    if (!Enum.TryParse(a_szMsg.ToUpperInvariant().Substring(4), out msg))
+                    {
+                        WriteOutput("Unrecognized msg - <" + a_szMsg + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                    iMsg = (int)msg;
+                }
+            }
+
+            // Send the command...
+            switch (iDat)
+            {
+                // Ruh-roh, since we can't marshal it, we have to return an error,
+                // it would be nice to have a solution for this, but that will need
+                // a dynamic marshalling system...
+                default:
+                    sts = TWAIN.STS.BADPROTOCOL;
+                    break;
+
+                // DAT_AUDIOFILEXFER...
+                case (int)TWAIN.DAT.AUDIOFILEXFER:
+                    {
+                        sts = m_twain.DatAudiofilexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg);
+                        a_szTwmemref = "";
+                    }
+                    break;
+
+                // DAT_AUDIOINFO..
+                case (int)TWAIN.DAT.AUDIOINFO:
+                    {
+                        TWAIN.TW_AUDIOINFO twaudioinfo = default(TWAIN.TW_AUDIOINFO);
+                        sts = m_twain.DatAudioinfo((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twaudioinfo);
+                        a_szTwmemref = m_twain.AudioinfoToCsv(twaudioinfo);
+                    }
+                    break;
+
+                // DAT_AUDIONATIVEXFER..
+                case (int)TWAIN.DAT.AUDIONATIVEXFER:
+                    {
+                        IntPtr intptr = IntPtr.Zero;
+                        sts = m_twain.DatAudionativexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref intptr);
+                        a_szTwmemref = intptr.ToString();
+                    }
+                    break;
+
+                // DAT_CALLBACK...
+                case (int)TWAIN.DAT.CALLBACK:
+                    {
+                        TWAIN.TW_CALLBACK twcallback = default(TWAIN.TW_CALLBACK);
+                        m_twain.CsvToCallback(ref twcallback, a_szTwmemref);
+                        sts = m_twain.DatCallback((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twcallback);
+                        a_szTwmemref = m_twain.CallbackToCsv(twcallback);
+                    }
+                    break;
+
+                // DAT_CALLBACK2...
+                case (int)TWAIN.DAT.CALLBACK2:
+                    {
+                        TWAIN.TW_CALLBACK2 twcallback2 = default(TWAIN.TW_CALLBACK2);
+                        m_twain.CsvToCallback2(ref twcallback2, a_szTwmemref);
+                        sts = m_twain.DatCallback2((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twcallback2);
+                        a_szTwmemref = m_twain.Callback2ToCsv(twcallback2);
+                    }
+                    break;
+
+                // DAT_CAPABILITY...
+                case (int)TWAIN.DAT.CAPABILITY:
+                    {
+                        // Skip symbols for msg_querysupport, otherwise 0 gets turned into false, also
+                        // if the command fails the return value is whatever was sent into us, which
+                        // matches the experience one should get with C/C++...
+                        string szStatus = "";
+                        TWAIN.TW_CAPABILITY twcapability = default(TWAIN.TW_CAPABILITY);
+                        m_twain.CsvToCapability(ref twcapability, ref szStatus, a_szTwmemref);
+                        sts = m_twain.DatCapability((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twcapability);
+                        if ((sts == TWAIN.STS.SUCCESS) || (sts == TWAIN.STS.CHECKSTATUS))
+                        {
+                            // Convert the data to CSV...
+                            a_szTwmemref = m_twain.CapabilityToCsv(twcapability, ((TWAIN.MSG)iMsg != TWAIN.MSG.QUERYSUPPORT));
+                            // Free the handle if the driver created it...
+                            switch ((TWAIN.MSG)iMsg)
+                            {
+                                default: break;
+                                case TWAIN.MSG.GET:
+                                case TWAIN.MSG.GETCURRENT:
+                                case TWAIN.MSG.GETDEFAULT:
+                                case TWAIN.MSG.QUERYSUPPORT:
+                                case TWAIN.MSG.RESET:
+                                    m_twain.DsmMemFree(ref twcapability.hContainer);
+                                    break;
+                            }
+                        }
+                    }
+                    break;
+
+                // DAT_CIECOLOR..
+                case (int)TWAIN.DAT.CIECOLOR:
+                    {
+                        //TWAIN.TW_CIECOLOR twciecolor = default(TWAIN.TW_CIECOLOR);
+                        //sts = m_twain.DatCiecolor((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twciecolor);
+                        //a_szTwmemref = m_twain.CiecolorToCsv(twciecolor);
+                    }
+                    break;
+
+                // DAT_CUSTOMDSDATA...
+                case (int)TWAIN.DAT.CUSTOMDSDATA:
+                    {
+                        TWAIN.TW_CUSTOMDSDATA twcustomdsdata = default(TWAIN.TW_CUSTOMDSDATA);
+                        m_twain.CsvToCustomdsdata(ref twcustomdsdata, a_szTwmemref);
+                        sts = m_twain.DatCustomdsdata((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twcustomdsdata);
+                        a_szTwmemref = m_twain.CustomdsdataToCsv(twcustomdsdata);
+                    }
+                    break;
+
+                // DAT_DEVICEEVENT...
+                case (int)TWAIN.DAT.DEVICEEVENT:
+                    {
+                        TWAIN.TW_DEVICEEVENT twdeviceevent = default(TWAIN.TW_DEVICEEVENT);
+                        sts = m_twain.DatDeviceevent((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twdeviceevent);
+                        a_szTwmemref = m_twain.DeviceeventToCsv(twdeviceevent);
+                    }
+                    break;
+
+                // DAT_ENTRYPOINT...
+                case (int)TWAIN.DAT.ENTRYPOINT:
+                    {
+                        TWAIN.TW_ENTRYPOINT twentrypoint = default(TWAIN.TW_ENTRYPOINT);
+                        twentrypoint.Size = (uint)Marshal.SizeOf(twentrypoint);
+                        sts = m_twain.DatEntrypoint((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twentrypoint);
+                        a_szTwmemref = m_twain.EntrypointToCsv(twentrypoint);
+                    }
+                    break;
+
+                // DAT_EVENT...
+                case (int)TWAIN.DAT.EVENT:
+                    {
+                        TWAIN.TW_EVENT twevent = default(TWAIN.TW_EVENT);
+                        sts = m_twain.DatEvent((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twevent);
+                        a_szTwmemref = m_twain.EventToCsv(twevent);
+                    }
+                    break;
+
+                // DAT_EXTIMAGEINFO...
+                case (int)TWAIN.DAT.EXTIMAGEINFO:
+                    {
+                        TWAIN.TW_EXTIMAGEINFO twextimageinfo = default(TWAIN.TW_EXTIMAGEINFO);
+                        m_twain.CsvToExtimageinfo(ref twextimageinfo, a_szTwmemref);
+                        sts = m_twain.DatExtimageinfo((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twextimageinfo);
+                        a_szTwmemref = m_twain.ExtimageinfoToCsv(twextimageinfo);
+                    }
+                    break;
+
+                // DAT_FILESYSTEM...
+                case (int)TWAIN.DAT.FILESYSTEM:
+                    {
+                        TWAIN.TW_FILESYSTEM twfilesystem = default(TWAIN.TW_FILESYSTEM);
+                        m_twain.CsvToFilesystem(ref twfilesystem, a_szTwmemref);
+                        sts = m_twain.DatFilesystem((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twfilesystem);
+                        a_szTwmemref = m_twain.FilesystemToCsv(twfilesystem);
+                    }
+                    break;
+
+                // DAT_FILTER...
+                case (int)TWAIN.DAT.FILTER:
+                    {
+                        //TWAIN.TW_FILTER twfilter = default(TWAIN.TW_FILTER);
+                        //m_twain.CsvToFilter(ref twfilter, a_szTwmemref);
+                        //sts = m_twain.DatFilter((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twfilter);
+                        //a_szTwmemref = m_twain.FilterToCsv(twfilter);
+                    }
+                    break;
+
+                // DAT_GRAYRESPONSE...
+                case (int)TWAIN.DAT.GRAYRESPONSE:
+                    {
+                        //TWAIN.TW_GRAYRESPONSE twgrayresponse = default(TWAIN.TW_GRAYRESPONSE);
+                        //m_twain.CsvToGrayresponse(ref twgrayresponse, a_szTwmemref);
+                        //sts = m_twain.DatGrayresponse((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twgrayresponse);
+                        //a_szTwmemref = m_twain.GrayresponseToCsv(twgrayresponse);
+                    }
+                    break;
+
+                // DAT_ICCPROFILE...
+                case (int)TWAIN.DAT.ICCPROFILE:
+                    {
+                        TWAIN.TW_MEMORY twmemory = default(TWAIN.TW_MEMORY);
+                        sts = m_twain.DatIccprofile((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twmemory);
+                        a_szTwmemref = m_twain.IccprofileToCsv(twmemory);
+                    }
+                    break;
+
+                // DAT_IDENTITY...
+                case (int)TWAIN.DAT.IDENTITY:
+                    {
+                        TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
+                        switch (iMsg)
+                        {
+                            default:
+                                break;
+                            case (int)TWAIN.MSG.SET:
+                            case (int)TWAIN.MSG.OPENDS:
+                                m_twain.CsvToIdentity(ref twidentity, a_szTwmemref);
+                                break;
+                        }
+                        sts = m_twain.DatIdentity((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twidentity);
+                        a_szTwmemref = m_twain.IdentityToCsv(twidentity);
+                    }
+                    break;
+
+                // DAT_IMAGEFILEXFER...
+                case (int)TWAIN.DAT.IMAGEFILEXFER:
+                    {
+                        sts = m_twain.DatImagefilexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg);
+                        a_szTwmemref = "";
+                    }
+                    break;
+
+                // DAT_IMAGEINFO...
+                case (int)TWAIN.DAT.IMAGEINFO:
+                    {
+                        TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
+                        m_twain.CsvToImageinfo(ref twimageinfo, a_szTwmemref);
+                        sts = m_twain.DatImageinfo((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twimageinfo);
+                        a_szTwmemref = m_twain.ImageinfoToCsv(twimageinfo);
+                    }
+                    break;
+
+                // DAT_IMAGELAYOUT...
+                case (int)TWAIN.DAT.IMAGELAYOUT:
+                    {
+                        TWAIN.TW_IMAGELAYOUT twimagelayout = default(TWAIN.TW_IMAGELAYOUT);
+                        m_twain.CsvToImagelayout(ref twimagelayout, a_szTwmemref);
+                        sts = m_twain.DatImagelayout((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twimagelayout);
+                        a_szTwmemref = m_twain.ImagelayoutToCsv(twimagelayout);
+                    }
+                    break;
+
+                // DAT_IMAGEMEMFILEXFER...
+                case (int)TWAIN.DAT.IMAGEMEMFILEXFER:
+                    {
+                        TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
+                        m_twain.CsvToImagememxfer(ref twimagememxfer, a_szTwmemref);
+                        sts = m_twain.DatImagememfilexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twimagememxfer);
+                        a_szTwmemref = m_twain.ImagememxferToCsv(twimagememxfer);
+                    }
+                    break;
+
+                // DAT_IMAGEMEMXFER...
+                case (int)TWAIN.DAT.IMAGEMEMXFER:
+                    {
+                        TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
+                        m_twain.CsvToImagememxfer(ref twimagememxfer, a_szTwmemref);
+                        sts = m_twain.DatImagememxfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twimagememxfer);
+                        a_szTwmemref = m_twain.ImagememxferToCsv(twimagememxfer);
+                    }
+                    break;
+
+                // DAT_IMAGENATIVEXFER...
+                case (int)TWAIN.DAT.IMAGENATIVEXFER:
+                    {
+                        IntPtr intptrBitmapHandle = IntPtr.Zero;
+                        sts = m_twain.DatImagenativexferHandle((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref intptrBitmapHandle);
+                        a_szTwmemref = intptrBitmapHandle.ToString();
+                    }
+                    break;
+
+                // DAT_JPEGCOMPRESSION...
+                case (int)TWAIN.DAT.JPEGCOMPRESSION:
+                    {
+                        //TWAIN.TW_JPEGCOMPRESSION twjpegcompression = default(TWAIN.TW_JPEGCOMPRESSION);
+                        //m_twain.CsvToJpegcompression(ref twjpegcompression, a_szTwmemref);
+                        //sts = m_twain.DatJpegcompression((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twjpegcompression);
+                        //a_szTwmemref = m_twain.JpegcompressionToCsv(twjpegcompression);
+                    }
+                    break;
+
+                // DAT_METRICS...
+                case (int)TWAIN.DAT.METRICS:
+                    {
+                        TWAIN.TW_METRICS twmetrics = default(TWAIN.TW_METRICS);
+                        twmetrics.SizeOf = (uint)Marshal.SizeOf(twmetrics);
+                        sts = m_twain.DatMetrics((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twmetrics);
+                        a_szTwmemref = m_twain.MetricsToCsv(twmetrics);
+                    }
+                    break;
+
+                // DAT_PALETTE8...
+                case (int)TWAIN.DAT.PALETTE8:
+                    {
+                        //TWAIN.TW_PALETTE8 twpalette8 = default(TWAIN.TW_PALETTE8);
+                        //m_twain.CsvToPalette8(ref twpalette8, a_szTwmemref);
+                        //sts = m_twain.DatPalette8((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twpalette8);
+                        //a_szTwmemref = m_twain.Palette8ToCsv(twpalette8);
+                    }
+                    break;
+
+                // DAT_PARENT...
+                case (int)TWAIN.DAT.PARENT:
+                    {
+                        sts = m_twain.DatParent((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref m_intptrHwnd);
+                        a_szTwmemref = "";
+                    }
+                    break;
+
+                // DAT_PASSTHRU...
+                case (int)TWAIN.DAT.PASSTHRU:
+                    {
+                        TWAIN.TW_PASSTHRU twpassthru = default(TWAIN.TW_PASSTHRU);
+                        m_twain.CsvToPassthru(ref twpassthru, a_szTwmemref);
+                        sts = m_twain.DatPassthru((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twpassthru);
+                        a_szTwmemref = m_twain.PassthruToCsv(twpassthru);
+                    }
+                    break;
+
+                // DAT_PENDINGXFERS...
+                case (int)TWAIN.DAT.PENDINGXFERS:
+                    {
+                        TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
+                        sts = m_twain.DatPendingxfers((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twpendingxfers);
+                        a_szTwmemref = m_twain.PendingxfersToCsv(twpendingxfers);
+                    }
+                    break;
+
+                // DAT_RGBRESPONSE...
+                case (int)TWAIN.DAT.RGBRESPONSE:
+                    {
+                        //TWAIN.TW_RGBRESPONSE twrgbresponse = default(TWAIN.TW_RGBRESPONSE);
+                        //m_twain.CsvToRgbresponse(ref twrgbresponse, a_szTwmemref);
+                        //sts = m_twain.DatRgbresponse((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twrgbresponse);
+                        //a_szTwmemref = m_twain.RgbresponseToCsv(twrgbresponse);
+                    }
+                    break;
+
+                // DAT_SETUPFILEXFER...
+                case (int)TWAIN.DAT.SETUPFILEXFER:
+                    {
+                        TWAIN.TW_SETUPFILEXFER twsetupfilexfer = default(TWAIN.TW_SETUPFILEXFER);
+                        m_twain.CsvToSetupfilexfer(ref twsetupfilexfer, a_szTwmemref);
+                        sts = m_twain.DatSetupfilexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twsetupfilexfer);
+                        a_szTwmemref = m_twain.SetupfilexferToCsv(twsetupfilexfer);
+                    }
+                    break;
+
+                // DAT_SETUPMEMXFER...
+                case (int)TWAIN.DAT.SETUPMEMXFER:
+                    {
+                        TWAIN.TW_SETUPMEMXFER twsetupmemxfer = default(TWAIN.TW_SETUPMEMXFER);
+                        sts = m_twain.DatSetupmemxfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twsetupmemxfer);
+                        a_szTwmemref = m_twain.SetupmemxferToCsv(twsetupmemxfer);
+                    }
+                    break;
+
+                // DAT_STATUS...
+                case (int)TWAIN.DAT.STATUS:
+                    {
+                        TWAIN.TW_STATUS twstatus = default(TWAIN.TW_STATUS);
+                        sts = m_twain.DatStatus((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twstatus);
+                        a_szTwmemref = m_twain.StatusToCsv(twstatus);
+                    }
+                    break;
+
+                // DAT_STATUSUTF8...
+                case (int)TWAIN.DAT.STATUSUTF8:
+                    {
+                        TWAIN.TW_STATUSUTF8 twstatusutf8 = default(TWAIN.TW_STATUSUTF8);
+                        sts = m_twain.DatStatusutf8((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twstatusutf8);
+                        a_szTwmemref = m_twain.Statusutf8ToCsv(twstatusutf8);
+                    }
+                    break;
+
+                // DAT_TWAINDIRECT...
+                case (int)TWAIN.DAT.TWAINDIRECT:
+                    {
+                        TWAIN.TW_TWAINDIRECT twtwaindirect = default(TWAIN.TW_TWAINDIRECT);
+                        m_twain.CsvToTwaindirect(ref twtwaindirect, a_szTwmemref);
+                        sts = m_twain.DatTwaindirect((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twtwaindirect);
+                        a_szTwmemref = m_twain.TwaindirectToCsv(twtwaindirect);
+                    }
+                    break;
+
+                // DAT_USERINTERFACE...
+                case (int)TWAIN.DAT.USERINTERFACE:
+                    {
+                        TWAIN.TW_USERINTERFACE twuserinterface = default(TWAIN.TW_USERINTERFACE);
+                        m_twain.CsvToUserinterface(ref twuserinterface, a_szTwmemref);
+                        sts = m_twain.DatUserinterface((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twuserinterface);
+                        a_szTwmemref = m_twain.UserinterfaceToCsv(twuserinterface);
+                    }
+                    break;
+
+                // DAT_XFERGROUP...
+                case (int)TWAIN.DAT.XFERGROUP:
+                    {
+                        uint uXferGroup = 0;
+                        sts = m_twain.DatXferGroup((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref uXferGroup);
+                        a_szTwmemref = string.Format("0x{0:X}", uXferGroup);
+                    }
+                    break;
+            }
+
+            // All done...
+            return (sts);
+        }
+
+        /// <summary>
+        /// Create and destroy TWAIN, as needed...
         /// </summary>
         /// <param name="a_szDg">Data group</param>
         /// <param name="a_szDat">Data argument type</param>
         /// <param name="a_szMsg">Operation</param>
-        private void ManageToolkit(string a_szDg, string a_szDat, string a_szMsg)
+        private void ManageTWAIN(string a_szDg, string a_szDat, string a_szMsg)
         {
+            TWAIN.RunInUiThreadDelegate runinuithreaddelegate = RunInUiThread;
+
             // Handle MSG_OPENDSM...
             if (a_szMsg == "MSG_OPENDSM")
             {
@@ -989,78 +1860,79 @@ namespace TWAINCSTst
                 m_blClosing = false;
 
                 // Validate...
-                if (m_twaincstoolkit != null)
+                if (m_twain == null)
                 {
-                    WriteTriplet(a_szDg, a_szDat, a_szMsg, "(already open)");
-                    return;
+                    try
+                    {
+                        string[] aszTwidentity = m_richtextboxCapability.Text.Split(',');
+                        if ((aszTwidentity == null) || (aszTwidentity.Length < 9))
+                        {
+                            m_twain = new TWAIN
+                            (
+                                "TWAIN Working Group",
+                                "TWAIN Open Source",
+                                "TWAIN CS Test",
+                                (ushort)TWAIN.TWON_PROTOCOL.MAJOR,
+                                (ushort)TWAIN.TWON_PROTOCOL.MINOR,
+                                (uint)(TWAIN.DG.APP2 | TWAIN.DG.CONTROL | TWAIN.DG.IMAGE),
+                                TWAIN.TWCY.USA,
+                                "TWAIN CS Test",
+                                TWAIN.TWLG.ENGLISH_USA,
+                                2,
+                                4,
+                                m_checkboxUseTwain32.Checked,
+                                m_checkboxUseCallbacks.Checked,
+                                DeviceEventCallback,
+                                ScanCallbackTrigger,
+                                runinuithreaddelegate,
+                                this.Handle
+                            );
+                        }
+                        else
+                        {
+                            TWAIN.TWCY twcy = TWAIN.TWCY.USA;
+                            TWAIN.TWLG twlg = TWAIN.TWLG.ENGLISH_USA;
+                            Enum.TryParse<TWAIN.TWCY>(aszTwidentity[6], out twcy);
+                            Enum.TryParse<TWAIN.TWLG>(aszTwidentity[8], out twlg);
+                            m_twain = new TWAIN
+                            (
+                                aszTwidentity[0],
+                                aszTwidentity[1],
+                                aszTwidentity[2],
+                                ushort.Parse(aszTwidentity[3]),
+                                ushort.Parse(aszTwidentity[4]),
+                                (uint)(TWAIN.DG.APP2 | TWAIN.DG.CONTROL | TWAIN.DG.IMAGE),
+                                twcy,
+                                aszTwidentity[7],
+                                twlg,
+                                2,
+                                4,
+                                m_checkboxUseTwain32.Checked,
+                                m_checkboxUseCallbacks.Checked,
+                                DeviceEventCallback,
+                                ScanCallbackTrigger,
+                                runinuithreaddelegate,
+                                this.Handle
+                            );
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
+                        WriteTriplet(a_szDg, a_szDat, a_szMsg, "(unable to start)");
+                        m_twain = null;
+                        return;
+                    }
                 }
 
-                // Create our image capture object...
-                try
-                {
-                    string[] aszTwidentity = m_richtextboxCapability.Text.Split(',');
-                    if ((aszTwidentity == null) || (aszTwidentity.Length < 9))
-                    {
-                        m_twaincstoolkit = new TWAINCSToolkit
-                        (
-                            this.Handle,
-                            WriteOutput,
-                            ReportImage,
-                            SetMessageFilter,
-                            "TWAIN Working Group",
-                            "TWAIN Sharp",
-                            "TWAIN Sharp Test App",
-                            2,
-                            4,
-                            new string[] { "DF_APP2", "DG_CONTROL", "DG_IMAGE" },
-                            "USA",
-                            "testing...",
-                            "ENGLISH_USA",
-                            1,
-                            0,
-                            m_checkboxUseTwain32.Checked,
-                            m_checkboxUseCallbacks.Checked,
-                            RunInUiThread,
-                            this
-                        );
-                    }
-                    else
-                    {
-                        m_twaincstoolkit = new TWAINCSToolkit
-                        (
-                            this.Handle,
-                            WriteOutput,
-                            ReportImage,
-                            SetMessageFilter,
-                            aszTwidentity[0],
-                            aszTwidentity[1],
-                            aszTwidentity[2],
-                            ushort.Parse(aszTwidentity[3]),
-                            ushort.Parse(aszTwidentity[4]),
-                            new string[] { "DF_APP2", "DG_CONTROL", "DG_IMAGE" },
-                            aszTwidentity[6],
-                            aszTwidentity[7],
-                            aszTwidentity[8],
-                            1,
-                            0,
-                            m_checkboxUseTwain32.Checked,
-                            m_checkboxUseCallbacks.Checked,
-                            RunInUiThread,
-                            this
-                        );
-                    }
-                }
-                catch (Exception exception)
-                {
-                    TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
-                    WriteTriplet(a_szDg, a_szDat, a_szMsg, "(unable to start)");
-                    m_twaincstoolkit = null;
-                    return;
-                }
-                WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAIN.STS.SUCCESS.ToString());
+                // Open the DSM...
+                string szTwmemref = m_intptrHwnd.ToString();
+                string szStatus = "";
+                TWAIN.STS sts = Send("DG_CONTROL", "DAT_PARENT", "MSG_OPENDSM", ref szTwmemref, ref szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_PARENT", "MSG_OPENDSM", sts.ToString() + Environment.NewLine + m_intptrHwnd.ToString());
 
                 // Fix our controls...
-                if (TWAINCSToolkit.GetPlatform() == "WINDOWS")
+                if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
                 {
                     m_checkboxUseTwain32.Enabled = false;
                     m_checkboxUseCallbacks.Enabled = false;
@@ -1074,15 +1946,13 @@ namespace TWAINCSTst
             else if (a_szMsg == "MSG_CLOSEDSM")
             {
                 // Issue the command...
-                WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAIN.STS.SUCCESS.ToString());
                 m_blClosing = true;
-                m_twaincstoolkit.Cleanup();
-                m_twaincstoolkit = null;
+                Rollback(TWAIN.STATE.S1);
 
                 // Fix our controls...
-                if (TWAINCSToolkit.GetPlatform() == "WINDOWS")
+                if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
                 {
-                    m_checkboxUseTwain32.Enabled = (TWAINCSToolkit.GetMachineWordBitSize() == 32);
+                    m_checkboxUseTwain32.Enabled = (TWAIN.GetMachineWordBitSize() == 32);
                     m_checkboxUseCallbacks.Enabled = true;
                 }
 
@@ -1098,17 +1968,57 @@ namespace TWAINCSTst
         }
 
         /// <summary>
+        /// Our callback for device events.  This is where we catch and
+        /// report that a device event has been detected.  Obviously,
+        /// we're not doing much with it.  A real application would
+        /// probably take some kind of action...
+        /// </summary>
+        /// <returns>TWAIN status</returns>
+        private TWAIN.STS DeviceEventCallback()
+        {
+            string szTwmemref = "";
+            string szStatus = "";
+            TWAIN.STS sts;
+            TWAIN.TW_DEVICEEVENT twdeviceevent;
+
+            // Drain the event queue...
+            while (true)
+            {
+                // Try to get an event...
+                twdeviceevent = default(TWAIN.TW_DEVICEEVENT);
+                szTwmemref = m_twain.DeviceeventToCsv(twdeviceevent);
+                sts = Send("DG_CONTROL", "DAT_DEVICEEVENT", "MSG_GET", ref szTwmemref, ref szStatus);
+                if (sts != TWAIN.STS.SUCCESS)
+                {
+                    break;
+                }
+
+                // Report on what we got...
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteOutput("*** DeviceEvent ***" + Environment.NewLine);
+                WriteTriplet("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+            }
+
+            // Return a status, in case we ever need it for anything...
+            return (TWAIN.STS.SUCCESS);
+        }
+
+        /// <summary>
         /// TWAIN needs help, if we want it to run stuff in our main
         /// UI thread...
         /// </summary>
         /// <param name="control">the control to run in</param>
         /// <param name="code">the code to run</param>
+        public void RunInUiThread(Action a_action)
+        {
+            RunInUiThread(this, a_action);
+        }
         static public void RunInUiThread(Object a_object, Action a_action)
         {
             Control control = (Control)a_object;
             if (control.InvokeRequired)
             {
-                control.Invoke(new TWAINCSToolkit.RunInUiThreadDelegate(RunInUiThread), new object[] { a_object, a_action });
+                control.Invoke(new FormMain.RunInUiThreadDelegate(RunInUiThread), new object[] { a_object, a_action });
                 return;
             }
             a_action();
@@ -1122,18 +2032,10 @@ namespace TWAINCSTst
         /// <param name="a_msg">Operation</param>
         private void m_buttonCloseDS_Click(string a_szDg, string a_szDat, string a_szMsg)
         {
-            // Filter for TWAIN messages...
-            if (!m_checkboxUseCallbacks.Checked)
+            if (m_twain != null)
             {
-                Application.RemoveMessageFilter(this);
+                Rollback(TWAIN.STATE.S3);
             }
-
-            // Issue the command...
-            if (m_twaincstoolkit != null)
-            {
-                m_twaincstoolkit.CloseDriver();
-            }
-            WriteTriplet(a_szDg, a_szDat, a_szMsg, TWAIN.STS.SUCCESS.ToString());
         }
 
         /// <summary>
@@ -1162,7 +2064,7 @@ namespace TWAINCSTst
             // Request a scan session...
             szTwmemref = "0,0," + this.Handle;
             szStatus = "";
-            sts = m_twaincstoolkit.Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", ref szTwmemref, ref szStatus);
+            sts = Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", ref szTwmemref, ref szStatus);
             WriteTriplet("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", sts.ToString());
         }
 
@@ -1173,11 +2075,13 @@ namespace TWAINCSTst
         /// <param name="e">Arguments</param>
         private void m_buttonStop_Click(object sender, EventArgs e)
         {
-            // Issue the command...
-            if (m_twaincstoolkit != null)
+            if (m_twain != null)
             {
-                m_twaincstoolkit.StopSession();
-                WriteTriplet("DG_CONTROL", "DAT_USERINTERFACE", "MSG_STOPFEEDER", "SUCCESS");
+                string szTwmemref = "0,0";
+                string szStatus = "";
+                TWAIN.STS sts = Send("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_STOPFEEDER", ref szTwmemref, ref szStatus);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_STOPFEEDER", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
             }
         }
 
@@ -1193,7 +2097,7 @@ namespace TWAINCSTst
             // they support...
             if (m_checkboxUseTwain32.Checked)
             {
-                if (TWAINCSToolkit.GetPlatform() == "WINDOWS")
+                if (TWAIN.GetPlatform() == TWAIN.Platform.WINDOWS)
                 {
                     m_checkboxUseCallbacks.Checked = false;
                 }
@@ -1215,7 +2119,7 @@ namespace TWAINCSTst
         }
 
         #endregion
-        
+
 
         ///////////////////////////////////////////////////////////////////////////////
         // Private Attributes...
@@ -1223,9 +2127,16 @@ namespace TWAINCSTst
         #region Private Attributes...
 
         /// <summary>
-        /// Our image capture object...
+        /// Our interface to TWAIN...
         /// </summary>
-        private TWAINCSToolkit m_twaincstoolkit;
+        private TWAIN m_twain;
+        private IntPtr m_intptrHwnd;
+        private bool m_blDisableDsSent = false;
+        private bool m_blXferReadySent = false;
+        private IntPtr m_intptrXfer = IntPtr.Zero;
+        private IntPtr m_intptrImage = IntPtr.Zero;
+        private int m_iImageBytes = 0;
+        private TWAIN.TW_SETUPMEMXFER m_twsetupmemxfer;
 
         /// <summary>
         /// The picture box we're currently displaying into...
@@ -1258,6 +2169,14 @@ namespace TWAINCSTst
         private Graphics m_graphics6;
         private Graphics m_graphics7;
         private Graphics m_graphics8;
+        private int m_iImageCount = 0;
+
+        /// <summary>
+        /// We use this to run code in the context of the caller's UI thread...
+        /// </summary>
+        /// <param name="a_object">object (really a control)</param>
+        /// <param name="a_action">code to run</param>
+        public delegate void RunInUiThreadDelegate(Object a_object, Action a_action);
 
         #endregion
     }
