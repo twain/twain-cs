@@ -917,6 +917,9 @@ namespace TWAINWorkingGroup
                     }
                     stateStart = STATE.S4;
                     m_blAcceptXferReady = false;
+                    m_blIsMsgclosedsok = false;
+                    m_blIsMsgclosedsreq = false;
+                    m_blIsMsgxferready = false; 
                 }
 
                 // State 4 --> State 3...
@@ -11072,11 +11075,8 @@ namespace TWAINWorkingGroup
             }
 
             // We need this to handle data sources that return MSG_XFERREADY in
-            // the midst of processing MSG_ENABLEDS...
-            if (a_msg == MSG.ENABLEDS)
-            {
-                m_blAcceptXferReady = true;
-            }
+            // the midst of processing MSG_ENABLEDS.
+            m_blAcceptXferReady = ((a_msg == MSG.ENABLEDS) && (twuserinterface.ShowUI == 0));
 
             // Windows...
             if (ms_platform == Platform.WINDOWS)
@@ -11224,11 +11224,18 @@ namespace TWAINWorkingGroup
                     m_twuserinterface = a_twuserinterface;
 
                     // MSG_XFERREADY showed up while we were still processing MSG_ENABLEDS
-                    if ((sts == STS.SUCCESS) && m_blAcceptXferReady && m_blIsMsgxferready)
+                    if (m_blAcceptXferReady && m_blIsMsgxferready)
                     {
+                        // Change state...
                         m_blAcceptXferReady = false;
                         m_state = STATE.S6;
                         CallerToThreadSet();
+
+                        // Kick off the scan engine...
+                        if (m_scancallback != null)
+                        {
+                            m_scancallback(false);
+                        }
                     }
                 }
             }
@@ -12140,7 +12147,9 @@ namespace TWAINWorkingGroup
                     {
                         // MSG_XFERREADY arrived during the handling of the
                         // call to MSG_ENABLEDS.  We have to defer processing
-                        // it as late as possible...
+                        // it as late as possible.  This flag and the accept
+                        // flag will be checked at the end of DatUserinterface
+                        // to see if we need to send the message to the DSM...
                         if (m_state == STATE.S4)
                         {
                             m_blIsMsgxferready = true;
@@ -12150,15 +12159,6 @@ namespace TWAINWorkingGroup
                         // call to MSG_ENABLEDS.  We can just do it...
                         else
                         {
-                            // To handle data sources that return MSG_XFERREADY in
-                            // the midst of processing MSG_ENABLEDS, we need to clear
-                            // the flag so we don't get in here again. However, if
-                            // the UI is up, we DO want to see all MSG_XFERREADYs.
-                            if (m_twuserinterface.ShowUI == 0)
-                            {
-                                m_blAcceptXferReady = false;
-                            }
-
                             // Bump our state up...
                             m_state = STATE.S6;
                             m_blIsMsgxferready = true;

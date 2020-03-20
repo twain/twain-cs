@@ -267,6 +267,7 @@ namespace TWAINCSTst
                 sts = Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_DISABLEDS", ref szTwmemref, ref szStatus);
                 szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
                 WriteTriplet("DG_CONTROL", "DAT_USERINTERFACE", "MSG_DISABLEDS", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+                ClearEvents();
             }
 
             // 4 --> 3
@@ -322,6 +323,8 @@ namespace TWAINCSTst
         }
         private TWAIN.STS ScanCallback(bool a_blClosing)
         {
+            string szTwmemref = "";
+            string szStatus = "";
             TWAIN.STS sts;
 
             // Scoot...
@@ -363,29 +366,44 @@ namespace TWAINCSTst
             {
                 m_blXferReadySent = true;
 
-                // Get the amount of memory needed...
-                string szTwmemref = "0,0,0";
-                string szStatus = "";
-                sts = Send("DG_CONTROL", "DAT_SETUPMEMXFER", "MSG_GET", ref szTwmemref, ref szStatus);
-                m_twain.CsvToSetupmemxfer(ref m_twsetupmemxfer, szTwmemref);
+                // What transfer mechanism are we using?
+                szTwmemref = "ICAP_XFERMECH,0,0,0";
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_CAPABILITY", "MSG_GETCURRENT", ref szTwmemref, ref szStatus);
                 szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
                 WriteTriplet("DG_CONTROL", "DAT_SETUPMEMXFER", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
-                if ((sts != TWAIN.STS.SUCCESS) || (m_twsetupmemxfer.Preferred == 0))
+                if (szTwmemref.EndsWith("TWSX_NATIVE")) m_twsxXferMech = TWAIN.TWSX.NATIVE;
+                else if (szTwmemref.EndsWith("TWSX_MEMORY")) m_twsxXferMech = TWAIN.TWSX.MEMORY;
+                else if (szTwmemref.EndsWith("TWSX_FILE")) m_twsxXferMech = TWAIN.TWSX.FILE;
+                else if (szTwmemref.EndsWith("TWSX_MEMFILE")) m_twsxXferMech = TWAIN.TWSX.MEMFILE;
+
+                // Memory and memfile transfers need this...
+                if ((m_twsxXferMech == TWAIN.TWSX.MEMORY) || (m_twsxXferMech == TWAIN.TWSX.MEMFILE))
                 {
-                    m_blXferReadySent = false;
-                    if (!m_blDisableDsSent)
+                    // Get the amount of memory needed...
+                    szTwmemref = "0,0,0";
+                    szStatus = "";
+                    sts = Send("DG_CONTROL", "DAT_SETUPMEMXFER", "MSG_GET", ref szTwmemref, ref szStatus);
+                    m_twain.CsvToSetupmemxfer(ref m_twsetupmemxfer, szTwmemref);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_CONTROL", "DAT_SETUPMEMXFER", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+                    if ((sts != TWAIN.STS.SUCCESS) || (m_twsetupmemxfer.Preferred == 0))
+                    {
+                        m_blXferReadySent = false;
+                        if (!m_blDisableDsSent)
+                        {
+                            m_blDisableDsSent = true;
+                            Rollback(TWAIN.STATE.S4);
+                        }
+                    }
+
+                    // Allocate the transfer memory (with a little extra to protect ourselves)...
+                    m_intptrXfer = Marshal.AllocHGlobal((int)m_twsetupmemxfer.Preferred + 65536);
+                    if (m_intptrXfer == IntPtr.Zero)
                     {
                         m_blDisableDsSent = true;
                         Rollback(TWAIN.STATE.S4);
                     }
-                }
-
-                // Allocate the transfer memory (with a little extra to protect ourselves)...
-                m_intptrXfer = Marshal.AllocHGlobal((int)m_twsetupmemxfer.Preferred + 65536);
-                if (m_intptrXfer == IntPtr.Zero)
-                {
-                    m_blDisableDsSent = true;
-                    Rollback(TWAIN.STATE.S4);
                 }
             }
 
@@ -409,7 +427,25 @@ namespace TWAINCSTst
             // we run out of images...
             if (m_blXferReadySent && !m_blDisableDsSent)
             {
-                CaptureImages();
+                switch (m_twsxXferMech)
+                {
+                    default:
+                    case TWAIN.TWSX.NATIVE:
+                        CaptureNativeImages();
+                        break;
+
+                    case TWAIN.TWSX.MEMORY:
+                        CaptureMemImages();
+                        break;
+
+                    case TWAIN.TWSX.FILE:
+                        CaptureFileImages();
+                        break;
+
+                    case TWAIN.TWSX.MEMFILE:
+                        CaptureMemfileImages();
+                        break;
+                }
             }
 
             // Trigger the next event, this is where things all chain together.
@@ -425,9 +461,180 @@ namespace TWAINCSTst
         }
 
         /// <summary>
-        /// Go through the sequence needed to capture images...
+        /// Go through the sequence needed to capture images using DAT_IMAGENATIVEXFER...
         /// </summary>
-        private void CaptureImages()
+        private void CaptureNativeImages()
+        {
+            string szTwmemref = "";
+            string szStatus = "";
+            IntPtr intptrHandle = IntPtr.Zero;
+            IntPtr intptrPtr = IntPtr.Zero;
+            TWAIN.STS sts;
+            TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
+
+            // Dispatch on the state...
+            switch (m_twain.GetState())
+            {
+                // Not a good state, just scoot...
+                default:
+                    return;
+
+                // We're on our way out...
+                case TWAIN.STATE.S5:
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+
+                // Native transfers...
+                case TWAIN.STATE.S6:
+                    szTwmemref = "0";
+                    szStatus = "";
+                    sts = Send("DG_IMAGE", "DAT_IMAGENATIVEXFER", "MSG_GET", ref szTwmemref, ref szStatus);
+                    if (!string.IsNullOrEmpty(szTwmemref))
+                    {
+                        UInt64 u64Handle;
+                        if (UInt64.TryParse(szTwmemref, out u64Handle))
+                        {
+                            intptrHandle = (IntPtr)u64Handle;
+                        }
+                    }
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_IMAGE", "DAT_IMAGENATIVEXFER", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+                    break;
+            }
+
+            // Handle problems...
+            if (sts != TWAIN.STS.XFERDONE)
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+                return;
+            }
+
+            // Ruh-roh...
+            if (intptrHandle == IntPtr.Zero)
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+                return;
+            }
+
+            // If we saw XFERDONE we can save the image, display it,
+            // end the transfer, and see if we have more images...
+            if (sts == TWAIN.STS.XFERDONE)
+            {
+                // Bump up our image counter, this always grows for the
+                // life of the entire session...
+                m_iImageCount += 1;
+
+                // Get our pointer...
+                intptrPtr = m_twain.DsmMemLock(intptrHandle);
+                if (intptrPtr == IntPtr.Zero)
+                {
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+                }
+
+                // Turn our image pointer into a byte array...
+                byte[] abImage = m_twain.NativeToByteArray(intptrPtr, true);
+
+                // Unlock and free the memory we got from the scanner...
+                m_twain.DsmMemUnlock(intptrHandle);
+                m_twain.DsmMemFree(ref intptrHandle);
+
+                // Save the image to disk, if we're doing that...
+                /*
+                if (!string.IsNullOrEmpty(m_formsetup.GetImageFolder()))
+                {
+                    // Create the directory, if needed...
+                    if (!Directory.Exists(m_formsetup.GetImageFolder()))
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(m_formsetup.GetImageFolder());
+                        }
+                        catch (Exception exception)
+                        {
+                            TWAINWorkingGroup.Log.Error("CreateDirectory failed - " + exception.Message);
+                        }
+                    }
+
+                    // Write it out...
+                    string szFilename = Path.Combine(m_formsetup.GetImageFolder(), "img" + string.Format("{0:D6}", m_iImageCount));
+                    TWAIN.WriteImageFile(szFilename, m_intptrImage, m_iImageBytes, out szFilename);
+                }
+                */
+
+                // Turn the byte array into a stream...
+                MemoryStream memorystream = new MemoryStream(abImage);
+                Bitmap bitmap = (Bitmap)Image.FromStream(memorystream);
+
+                // Display the image...
+
+                // Display the image...
+                switch (m_iCurrentPictureBox)
+                {
+                    default:
+                    case 0:
+                        LoadImage(ref m_pictureboxImage1, ref m_graphics1, ref m_bitmapGraphic1, bitmap);
+                        break;
+                    case 1:
+                        LoadImage(ref m_pictureboxImage2, ref m_graphics2, ref m_bitmapGraphic2, bitmap);
+                        break;
+                    case 2:
+                        LoadImage(ref m_pictureboxImage3, ref m_graphics3, ref m_bitmapGraphic3, bitmap);
+                        break;
+                    case 3:
+                        LoadImage(ref m_pictureboxImage4, ref m_graphics4, ref m_bitmapGraphic4, bitmap);
+                        break;
+                    case 4:
+                        LoadImage(ref m_pictureboxImage5, ref m_graphics5, ref m_bitmapGraphic5, bitmap);
+                        break;
+                    case 5:
+                        LoadImage(ref m_pictureboxImage6, ref m_graphics6, ref m_bitmapGraphic6, bitmap);
+                        break;
+                    case 6:
+                        LoadImage(ref m_pictureboxImage7, ref m_graphics7, ref m_bitmapGraphic7, bitmap);
+                        break;
+                    case 7:
+                        LoadImage(ref m_pictureboxImage8, ref m_graphics8, ref m_bitmapGraphic8, bitmap);
+                        break;
+                }
+
+                // Next picture box...
+                if (++m_iCurrentPictureBox >= 8)
+                {
+                    m_iCurrentPictureBox = 0;
+                }
+
+                // Cleanup...
+                bitmap.Dispose();
+                memorystream = null; // disposed by the bitmap
+                abImage = null;
+
+                // End the transfer...
+                szTwmemref = "0,0";
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", ref szTwmemref, ref szStatus);
+                m_twain.CsvToPendingXfers(ref twpendingxfers, szTwmemref);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+                // Looks like we're done!
+                if (twpendingxfers.Count == 0)
+                {
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Go through the sequence needed to capture images using DAT_IMAGEMEMXFER...
+        /// </summary>
+        private void CaptureMemImages()
         {
             string szTwmemref = "";
             string szStatus = "";
@@ -573,6 +780,340 @@ namespace TWAINCSTst
                     Rollback(TWAIN.STATE.S4);
                     return;
                 }
+
+                // Save the image to disk, if we're doing that...
+                /*
+                if (!string.IsNullOrEmpty(m_formsetup.GetImageFolder()))
+                {
+                    // Create the directory, if needed...
+                    if (!Directory.Exists(m_formsetup.GetImageFolder()))
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(m_formsetup.GetImageFolder());
+                        }
+                        catch (Exception exception)
+                        {
+                            TWAINWorkingGroup.Log.Error("CreateDirectory failed - " + exception.Message);
+                        }
+                    }
+
+                    // Write it out...
+                    string szFilename = Path.Combine(m_formsetup.GetImageFolder(), "img" + string.Format("{0:D6}", m_iImageCount));
+                    TWAIN.WriteImageFile(szFilename, m_intptrImage, m_iImageBytes, out szFilename);
+                }
+                */
+
+                // Turn the image into a byte array, and free the original memory...
+                byte[] abImage = new byte[m_iImageBytes];
+                Marshal.Copy(m_intptrImage, abImage, 0, m_iImageBytes);
+                Marshal.FreeHGlobal(m_intptrImage);
+                m_intptrImage = IntPtr.Zero;
+                m_iImageBytes = 0;
+
+                // Turn the byte array into a stream...
+                MemoryStream memorystream = new MemoryStream(abImage);
+                Bitmap bitmap = (Bitmap)Image.FromStream(memorystream);
+
+                // Display the image...
+
+                // Display the image...
+                switch (m_iCurrentPictureBox)
+                {
+                    default:
+                    case 0:
+                        LoadImage(ref m_pictureboxImage1, ref m_graphics1, ref m_bitmapGraphic1, bitmap);
+                        break;
+                    case 1:
+                        LoadImage(ref m_pictureboxImage2, ref m_graphics2, ref m_bitmapGraphic2, bitmap);
+                        break;
+                    case 2:
+                        LoadImage(ref m_pictureboxImage3, ref m_graphics3, ref m_bitmapGraphic3, bitmap);
+                        break;
+                    case 3:
+                        LoadImage(ref m_pictureboxImage4, ref m_graphics4, ref m_bitmapGraphic4, bitmap);
+                        break;
+                    case 4:
+                        LoadImage(ref m_pictureboxImage5, ref m_graphics5, ref m_bitmapGraphic5, bitmap);
+                        break;
+                    case 5:
+                        LoadImage(ref m_pictureboxImage6, ref m_graphics6, ref m_bitmapGraphic6, bitmap);
+                        break;
+                    case 6:
+                        LoadImage(ref m_pictureboxImage7, ref m_graphics7, ref m_bitmapGraphic7, bitmap);
+                        break;
+                    case 7:
+                        LoadImage(ref m_pictureboxImage8, ref m_graphics8, ref m_bitmapGraphic8, bitmap);
+                        break;
+                }
+
+                // Next picture box...
+                if (++m_iCurrentPictureBox >= 8)
+                {
+                    m_iCurrentPictureBox = 0;
+                }
+
+                // Cleanup...
+                bitmap.Dispose();
+                memorystream = null; // disposed by the bitmap
+                abImage = null;
+
+                // End the transfer...
+                szTwmemref = "0,0";
+                szStatus = "";
+                sts = Send("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", ref szTwmemref, ref szStatus);
+                m_twain.CsvToPendingXfers(ref twpendingxfers, szTwmemref);
+                szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                WriteTriplet("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+                // Looks like we're done!
+                if (twpendingxfers.Count == 0)
+                {
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Go through the sequence needed to capture images using DAT_IMAGEFILEXFER...
+        /// </summary>
+        private void CaptureFileImages()
+        {
+            string szTwmemref = "";
+            string szStatus = "";
+            string szFilename = "";
+            TWAIN.STS sts;
+            TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
+            TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
+
+            // Dispatch on the state...
+            switch (m_twain.GetState())
+            {
+                // Not a good state, just scoot...
+                default:
+                    return;
+
+                // We're on our way out...
+                case TWAIN.STATE.S5:
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+
+                // Memory transfers...
+                case TWAIN.STATE.S6:
+                    // Get the image info...
+                    szTwmemref = "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0";
+                    szStatus = "";
+                    sts = Send("DG_IMAGE", "DAT_IMAGEINFO", "MSG_GET", ref szTwmemref, ref szStatus);
+                    m_twain.CsvToImageinfo(ref twimageinfo, szTwmemref);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_IMAGE", "DAT_IMAGEINFO", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+                    // Pick an image file format...
+                    if (twimageinfo.Compression == (ushort)TWAIN.TWCP.JPEG)
+                    {
+                        szFilename = "C:/twain/image.jpg";
+                        szTwmemref = szFilename + ",TWFF_JFIF,0";
+                    }
+                    else
+                    {
+                        szFilename = "C:/twain/image.tif";
+                        szTwmemref = szFilename + ",TWFF_TIFF,0";
+                    }
+                    szStatus = "";
+                    sts = Send("DG_CONTROL", "DAT_SETUPFILEXFER", "MSG_SET", ref szTwmemref, ref szStatus);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_CONTROL", "DAT_SETUPFILEXFER", "MSG_SET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+                    // Transfer stuff...
+                    szTwmemref = "";
+                    szStatus = "";
+                    sts = Send("DG_IMAGE", "DAT_IMAGEFILEXFER", "MSG_GET", ref szTwmemref, ref szStatus);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_IMAGE", "DAT_IMAGEFILEXFER", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+                    break;
+            }
+
+            // Handle problems...
+            if (sts != TWAIN.STS.XFERDONE)
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+                return;
+            }
+
+            // Bump up our image counter, this always grows for the
+            // life of the entire session...
+            m_iImageCount += 1;
+
+            // Read the file...
+            Bitmap bitmap = new Bitmap(szFilename);
+
+            // Display the image...
+
+            // Display the image...
+            switch (m_iCurrentPictureBox)
+            {
+                default:
+                case 0:
+                    LoadImage(ref m_pictureboxImage1, ref m_graphics1, ref m_bitmapGraphic1, bitmap);
+                    break;
+                case 1:
+                    LoadImage(ref m_pictureboxImage2, ref m_graphics2, ref m_bitmapGraphic2, bitmap);
+                    break;
+                case 2:
+                    LoadImage(ref m_pictureboxImage3, ref m_graphics3, ref m_bitmapGraphic3, bitmap);
+                    break;
+                case 3:
+                    LoadImage(ref m_pictureboxImage4, ref m_graphics4, ref m_bitmapGraphic4, bitmap);
+                    break;
+                case 4:
+                    LoadImage(ref m_pictureboxImage5, ref m_graphics5, ref m_bitmapGraphic5, bitmap);
+                    break;
+                case 5:
+                    LoadImage(ref m_pictureboxImage6, ref m_graphics6, ref m_bitmapGraphic6, bitmap);
+                    break;
+                case 6:
+                    LoadImage(ref m_pictureboxImage7, ref m_graphics7, ref m_bitmapGraphic7, bitmap);
+                    break;
+                case 7:
+                    LoadImage(ref m_pictureboxImage8, ref m_graphics8, ref m_bitmapGraphic8, bitmap);
+                    break;
+            }
+
+            // Next picture box...
+            if (++m_iCurrentPictureBox >= 8)
+            {
+                m_iCurrentPictureBox = 0;
+            }
+
+            // Cleanup...
+            bitmap.Dispose();
+
+            // End the transfer...
+            szTwmemref = "0,0";
+            szStatus = "";
+            sts = Send("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", ref szTwmemref, ref szStatus);
+            m_twain.CsvToPendingXfers(ref twpendingxfers, szTwmemref);
+            szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+            WriteTriplet("DG_CONTROL", "DAT_PENDINGXFERS", "MSG_ENDXFER", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+            // Looks like we're done!
+            if (twpendingxfers.Count == 0)
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Go through the sequence needed to capture images using DAT_IMAGEMEMFILEXFER...
+        /// </summary>
+        private void CaptureMemfileImages()
+        {
+            string szTwmemref = "";
+            string szStatus = "";
+            TWAIN.STS sts;
+            TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
+            TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
+            TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
+
+            // Dispatch on the state...
+            switch (m_twain.GetState())
+            {
+                // Not a good state, just scoot...
+                default:
+                    return;
+
+                // We're on our way out...
+                case TWAIN.STATE.S5:
+                    m_blDisableDsSent = true;
+                    Rollback(TWAIN.STATE.S4);
+                    return;
+
+                // Memory transfers...
+                case TWAIN.STATE.S6:
+                    // Get the image info...
+                    szTwmemref = "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0";
+                    szStatus = "";
+                    sts = Send("DG_IMAGE", "DAT_IMAGEINFO", "MSG_GET", ref szTwmemref, ref szStatus);
+                    m_twain.CsvToImageinfo(ref twimageinfo, szTwmemref);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_IMAGE", "DAT_IMAGEINFO", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+                    // Pick an image file format...
+                    if (twimageinfo.Compression == (ushort)TWAIN.TWCP.JPEG)
+                    {
+                        szTwmemref = "C:/twain/image.jpg,TWFF_JFIF,0";
+                    }
+                    else
+                    {
+                        szTwmemref = "C:/twain/image.tif,TWFF_TIFF,0";
+                    }
+                    szStatus = "";
+                    sts = Send("DG_CONTROL", "DAT_SETUPFILEXFER", "MSG_SET", ref szTwmemref, ref szStatus);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_CONTROL", "DAT_SETUPFILEXFER", "MSG_SET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+
+                    // Transfer stuff...
+                    szTwmemref = "0,0,0,0,0,0,0," + ((int)TWAIN.TWMF.APPOWNS | (int)TWAIN.TWMF.POINTER) + "," + m_twsetupmemxfer.Preferred + "," + m_intptrXfer;
+                    szStatus = "";
+                    sts = Send("DG_IMAGE", "DAT_IMAGEMEMFILEXFER", "MSG_GET", ref szTwmemref, ref szStatus);
+                    m_twain.CsvToImagememxfer(ref twimagememxfer, szTwmemref);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_IMAGE", "DAT_IMAGEMEMFILEXFER", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+                    break;
+
+                case TWAIN.STATE.S7:
+                    szTwmemref = "0,0,0,0,0,0,0," + ((int)TWAIN.TWMF.APPOWNS | (int)TWAIN.TWMF.POINTER) + "," + m_twsetupmemxfer.Preferred + "," + m_intptrXfer;
+                    szStatus = "";
+                    sts = Send("DG_IMAGE", "DAT_IMAGEMEMFILEXFER", "MSG_GET", ref szTwmemref, ref szStatus);
+                    m_twain.CsvToImagememxfer(ref twimagememxfer, szTwmemref);
+                    szStatus = (szStatus == "") ? sts.ToString() : (sts.ToString() + " - " + szStatus);
+                    WriteTriplet("DG_IMAGE", "DAT_IMAGEMEMFILEXFER", "MSG_GET", szStatus + ((szTwmemref == "") ? "" : (Environment.NewLine + szTwmemref)));
+                    break;
+            }
+
+            // Handle problems...
+            if ((sts != TWAIN.STS.SUCCESS) && (sts != TWAIN.STS.XFERDONE))
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+                return;
+            }
+
+            // Allocate or grow the image memory...
+            if (m_intptrImage == IntPtr.Zero)
+            {
+                m_intptrImage = Marshal.AllocHGlobal((int)twimagememxfer.BytesWritten);
+            }
+            else
+            {
+                m_intptrImage = Marshal.ReAllocHGlobal(m_intptrImage, (IntPtr)(m_iImageBytes + twimagememxfer.BytesWritten));
+            }
+
+            // Ruh-roh...
+            if (m_intptrImage == IntPtr.Zero)
+            {
+                m_blDisableDsSent = true;
+                Rollback(TWAIN.STATE.S4);
+                return;
+            }
+
+            // Copy into the buffer, and bump up our byte tally...
+            TWAIN.MemCpy(m_intptrImage + m_iImageBytes, m_intptrXfer, (int)twimagememxfer.BytesWritten);
+            m_iImageBytes += (int)twimagememxfer.BytesWritten;
+
+            // If we saw XFERDONE we can save the image, display it,
+            // end the transfer, and see if we have more images...
+            if (sts == TWAIN.STS.XFERDONE)
+            {
+                // Bump up our image counter, this always grows for the
+                // life of the entire session...
+                m_iImageCount += 1;
 
                 // Save the image to disk, if we're doing that...
                 /*
@@ -1151,6 +1692,16 @@ namespace TWAINCSTst
                 m_comboboxDG.SelectedItem = "DG_CONTROL";
                 m_comboboxDAT.SelectedItem = "DAT_PARENT";
                 m_comboboxMSG.SelectedItem = "MSG_OPENDSM";
+                m_richtextboxCapability.Text =
+                    "TWAIN Working Group," +
+                    "TWAIN Sharp," +
+                    "TWAIN Sharp Test App," +
+                    "2," +
+                    "4," +
+                    "0x20000003," +
+                    "USA," +
+                    "testing...," +
+                    "ENGLISH_USA";
             }
 
             // After OPENDSM we have a choice, based on the DSM that was used...
@@ -1171,6 +1722,7 @@ namespace TWAINCSTst
                     m_comboboxDAT.SelectedItem = "DAT_IDENTITY";
                     m_comboboxMSG.SelectedItem = "MSG_GETFIRST";
                 }
+                m_richtextboxCapability.Text = "";
             }
 
             // After an ENTRYPOINT, switch to GETFIRST...
@@ -1179,6 +1731,7 @@ namespace TWAINCSTst
                 m_comboboxDG.SelectedItem = "DG_CONTROL";
                 m_comboboxDAT.SelectedItem = "DAT_IDENTITY";
                 m_comboboxMSG.SelectedItem = "MSG_GETFIRST";
+                m_richtextboxCapability.Text = "";
             }
 
             // When we CLOSEDSM, go back to OPENDSM...
@@ -1187,6 +1740,16 @@ namespace TWAINCSTst
                 m_comboboxDG.SelectedItem = "DG_CONTROL";
                 m_comboboxDAT.SelectedItem = "DAT_PARENT";
                 m_comboboxMSG.SelectedItem = "MSG_OPENDSM";
+                m_richtextboxCapability.Text =
+                    "TWAIN Working Group," +
+                    "TWAIN Sharp," +
+                    "TWAIN Sharp Test App," +
+                    "2," +
+                    "4," +
+                    "0x20000003," +
+                    "USA," +
+                    "testing...," +
+                    "ENGLISH_USA";
             }
 
             // After a GETFIRST, switch to GETNEXT...
@@ -1203,6 +1766,7 @@ namespace TWAINCSTst
                 m_comboboxDG.SelectedItem = "DG_CONTROL";
                 m_comboboxDAT.SelectedItem = "DAT_CAPABILITY";
                 m_comboboxMSG.SelectedItem = "MSG_GETCURRENT";
+                m_richtextboxCapability.Text = "";
             }
 
             // After a CLOSEDS, switch to CLOSEDSM...
@@ -1919,7 +2483,7 @@ namespace TWAINCSTst
                     catch (Exception exception)
                     {
                         TWAINWorkingGroup.Log.Error("exception - " + exception.Message);
-                        WriteTriplet(a_szDg, a_szDat, a_szMsg, "(unable to start)");
+                        WriteTriplet(a_szDg, a_szDat, a_szMsg, "(unable to start, clear the data window and try again)");
                         m_twain = null;
                         return;
                     }
@@ -2062,10 +2626,21 @@ namespace TWAINCSTst
             LoadImage(ref m_pictureboxImage8, ref m_graphics8, ref m_bitmapGraphic8, bitmap);
 
             // Request a scan session...
+            ClearEvents();
             szTwmemref = "0,0," + this.Handle;
             szStatus = "";
             sts = Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", ref szTwmemref, ref szStatus);
             WriteTriplet("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", sts.ToString());
+        }
+
+        /// <summary>
+        /// Clear our event list, and reset our event...
+        /// </summary>
+
+        public void ClearEvents()
+        {
+            m_blXferReadySent = false;
+            m_blDisableDsSent = false;
         }
 
         /// <summary>
@@ -2136,6 +2711,7 @@ namespace TWAINCSTst
         private IntPtr m_intptrXfer = IntPtr.Zero;
         private IntPtr m_intptrImage = IntPtr.Zero;
         private int m_iImageBytes = 0;
+        private TWAIN.TWSX m_twsxXferMech;
         private TWAIN.TW_SETUPMEMXFER m_twsetupmemxfer;
 
         /// <summary>
