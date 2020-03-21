@@ -963,6 +963,507 @@ namespace TWAINWorkingGroup
             return (m_state);
         }
 
+        /// <summary>
+        /// Send a command to the currently loaded DSM...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        public TWAIN.STS Send(string a_szDg, string a_szDat, string a_szMsg, ref string a_szTwmemref, ref string a_szResult)
+        {
+            int iDg;
+            int iDat;
+            int iMsg;
+            TWAIN.STS sts;
+            TWAIN.DG dg = TWAIN.DG.MASK;
+            TWAIN.DAT dat = TWAIN.DAT.NULL;
+            TWAIN.MSG msg = TWAIN.MSG.NULL;
+
+            // Init stuff...
+            iDg = 0;
+            iDat = 0;
+            iMsg = 0;
+            sts = TWAIN.STS.BADPROTOCOL;
+            a_szResult = "";
+
+            // Look for DG...
+            if (!a_szDg.ToLowerInvariant().StartsWith("dg_"))
+            {
+                TWAINWorkingGroup.Log.Error("Unrecognized dg - <" + a_szDg + ">");
+                return (TWAIN.STS.BADPROTOCOL);
+            }
+            else
+            {
+                // Look for hex number (take anything)...
+                if (a_szDg.ToLowerInvariant().StartsWith("dg_0x"))
+                {
+                    if (!int.TryParse(a_szDg.ToLowerInvariant().Substring(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iDg))
+                    {
+                        TWAINWorkingGroup.Log.Error("Badly constructed dg - <" + a_szDg + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                }
+                else
+                {
+                    if (!Enum.TryParse(a_szDg.ToUpperInvariant().Substring(3), out dg))
+                    {
+                        TWAINWorkingGroup.Log.Error("Unrecognized dg - <" + a_szDg + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                    iDg = (int)dg;
+                }
+            }
+
+            // Look for DAT...
+            if (!a_szDat.ToLowerInvariant().StartsWith("dat_"))
+            {
+                TWAINWorkingGroup.Log.Error("Unrecognized dat - <" + a_szDat + ">");
+                return (TWAIN.STS.BADPROTOCOL);
+            }
+            else
+            {
+                // Look for hex number (take anything)...
+                if (a_szDat.ToLowerInvariant().StartsWith("dat_0x"))
+                {
+                    if (!int.TryParse(a_szDat.ToLowerInvariant().Substring(4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iDat))
+                    {
+                        TWAINWorkingGroup.Log.Error("Badly constructed dat - <" + a_szDat + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                }
+                else
+                {
+                    if (!Enum.TryParse(a_szDat.ToUpperInvariant().Substring(4), out dat))
+                    {
+                        TWAINWorkingGroup.Log.Error("Unrecognized dat - <" + a_szDat + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                    iDat = (int)dat;
+                }
+            }
+
+            // Look for MSG...
+            if (!a_szMsg.ToLowerInvariant().StartsWith("msg_"))
+            {
+                TWAINWorkingGroup.Log.Error("Unrecognized msg - <" + a_szMsg + ">");
+                return (TWAIN.STS.BADPROTOCOL);
+            }
+            else
+            {
+                // Look for hex number (take anything)...
+                if (a_szMsg.ToLowerInvariant().StartsWith("msg_0x"))
+                {
+                    if (!int.TryParse(a_szMsg.ToLowerInvariant().Substring(4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iMsg))
+                    {
+                        TWAINWorkingGroup.Log.Error("Badly constructed dat - <" + a_szMsg + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                }
+                else
+                {
+                    if (!Enum.TryParse(a_szMsg.ToUpperInvariant().Substring(4), out msg))
+                    {
+                        TWAINWorkingGroup.Log.Error("Unrecognized msg - <" + a_szMsg + ">");
+                        return (TWAIN.STS.BADPROTOCOL);
+                    }
+                    iMsg = (int)msg;
+                }
+            }
+
+            // Send the command...
+            switch (iDat)
+            {
+                // Ruh-roh, since we can't marshal it, we have to return an error,
+                // it would be nice to have a solution for this, but that will need
+                // a dynamic marshalling system...
+                default:
+                    sts = TWAIN.STS.BADPROTOCOL;
+                    break;
+
+                // DAT_AUDIOFILEXFER...
+                case (int)TWAIN.DAT.AUDIOFILEXFER:
+                    {
+                        sts = DatAudiofilexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg);
+                        a_szTwmemref = "";
+                    }
+                    break;
+
+                // DAT_AUDIOINFO..
+                case (int)TWAIN.DAT.AUDIOINFO:
+                    {
+                        TWAIN.TW_AUDIOINFO twaudioinfo = default(TWAIN.TW_AUDIOINFO);
+                        sts = DatAudioinfo((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twaudioinfo);
+                        a_szTwmemref = AudioinfoToCsv(twaudioinfo);
+                    }
+                    break;
+
+                // DAT_AUDIONATIVEXFER..
+                case (int)TWAIN.DAT.AUDIONATIVEXFER:
+                    {
+                        IntPtr intptr = IntPtr.Zero;
+                        sts = DatAudionativexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref intptr);
+                        a_szTwmemref = intptr.ToString();
+                    }
+                    break;
+
+                // DAT_CALLBACK...
+                case (int)TWAIN.DAT.CALLBACK:
+                    {
+                        TWAIN.TW_CALLBACK twcallback = default(TWAIN.TW_CALLBACK);
+                        CsvToCallback(ref twcallback, a_szTwmemref);
+                        sts = DatCallback((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twcallback);
+                        a_szTwmemref = CallbackToCsv(twcallback);
+                    }
+                    break;
+
+                // DAT_CALLBACK2...
+                case (int)TWAIN.DAT.CALLBACK2:
+                    {
+                        TWAIN.TW_CALLBACK2 twcallback2 = default(TWAIN.TW_CALLBACK2);
+                        CsvToCallback2(ref twcallback2, a_szTwmemref);
+                        sts = DatCallback2((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twcallback2);
+                        a_szTwmemref = Callback2ToCsv(twcallback2);
+                    }
+                    break;
+
+                // DAT_CAPABILITY...
+                case (int)TWAIN.DAT.CAPABILITY:
+                    {
+                        // Skip symbols for msg_querysupport, otherwise 0 gets turned into false, also
+                        // if the command fails the return value is whatever was sent into us, which
+                        // matches the experience one should get with C/C++...
+                        string szStatus = "";
+                        TWAIN.TW_CAPABILITY twcapability = default(TWAIN.TW_CAPABILITY);
+                        CsvToCapability(ref twcapability, ref szStatus, a_szTwmemref);
+                        sts = DatCapability((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twcapability);
+                        if ((sts == TWAIN.STS.SUCCESS) || (sts == TWAIN.STS.CHECKSTATUS))
+                        {
+                            // Convert the data to CSV...
+                            a_szTwmemref = CapabilityToCsv(twcapability, ((TWAIN.MSG)iMsg != TWAIN.MSG.QUERYSUPPORT));
+                            // Free the handle if the driver created it...
+                            switch ((TWAIN.MSG)iMsg)
+                            {
+                                default: break;
+                                case TWAIN.MSG.GET:
+                                case TWAIN.MSG.GETCURRENT:
+                                case TWAIN.MSG.GETDEFAULT:
+                                case TWAIN.MSG.QUERYSUPPORT:
+                                case TWAIN.MSG.RESET:
+                                    DsmMemFree(ref twcapability.hContainer);
+                                    break;
+                            }
+                        }
+                    }
+                    break;
+
+                // DAT_CIECOLOR..
+                case (int)TWAIN.DAT.CIECOLOR:
+                    {
+                        //TWAIN.TW_CIECOLOR twciecolor = default(TWAIN.TW_CIECOLOR);
+                        //sts = m_twain.DatCiecolor((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twciecolor);
+                        //a_szTwmemref = m_twain.CiecolorToCsv(twciecolor);
+                    }
+                    break;
+
+                // DAT_CUSTOMDSDATA...
+                case (int)TWAIN.DAT.CUSTOMDSDATA:
+                    {
+                        TWAIN.TW_CUSTOMDSDATA twcustomdsdata = default(TWAIN.TW_CUSTOMDSDATA);
+                        CsvToCustomdsdata(ref twcustomdsdata, a_szTwmemref);
+                        sts = DatCustomdsdata((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twcustomdsdata);
+                        a_szTwmemref = CustomdsdataToCsv(twcustomdsdata);
+                    }
+                    break;
+
+                // DAT_DEVICEEVENT...
+                case (int)TWAIN.DAT.DEVICEEVENT:
+                    {
+                        TWAIN.TW_DEVICEEVENT twdeviceevent = default(TWAIN.TW_DEVICEEVENT);
+                        sts = DatDeviceevent((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twdeviceevent);
+                        a_szTwmemref = DeviceeventToCsv(twdeviceevent);
+                    }
+                    break;
+
+                // DAT_ENTRYPOINT...
+                case (int)TWAIN.DAT.ENTRYPOINT:
+                    {
+                        TWAIN.TW_ENTRYPOINT twentrypoint = default(TWAIN.TW_ENTRYPOINT);
+                        twentrypoint.Size = (uint)Marshal.SizeOf(twentrypoint);
+                        sts = DatEntrypoint((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twentrypoint);
+                        a_szTwmemref = EntrypointToCsv(twentrypoint);
+                    }
+                    break;
+
+                // DAT_EVENT...
+                case (int)TWAIN.DAT.EVENT:
+                    {
+                        TWAIN.TW_EVENT twevent = default(TWAIN.TW_EVENT);
+                        sts = DatEvent((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twevent);
+                        a_szTwmemref = EventToCsv(twevent);
+                    }
+                    break;
+
+                // DAT_EXTIMAGEINFO...
+                case (int)TWAIN.DAT.EXTIMAGEINFO:
+                    {
+                        TWAIN.TW_EXTIMAGEINFO twextimageinfo = default(TWAIN.TW_EXTIMAGEINFO);
+                        CsvToExtimageinfo(ref twextimageinfo, a_szTwmemref);
+                        sts = DatExtimageinfo((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twextimageinfo);
+                        a_szTwmemref = ExtimageinfoToCsv(twextimageinfo);
+                    }
+                    break;
+
+                // DAT_FILESYSTEM...
+                case (int)TWAIN.DAT.FILESYSTEM:
+                    {
+                        TWAIN.TW_FILESYSTEM twfilesystem = default(TWAIN.TW_FILESYSTEM);
+                        CsvToFilesystem(ref twfilesystem, a_szTwmemref);
+                        sts = DatFilesystem((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twfilesystem);
+                        a_szTwmemref = FilesystemToCsv(twfilesystem);
+                    }
+                    break;
+
+                // DAT_FILTER...
+                case (int)TWAIN.DAT.FILTER:
+                    {
+                        //TWAIN.TW_FILTER twfilter = default(TWAIN.TW_FILTER);
+                        //m_twain.CsvToFilter(ref twfilter, a_szTwmemref);
+                        //sts = m_twain.DatFilter((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twfilter);
+                        //a_szTwmemref = m_twain.FilterToCsv(twfilter);
+                    }
+                    break;
+
+                // DAT_GRAYRESPONSE...
+                case (int)TWAIN.DAT.GRAYRESPONSE:
+                    {
+                        //TWAIN.TW_GRAYRESPONSE twgrayresponse = default(TWAIN.TW_GRAYRESPONSE);
+                        //m_twain.CsvToGrayresponse(ref twgrayresponse, a_szTwmemref);
+                        //sts = m_twain.DatGrayresponse((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twgrayresponse);
+                        //a_szTwmemref = m_twain.GrayresponseToCsv(twgrayresponse);
+                    }
+                    break;
+
+                // DAT_ICCPROFILE...
+                case (int)TWAIN.DAT.ICCPROFILE:
+                    {
+                        TWAIN.TW_MEMORY twmemory = default(TWAIN.TW_MEMORY);
+                        sts = DatIccprofile((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twmemory);
+                        a_szTwmemref = IccprofileToCsv(twmemory);
+                    }
+                    break;
+
+                // DAT_IDENTITY...
+                case (int)TWAIN.DAT.IDENTITY:
+                    {
+                        TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
+                        switch (iMsg)
+                        {
+                            default:
+                                break;
+                            case (int)TWAIN.MSG.SET:
+                            case (int)TWAIN.MSG.OPENDS:
+                                CsvToIdentity(ref twidentity, a_szTwmemref);
+                                break;
+                        }
+                        sts = DatIdentity((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twidentity);
+                        a_szTwmemref = IdentityToCsv(twidentity);
+                    }
+                    break;
+
+                // DAT_IMAGEFILEXFER...
+                case (int)TWAIN.DAT.IMAGEFILEXFER:
+                    {
+                        sts = DatImagefilexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg);
+                        a_szTwmemref = "";
+                    }
+                    break;
+
+                // DAT_IMAGEINFO...
+                case (int)TWAIN.DAT.IMAGEINFO:
+                    {
+                        TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
+                        CsvToImageinfo(ref twimageinfo, a_szTwmemref);
+                        sts = DatImageinfo((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twimageinfo);
+                        a_szTwmemref = ImageinfoToCsv(twimageinfo);
+                    }
+                    break;
+
+                // DAT_IMAGELAYOUT...
+                case (int)TWAIN.DAT.IMAGELAYOUT:
+                    {
+                        TWAIN.TW_IMAGELAYOUT twimagelayout = default(TWAIN.TW_IMAGELAYOUT);
+                        CsvToImagelayout(ref twimagelayout, a_szTwmemref);
+                        sts = DatImagelayout((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twimagelayout);
+                        a_szTwmemref = ImagelayoutToCsv(twimagelayout);
+                    }
+                    break;
+
+                // DAT_IMAGEMEMFILEXFER...
+                case (int)TWAIN.DAT.IMAGEMEMFILEXFER:
+                    {
+                        TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
+                        CsvToImagememxfer(ref twimagememxfer, a_szTwmemref);
+                        sts = DatImagememfilexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twimagememxfer);
+                        a_szTwmemref = ImagememxferToCsv(twimagememxfer);
+                    }
+                    break;
+
+                // DAT_IMAGEMEMXFER...
+                case (int)TWAIN.DAT.IMAGEMEMXFER:
+                    {
+                        TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
+                        CsvToImagememxfer(ref twimagememxfer, a_szTwmemref);
+                        sts = DatImagememxfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twimagememxfer);
+                        a_szTwmemref = ImagememxferToCsv(twimagememxfer);
+                    }
+                    break;
+
+                // DAT_IMAGENATIVEXFER...
+                case (int)TWAIN.DAT.IMAGENATIVEXFER:
+                    {
+                        IntPtr intptrBitmapHandle = IntPtr.Zero;
+                        sts = DatImagenativexferHandle((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref intptrBitmapHandle);
+                        a_szTwmemref = intptrBitmapHandle.ToString();
+                    }
+                    break;
+
+                // DAT_JPEGCOMPRESSION...
+                case (int)TWAIN.DAT.JPEGCOMPRESSION:
+                    {
+                        //TWAIN.TW_JPEGCOMPRESSION twjpegcompression = default(TWAIN.TW_JPEGCOMPRESSION);
+                        //m_twain.CsvToJpegcompression(ref twjpegcompression, a_szTwmemref);
+                        //sts = m_twain.DatJpegcompression((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twjpegcompression);
+                        //a_szTwmemref = m_twain.JpegcompressionToCsv(twjpegcompression);
+                    }
+                    break;
+
+                // DAT_METRICS...
+                case (int)TWAIN.DAT.METRICS:
+                    {
+                        TWAIN.TW_METRICS twmetrics = default(TWAIN.TW_METRICS);
+                        twmetrics.SizeOf = (uint)Marshal.SizeOf(twmetrics);
+                        sts = DatMetrics((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twmetrics);
+                        a_szTwmemref = MetricsToCsv(twmetrics);
+                    }
+                    break;
+
+                // DAT_PALETTE8...
+                case (int)TWAIN.DAT.PALETTE8:
+                    {
+                        //TWAIN.TW_PALETTE8 twpalette8 = default(TWAIN.TW_PALETTE8);
+                        //m_twain.CsvToPalette8(ref twpalette8, a_szTwmemref);
+                        //sts = m_twain.DatPalette8((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twpalette8);
+                        //a_szTwmemref = m_twain.Palette8ToCsv(twpalette8);
+                    }
+                    break;
+
+                // DAT_PARENT...
+                case (int)TWAIN.DAT.PARENT:
+                    {
+                        sts = DatParent((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref m_intptrHwnd);
+                        a_szTwmemref = "";
+                    }
+                    break;
+
+                // DAT_PASSTHRU...
+                case (int)TWAIN.DAT.PASSTHRU:
+                    {
+                        TWAIN.TW_PASSTHRU twpassthru = default(TWAIN.TW_PASSTHRU);
+                        CsvToPassthru(ref twpassthru, a_szTwmemref);
+                        sts = DatPassthru((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twpassthru);
+                        a_szTwmemref = PassthruToCsv(twpassthru);
+                    }
+                    break;
+
+                // DAT_PENDINGXFERS...
+                case (int)TWAIN.DAT.PENDINGXFERS:
+                    {
+                        TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
+                        sts = DatPendingxfers((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twpendingxfers);
+                        a_szTwmemref = PendingxfersToCsv(twpendingxfers);
+                    }
+                    break;
+
+                // DAT_RGBRESPONSE...
+                case (int)TWAIN.DAT.RGBRESPONSE:
+                    {
+                        //TWAIN.TW_RGBRESPONSE twrgbresponse = default(TWAIN.TW_RGBRESPONSE);
+                        //m_twain.CsvToRgbresponse(ref twrgbresponse, a_szTwmemref);
+                        //sts = m_twain.DatRgbresponse((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twrgbresponse);
+                        //a_szTwmemref = m_twain.RgbresponseToCsv(twrgbresponse);
+                    }
+                    break;
+
+                // DAT_SETUPFILEXFER...
+                case (int)TWAIN.DAT.SETUPFILEXFER:
+                    {
+                        TWAIN.TW_SETUPFILEXFER twsetupfilexfer = default(TWAIN.TW_SETUPFILEXFER);
+                        CsvToSetupfilexfer(ref twsetupfilexfer, a_szTwmemref);
+                        sts = DatSetupfilexfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twsetupfilexfer);
+                        a_szTwmemref = SetupfilexferToCsv(twsetupfilexfer);
+                    }
+                    break;
+
+                // DAT_SETUPMEMXFER...
+                case (int)TWAIN.DAT.SETUPMEMXFER:
+                    {
+                        TWAIN.TW_SETUPMEMXFER twsetupmemxfer = default(TWAIN.TW_SETUPMEMXFER);
+                        sts = DatSetupmemxfer((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twsetupmemxfer);
+                        a_szTwmemref = SetupmemxferToCsv(twsetupmemxfer);
+                    }
+                    break;
+
+                // DAT_STATUS...
+                case (int)TWAIN.DAT.STATUS:
+                    {
+                        TWAIN.TW_STATUS twstatus = default(TWAIN.TW_STATUS);
+                        sts = DatStatus((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twstatus);
+                        a_szTwmemref = StatusToCsv(twstatus);
+                    }
+                    break;
+
+                // DAT_STATUSUTF8...
+                case (int)TWAIN.DAT.STATUSUTF8:
+                    {
+                        TWAIN.TW_STATUSUTF8 twstatusutf8 = default(TWAIN.TW_STATUSUTF8);
+                        sts = DatStatusutf8((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twstatusutf8);
+                        a_szTwmemref = Statusutf8ToCsv(twstatusutf8);
+                    }
+                    break;
+
+                // DAT_TWAINDIRECT...
+                case (int)TWAIN.DAT.TWAINDIRECT:
+                    {
+                        TWAIN.TW_TWAINDIRECT twtwaindirect = default(TWAIN.TW_TWAINDIRECT);
+                        CsvToTwaindirect(ref twtwaindirect, a_szTwmemref);
+                        sts = DatTwaindirect((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twtwaindirect);
+                        a_szTwmemref = TwaindirectToCsv(twtwaindirect);
+                    }
+                    break;
+
+                // DAT_USERINTERFACE...
+                case (int)TWAIN.DAT.USERINTERFACE:
+                    {
+                        TWAIN.TW_USERINTERFACE twuserinterface = default(TWAIN.TW_USERINTERFACE);
+                        CsvToUserinterface(ref twuserinterface, a_szTwmemref);
+                        sts = DatUserinterface((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref twuserinterface);
+                        a_szTwmemref = UserinterfaceToCsv(twuserinterface);
+                    }
+                    break;
+
+                // DAT_XFERGROUP...
+                case (int)TWAIN.DAT.XFERGROUP:
+                    {
+                        uint uXferGroup = 0;
+                        sts = DatXferGroup((TWAIN.DG)iDg, (TWAIN.MSG)iMsg, ref uXferGroup);
+                        a_szTwmemref = string.Format("0x{0:X}", uXferGroup);
+                    }
+                    break;
+            }
+
+            // All done...
+            return (sts);
+        }
+
         #endregion
 
 
@@ -1030,17 +1531,21 @@ namespace TWAINWorkingGroup
                     byte[] abData = new byte[2];
                     Marshal.Copy(a_intptrPtr, abData, 0, 2);
                     // BMP
-                    if ((abData[0] == 0x42) && (abData[1] == 0x4D))
+                    if ((abData[0] == 0x42) && (abData[1] == 0x4D)) // BM
                     {
                         a_szFilename += ".bmp";
                     }
-                    else if ((abData[0] == 0x49) && (abData[1] == 0x49))
+                    else if ((abData[0] == 0x49) && (abData[1] == 0x49)) // II
                     {
                         a_szFilename += ".tif";
                     }
                     else if ((abData[0] == 0xFF) && (abData[1] == 0xD8))
                     {
                         a_szFilename += ".jpg";
+                    }
+                    else if ((abData[0] == 0x25) && (abData[1] == 0x50)) // %P
+                    {
+                        a_szFilename += ".pdf";
                     }
                 }
 
