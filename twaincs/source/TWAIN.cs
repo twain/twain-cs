@@ -1562,7 +1562,7 @@ namespace TWAINWorkingGroup
                     {
                         return (-1);
                     }
-                    intptrBytes = NativeMethods.fwriteWin(a_intptrPtr, intptrBytes, intptrCount, intptrFile);
+                    intptrBytes = NativeMethods.fwriteWin(a_intptrPtr, intptrCount, intptrBytes, intptrFile);
                     NativeMethods.fcloseWin(intptrFile);
                     return ((int)intptrBytes);
                 }
@@ -1577,7 +1577,7 @@ namespace TWAINWorkingGroup
                     {
                         return (-1);
                     }
-                    intptrBytes = NativeMethods.fwrite(a_intptrPtr, (IntPtr)a_iBytes, (IntPtr)1, intptrFile);
+                    intptrBytes = NativeMethods.fwrite(a_intptrPtr, (IntPtr)1, (IntPtr)a_iBytes, intptrFile);
                     NativeMethods.fclose(intptrFile);
                     return ((int)intptrBytes);
                 }
@@ -1726,7 +1726,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcapability">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
         [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
-        public string CapabilityToCsv(TW_CAPABILITY a_twcapability, bool a_blUseSymbols = false)
+        public string CapabilityToCsv(TW_CAPABILITY a_twcapability, bool a_blUseSymbols)
         {
             IntPtr intptr;
             IntPtr intptrLocked;
@@ -2397,6 +2397,7 @@ namespace TWAINWorkingGroup
             catch (Exception exception)
             {
                 Log.Error("CsvToCapability exception - " + exception.Message);
+                Log.Error("setting=<" + a_szSetting + ">");
                 a_szValue = "(data error)";
                 return (false);
             }
@@ -5476,7 +5477,7 @@ namespace TWAINWorkingGroup
             {
                 if ((a_msg == MSG.SET) || (a_msg == MSG.SETCONSTRAINT))
                 {
-                    Log.LogSendBefore(a_dg.ToString(), DAT.CAPABILITY.ToString(), a_msg.ToString(), CapabilityToCsv(a_twcapability));
+                    Log.LogSendBefore(a_dg.ToString(), DAT.CAPABILITY.ToString(), a_msg.ToString(), CapabilityToCsv(a_twcapability, (a_msg != TWAIN.MSG.QUERYSUPPORT)));
                 }
                 else
                 {
@@ -5627,7 +5628,7 @@ namespace TWAINWorkingGroup
                 }
                 else
                 {
-                    Log.LogSendAfter(stsRcOrCc, CapabilityToCsv(a_twcapability));
+                    Log.LogSendAfter(stsRcOrCc, CapabilityToCsv(a_twcapability, (a_msg != TWAIN.MSG.QUERYSUPPORT)));
                 }
             }
 
@@ -5640,7 +5641,7 @@ namespace TWAINWorkingGroup
                 // otherwise ask the DS what it is currently set to
                 if (sts == STS.SUCCESS)
                 {
-                    str = CapabilityToCsv(a_twcapability);
+                    str = CapabilityToCsv(a_twcapability, (a_msg != TWAIN.MSG.QUERYSUPPORT));
                 }
                 else
                 {
@@ -5650,7 +5651,7 @@ namespace TWAINWorkingGroup
                     sts = DatCapability(a_dg, MSG.GETCURRENT, ref twcapability);
                     if (sts == STS.SUCCESS)
                     {
-                        str = CapabilityToCsv(twcapability);
+                        str = CapabilityToCsv(twcapability, (a_msg != TWAIN.MSG.QUERYSUPPORT));
                     }
                     else
                     {
