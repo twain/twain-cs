@@ -1282,7 +1282,7 @@ namespace TWAINWorkingGroupToolkit
                 }
 
                 // Convert the value to something we can put on our form...
-                a_szMemref = m_twain.CapabilityToCsv(twcapability);
+                a_szMemref = m_twain.CapabilityToCsv(twcapability, (a_msg != TWAIN.MSG.QUERYSUPPORT));
                 m_twain.DsmMemFree(ref twcapability.hContainer);
                 return (sts);
             }
@@ -1845,7 +1845,7 @@ namespace TWAINWorkingGroupToolkit
                 {
                     try
                     {
-                        string[] asz = m_twain.CapabilityToCsv(twcapability).Split(new char[] { ',' });
+                        string[] asz = m_twain.CapabilityToCsv(twcapability, true).Split(new char[] { ',' });
                         m_twain.DsmMemFree(ref twcapability.hContainer);
                         m_twsxXferMech = (TWAIN.TWSX)ushort.Parse(asz[3]);
                     }

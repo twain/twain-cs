@@ -1,0 +1,219 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TWAIN Direct Badge
+;   These tests match those found in the TwainDirect.OnTwain/ProcessSwordTask/TwainInquiry function,
+;   in the section that determines if a driver has DeviceRegister.TwainDirectSupport.Driver support.
+;
+;   While some of these tests are redundent in light of prior testing, the complete suite will be
+;   done to keep in sync with the TWAIN Direct code.
+;
+;   ************************************************************************
+;   **                                                                    **
+;   ** DO NOT MODIFY THE TESTS HERE, UNLESS THEY HAVE BEEN UPDATED IN THE **
+;   ** 'TwainDirect.OnTwain/ProcessSwordTask/TwainInquiry' FUNCTION.      **
+;   **                                                                    **
+;   ************************************************************************
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global to set on fail
+;
+; Globals
+;   (none)
+;
+; Locals
+;   certifyresult - global to report back on fail
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+setlocal certifyresult '${arg:2}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_DEVICEONLINE must be TRUE
+;
+setlocal name 'CAP_DEVICEONLINE is TRUE'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_DEVICEONLINE,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.DEVICEONLINE.FAIL
+if '${ret:},' !~contains ',TRUE,' goto MAIN.DEVICEONLINE.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.DEVICEONLINE.DONE
+;
+:MAIN.DEVICEONLINE.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.DEVICEONLINE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_UICONTROLLABLE must be TRUE
+;
+setlocal name 'CAP_UICONTROLLABLE is TRUE'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_UICONTROLLABLE,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.UICONTROLLABLE.FAIL
+if '${ret:},' !~contains ',TRUE,' goto MAIN.UICONTROLLABLE.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.UICONTROLLABLE.DONE
+;
+:MAIN.UICONTROLLABLE.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.UICONTROLLABLE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_EXTIMAGEINFO supported
+;
+setlocal name 'DAT_EXTIMAGEINFO supported'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDDATS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.EXTIMAGEINFO.FAIL
+if '${ret:},' !~contains ',DG_IMAGE|DAT_EXTIMAGEINFO,' goto MAIN.EXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.EXTIMAGEINFO.DONE
+;
+:MAIN.EXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.EXTIMAGEINFO.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TWEI_TWAINDIRECTMETADATA supported
+;
+setlocal name 'TWEI_TWAINDIRECTMETADATA supported'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.TWAINDIRECTMETADATA.FAIL
+if '${ret:},' !~contains ',TWEI_TWAINDIRECTMETADATA,' goto MAIN.TWAINDIRECTMETADATA.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.TWAINDIRECTMETADATA.DONE
+;
+:MAIN.TWAINDIRECTMETADATA.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.TWAINDIRECTMETADATA.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TWSX_MEMFILE supported
+;
+setlocal name 'TWSX_MEMFILE supported'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.MEMFILE.FAIL
+if '${ret:},' !~contains ',TWSX_MEMFILE,' goto MAIN.MEMFILE.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.MEMFILE.DONE
+;
+:MAIN.MEMFILE.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.MEMFILE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TWFF_PDFRASTER supported
+;
+setlocal name 'TWFF_PDFRASTER supported'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_IMAGEFILEFORMAT,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.PDFRASTER.FAIL
+if '${ret:},' !~contains ',TWFF_PDFRASTER,' goto MAIN.PDFRASTER.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.PDFRASTER.DONE
+;
+:MAIN.PDFRASTER.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.PDFRASTER.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DG_CONTROL/DAT_PENDINGXFERS/MSG_RESET supported
+;
+setlocal name 'DG_CONTROL/DAT_PENDINGXFERS/MSG_RESET supported'
+dsmentry src ds dg_control dat_pendingxfers msg_reset '0,0'
+if '${sts:}' != 'SEQERROR' goto MAIN.RESET.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.RESET.DONE
+;
+:MAIN.RESET.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.RESET.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ADF check, skip if no ADF
+;
+setlocal name 'ADF check'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_FEEDERENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ADFCHECK.FAIL
+if '${ret:},' !~contains ',TRUE,' goto MAIN.ADFCHECK.SKIP
+;
+dsmentry src ds dg_control dat_capability msg_set 'CAP_FEEDERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ADFCHECK.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ADFCHECK.DONE
+;
+:MAIN.ADFCHECK.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+goto MAIN.DONE
+;
+:MAIN.ADFCHECK.SKIP
+echo.passfail '${get:name}' 'skip'
+goto MAIN.DONE
+:MAIN.ADFCHECK.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DG_CONTROL/DAT_PENDINGXFERS/MSG_STOPFEEDER supported
+;
+setlocal name 'DG_CONTROL/DAT_PENDINGXFERS/MSG_STOPFEEDER supported'
+dsmentry src ds dg_control dat_pendingxfers msg_stopfeeder '0,0'
+if '${sts:}' != 'SEQERROR' goto MAIN.STOPFEEDER.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.STOPFEEDER.DONE
+;
+:MAIN.STOPFEEDER.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.STOPFEEDER.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PAPERDETECTABLE must be TRUE
+;
+setlocal name 'CAP_PAPERDETECTABLE is TRUE'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PAPERDETECTABLE,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.PAPERDETECTABLE.FAIL
+if '${ret:},' !~contains ',TRUE,' goto MAIN.PAPERDETECTABLE.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.PAPERDETECTABLE.DONE
+;
+:MAIN.PAPERDETECTABLE.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setglobal '${get:certifyresult}' 'fail'
+:MAIN.PAPERDETECTABLE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; All done...
+;
+:MAIN.DONE
+return 'pass' ; caller figures out what really happened based on certifyresult...

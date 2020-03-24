@@ -6,7 +6,8 @@
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
 ;
 ; Globals
-;   g_certifyresult - pass/fail result of all tests
+;   g_certifyresult - pass/fail result of all standard tests
+;   g_certifytwaindirect - pass/fail result of twain direct badge
 ;
 ; Locals
 ;   title - script info
@@ -24,6 +25,7 @@
 setlocal title 'TWAIN Certification Script v1.0 21-Feb-2020'
 setlocal twidentity.productname '${arg:1}'
 setglobal g_certifyresult 'pass'
+setglobal g_certifytwaindirect 'pass'
 
 
 
@@ -47,7 +49,7 @@ run '${folder:certification}/LoadTables'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Run all the tests...
+; Run all the mains tests...
 ;
 call RUNCERTIFICATION '010 - TWAIN Standard Capability Tests' '${get:twidentity.productname}' g_certifyresult
 call RUNCERTIFICATION '020 - Vendor Custom Capability Tests'  '${get:twidentity.productname}' g_certifyresult
@@ -62,6 +64,13 @@ call RUNCERTIFICATION '090 - Verify Values for MSG_OPENDS, MSG_RESET, and MSG_RE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Do the badges...
+;
+call RUNCERTIFICATION '100 - TWAIN Direct Badge'               '${get:twidentity.productname}' g_certifytwaindirect
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; How did we do?
 ;
 if '${get:g_certifyresult}' != 'pass' goto MAIN.FAIL
@@ -71,6 +80,9 @@ call ECHOANDLOG info
 call ECHOANDLOG info 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
 call ECHOANDLOG info '**************************************'
 call ECHOANDLOG info 'The scanner passed TWAIN Certification'
+if '${get:g_certifytwaindirect}' != 'pass' goto MAIN.TWAINDIRECT.SKIP
+call ECHOANDLOG info '- TWAIN Direct supported'
+:MAIN.TWAINDIRECT.SKIP
 call ECHOANDLOG info '**************************************'
 report save
 echo 'report saved to ${report:}'

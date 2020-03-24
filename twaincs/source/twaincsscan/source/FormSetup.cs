@@ -101,7 +101,7 @@ namespace TWAINCSScan
             TWAIN.TW_CAPABILITY twcapability = default(TWAIN.TW_CAPABILITY);
             m_twain.CsvToCapability(ref twcapability, ref szStatus, "CAP_CUSTOMDSDATA,0,0,0");
             sts = m_twain.DatCapability(TWAIN.DG.CONTROL, TWAIN.MSG.GETCURRENT, ref twcapability);
-            szCapability = m_twain.CapabilityToCsv(twcapability);
+            szCapability = m_twain.CapabilityToCsv(twcapability, true);
             if ((sts != TWAIN.STS.SUCCESS) || (!szCapability.EndsWith(",1") && !szCapability.EndsWith(",TRUE")))
             {
                 m_labelUseUiSettings.Enabled = false;

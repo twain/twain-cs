@@ -46,7 +46,7 @@ echo.prompt
 ; in various error conditions.  We're doing tests in state 5
 ; so we need the driver's user interface...
 ;
-call SENDANDCHECK SUCCESS  '${get:certifyresult}' discard dg_control dat_userinterface msg_enabledsuionly  1,0'
+call SENDANDCHECK SUCCESS  '${get:certifyresult}' discard dg_control dat_userinterface msg_enabledsuionly  '1,0'
 sleep 5000 ; give the ui time to come up, we want to make sure we're really in state 5
 call SENDANDCHECK SUCCESS  '${get:certifyresult}' g_value dg_image   dat_imagelayout   msg_get        '0,0,0,0,0,0,0'
 call SENDANDCHECK SEQERROR '${get:certifyresult}' discard dg_image   dat_imagelayout   msg_set        '${get:g_value}'
