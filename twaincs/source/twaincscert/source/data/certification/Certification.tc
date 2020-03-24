@@ -81,7 +81,7 @@ call ECHOANDLOG info 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
 call ECHOANDLOG info '**************************************'
 call ECHOANDLOG info 'The scanner passed TWAIN Certification'
 if '${get:g_certifytwaindirect}' != 'pass' goto MAIN.TWAINDIRECT.SKIP
-call ECHOANDLOG info '- TWAIN Direct supported'
+call ECHOANDLOG info 'Badge: TWAIN Direct'
 :MAIN.TWAINDIRECT.SKIP
 call ECHOANDLOG info '**************************************'
 report save
