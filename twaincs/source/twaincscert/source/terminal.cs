@@ -1095,6 +1095,25 @@ namespace twaincscert
                 intptrHwnd
             );
 
+            // If verbose, display the app's identity...
+            if (m_blVerbose)
+            {
+                TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
+                m_twain.CsvToIdentity(ref twidentity, m_twain.GetAppIdentity());
+                DisplayBlue("Application TW_IDENTITY.Id.................." + twidentity.Id);
+                DisplayBlue("Application TW_IDENTITY.Version.MajorNum...." + twidentity.Version.MajorNum);
+                DisplayBlue("Application TW_IDENTITY.Version.MinorNum...." + twidentity.Version.MinorNum);
+                DisplayBlue("Application TW_IDENTITY.Version.Language...." + twidentity.Version.Language);
+                DisplayBlue("Application TW_IDENTITY.Version.Country....." + twidentity.Version.Country);
+                DisplayBlue("Application TW_IDENTITY.Version.Info........" + twidentity.Version.Info.Get());
+                DisplayBlue("Application TW_IDENTITY.ProtocolMajor......." + twidentity.ProtocolMajor);
+                DisplayBlue("Application TW_IDENTITY.ProtocolMinor......." + twidentity.ProtocolMinor);
+                DisplayBlue("Application TW_IDENTITY.SupportedGroups....." + twidentity.SupportedGroups);
+                DisplayBlue("Application TW_IDENTITY.Manufacturer........" + twidentity.Manufacturer.Get());
+                DisplayBlue("Application TW_IDENTITY.ProductFamily......." + twidentity.ProductFamily.Get());
+                DisplayBlue("Application TW_IDENTITY.ProductName........." + twidentity.ProductName.Get());
+            }
+
             // All done...
             return (false);
         }
@@ -4866,7 +4885,7 @@ namespace twaincscert
                 foreach (DirectoryInfo directoryinfoSrcSubDir in a_directoryinfoSrc.GetDirectories())
                 {
                     DirectoryInfo directoryinfoDstSubDir = a_directoryinfoDst.CreateSubdirectory(directoryinfoSrcSubDir.Name);
-                    CopyAllFiles(directoryinfoSrcSubDir, directoryinfoDstSubDir);
+                    CopyAllFiles(directoryinfoDstSubDir, directoryinfoSrcSubDir);
                 }
             }
             catch (Exception exception)
