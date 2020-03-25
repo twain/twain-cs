@@ -13885,7 +13885,7 @@ namespace TWAINWorkingGroup
                 // Windows uses a DIB, the first unsigned short is 40...
                 if (u16Magic == 40)
                 {
-                    byte[] bBitmap;
+                    byte[] abBitmap;
                     BITMAPFILEHEADER bitmapfileheader;
                     BITMAPINFOHEADER bitmapinfoheader;
 
@@ -13908,20 +13908,20 @@ namespace TWAINWorkingGroup
                     // Copy the file header into our byte array...
                     IntPtr intptr = Marshal.AllocHGlobal(Marshal.SizeOf(bitmapfileheader));
                     Marshal.StructureToPtr(bitmapfileheader, intptr, true);
-                    bBitmap = new byte[bitmapfileheader.bfSize];
-                    Marshal.Copy(intptr, bBitmap, 0, Marshal.SizeOf(bitmapfileheader));
+                    abBitmap = new byte[bitmapfileheader.bfSize];
+                    Marshal.Copy(intptr, abBitmap, 0, Marshal.SizeOf(bitmapfileheader));
                     Marshal.FreeHGlobal(intptr);
                     intptr = IntPtr.Zero;
 
                     // Copy the rest of the DIB into our byte array......
-                    Marshal.Copy(intptrNative, bBitmap, Marshal.SizeOf(typeof(BITMAPFILEHEADER)), (int)bitmapfileheader.bfSize - Marshal.SizeOf(typeof(BITMAPFILEHEADER)));
+                    Marshal.Copy(intptrNative, abBitmap, Marshal.SizeOf(typeof(BITMAPFILEHEADER)), (int)bitmapfileheader.bfSize - Marshal.SizeOf(typeof(BITMAPFILEHEADER)));
 
                     // Unlock the handle, and return our byte array...
                     if (a_blIsHandle)
                     {
                         DsmMemUnlock(a_intptrNative);
                     }
-                    return (bBitmap);
+                    return (abBitmap);
                 }
 
                 // Linux and Mac OS X use TIFF.  We'll handle a simple Intel TIFF ("II")...
