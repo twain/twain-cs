@@ -2,6 +2,7 @@
 using System.Security.Permissions;
 using System.Threading;
 using System.Windows.Forms;
+using TWAINWorkingGroup;
 
 namespace twaincscert
 {
@@ -70,6 +71,24 @@ namespace twaincscert
         public void SetTerminal(Terminal a_terminal)
         {
             m_terminal = a_terminal;
+        }
+
+        /// <summary>
+        /// Our event handler for the scan callback event.  This will be
+        /// called once by ScanCallbackTrigger on receipt of an event
+        /// like MSG_XFERREADY, and then will be reissued on every call
+        /// into ScanCallback until we're done and get back to state 4.
+        ///  
+        /// This helps to make sure we're always running in the context
+        /// of FormMain on Windows, which is critical if we want drivers
+        /// to work properly.  It also gives a way to break up the calls
+        /// so the message pump is still reponsive.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        public void ScanCallbackEventHandler(object sender, EventArgs e)
+        {
+            m_terminal.ScanCallback((m_terminal.GetTwain() == null) ? true : (m_terminal.GetTwain().GetState() <= TWAIN.STATE.S3));
         }
 
         /// <summary>

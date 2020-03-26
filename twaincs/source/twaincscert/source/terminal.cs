@@ -240,6 +240,15 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Get our TWAIN object...
+        /// </summary>
+        /// <returns></returns>
+        public TWAIN GetTwain()
+        {
+            return (m_twain);
+        }
+
+        /// <summary>
         /// Run the certification tool...
         /// </summary>
         public void Run()
@@ -845,11 +854,25 @@ namespace twaincscert
                 // DAT_PENDINGXFERS...
                 case (int)TWAIN.DAT.PENDINGXFERS:
                     {
+                        // Send the command...
                         TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
                         a_functionarguments.sts = m_twain.DatPendingxfers((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twpendingxfers);
                         a_functionarguments.szReturnValue = m_twain.PendingxfersToCsv(twpendingxfers);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+
+                        // Clear the list, so the script writer doesn't have to (needed for when ShowUI is TRUE)...
+                        if (a_functionarguments.sts == TWAIN.STS.SUCCESS)
+                        {
+                            if ((a_functionarguments.iMsg == (int)TWAIN.MSG.RESET) || ((a_functionarguments.iMsg == (int)TWAIN.MSG.ENDXFER) && (twpendingxfers.Count == 0)))
+                            {
+                                lock (m_lmsgDatNull)
+                                {
+                                    m_lmsgDatNull.Clear();
+                                    m_autoreseteventMsgDatNull.Reset();
+                                }
+                            }
+                        }
                     }
                     break;
 
@@ -925,19 +948,34 @@ namespace twaincscert
                 // DAT_USERINTERFACE...
                 case (int)TWAIN.DAT.USERINTERFACE:
                     {
+                        // Clear the list, so the script writer doesn't have to...
+                        if ((a_functionarguments.iMsg == (int)TWAIN.MSG.ENABLEDS) || (a_functionarguments.iMsg == (int)TWAIN.MSG.ENABLEDSUIONLY))
+                        {
+                            lock (m_lmsgDatNull)
+                            {
+                                m_lmsgDatNull.Clear();
+                                m_autoreseteventMsgDatNull.Reset();
+                            }
+                        }
+
+                        // Send the command...
                         TWAIN.TW_USERINTERFACE twuserinterface = default(TWAIN.TW_USERINTERFACE);
                         m_twain.CsvToUserinterface(ref twuserinterface, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatUserinterface((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twuserinterface);
                         a_functionarguments.szReturnValue = m_twain.UserinterfaceToCsv(twuserinterface);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
+
                         // Clear the list, so the script writer doesn't have to...
-                        if (a_functionarguments.iMsg == (int)TWAIN.MSG.DISABLEDS)
+                        if (a_functionarguments.sts == TWAIN.STS.SUCCESS)
                         {
-                            lock (m_lmsgDatNull)
+                            if (a_functionarguments.iMsg == (int)TWAIN.MSG.DISABLEDS)
                             {
-                                m_lmsgDatNull.Clear();
-                                m_autoreseteventMsgDatNull.Reset();
+                                lock (m_lmsgDatNull)
+                                {
+                                    m_lmsgDatNull.Clear();
+                                    m_autoreseteventMsgDatNull.Reset();
+                                }
                             }
                         }
                     }
@@ -992,7 +1030,7 @@ namespace twaincscert
             bool blUseLegacyDSM = false;
             bool blUseCallbacks = false;
             TWAIN.DeviceEventCallback deviceeventcallback = DeviceEventCallback;
-            TWAIN.ScanCallback scancallback = ScanCallback;
+            TWAIN.ScanCallback scancallback = ScanCallbackTrigger;
             TWAIN.RunInUiThreadDelegate runinuithreaddelegate = null;
             IntPtr intptrHwnd = m_intptrHwnd;
 
@@ -1209,7 +1247,12 @@ namespace twaincscert
         /// </summary>
         /// <param name="a_blClosing">We're shutting down</param>
         /// <returns>TWAIN status</returns>
-        private TWAIN.STS ScanCallback(bool a_blClosing)
+        private TWAIN.STS ScanCallbackTrigger(bool a_blClosing)
+        {
+            m_formmain.BeginInvoke(new MethodInvoker(delegate { m_formmain.ScanCallbackEventHandler(this, new EventArgs()); }));
+            return (TWAIN.STS.SUCCESS);
+        }
+        public TWAIN.STS ScanCallback(bool a_blClosing)
         {
             bool blIsMsgXferReady = false;
 

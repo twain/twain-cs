@@ -10386,6 +10386,7 @@ namespace TWAINWorkingGroup
                 {
                     if (a_twpendingxfers.Count == 0)
                     {
+                        m_blAcceptXferReady = true;
                         m_blIsMsgxferready = false;
                         m_state = STATE.S5;
                     }
@@ -10401,6 +10402,7 @@ namespace TWAINWorkingGroup
             {
                 if (sts == STS.SUCCESS)
                 {
+                    m_blAcceptXferReady = true;
                     m_blIsMsgxferready = false;
                     m_state = STATE.S5;
                 }
@@ -11582,7 +11584,7 @@ namespace TWAINWorkingGroup
 
             // We need this to handle data sources that return MSG_XFERREADY in
             // the midst of processing MSG_ENABLEDS.
-            m_blAcceptXferReady = ((a_msg == MSG.ENABLEDS) && (twuserinterface.ShowUI == 0));
+            m_blAcceptXferReady = (a_msg == MSG.ENABLEDS);
 
             // Windows...
             if (ms_platform == Platform.WINDOWS)

@@ -105,6 +105,23 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check for paper in the feeder, skip for a flatbed...
+;
+:MAIN.FEEDERLOADED
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_FEEDERENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.FEEDERLOADED.DONE
+if '${ret:${get:TW_ONEVALUE.Item}}' ~~ 'FALSE' goto MAIN.FEEDERLOADED.DONE
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_FEEDERLOADED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.FEEDERLOADED.DONE
+if '${ret:${get:TW_ONEVALUE.Item}}' ~~ 'TRUE' goto MAIN.FEEDERLOADED.DONE
+echo.prompt
+echo.prompt "Place paper in the scanner's feeder."
+pause '(press the ENTER key when ready to continue)'
+:MAIN.FEEDERLOADED.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; We only need one sheet of paper...
 ;
 setlocal name 'CAP_XFERCOUNT MSG_SET 1'

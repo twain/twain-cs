@@ -186,7 +186,7 @@ dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,T
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal image.folder '${get:image.folderone}'
-goto MAIN.SETUPMEMXFER
+goto MAIN.FEEDERLOADED
 
 
 
@@ -199,7 +199,22 @@ dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,T
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal image.folder '${get:image.folderall}'
-goto MAIN.SETUPMEMXFER
+goto MAIN.FEEDERLOADED
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check for paper in the feeder, skip for a flatbed...
+;
+:MAIN.FEEDERLOADED
+if '${get:feederenabled.value}' ~~ 'FALSE' goto MAIN.FEEDERLOADED.DONE
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_FEEDERLOADED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.FEEDERLOADED.DONE
+if '${ret:${get:TW_ONEVALUE.Item}}' ~~ 'TRUE' goto MAIN.FEEDERLOADED.DONE
+echo.prompt
+echo.prompt "Place paper in the scanner's feeder."
+pause '(press the ENTER key when ready to continue)'
+:MAIN.FEEDERLOADED.DONE
 
 
 
@@ -207,7 +222,6 @@ goto MAIN.SETUPMEMXFER
 ; Get the preferred size for memory transfers, and allocate
 ; a pointer for the memory transfers...
 ;
-:MAIN.SETUPMEMXFER
 setlocal indent '    '
 setlocal name 'dg_control/dat_setupmemxfer/msg_get'
 dsmentry src ds dg_control dat_setupmemxfer msg_get '0,0,0'
