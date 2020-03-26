@@ -15,13 +15,12 @@
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
-;   arg:2 - global to set on fail
 ;
 ; Globals
 ;   (none)
 ;
 ; Locals
-;   certifyresult - global to report back on fail
+;   certifyresult - track if we fail
 ;
 ; Returns
 ;   pass or fail
@@ -32,7 +31,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-setlocal certifyresult '${arg:2}'
+setlocal certifyresult 'pass' ; assume we'll pass
 
 
 
@@ -48,7 +47,7 @@ goto MAIN.DEVICEONLINE.DONE
 ;
 :MAIN.DEVICEONLINE.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.DEVICEONLINE.DONE
 
 
@@ -65,7 +64,7 @@ goto MAIN.UICONTROLLABLE.DONE
 ;
 :MAIN.UICONTROLLABLE.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.UICONTROLLABLE.DONE
 
 
@@ -82,7 +81,7 @@ goto MAIN.EXTIMAGEINFO.DONE
 ;
 :MAIN.EXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.EXTIMAGEINFO.DONE
 
 
@@ -99,7 +98,7 @@ goto MAIN.TWAINDIRECTMETADATA.DONE
 ;
 :MAIN.TWAINDIRECTMETADATA.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.TWAINDIRECTMETADATA.DONE
 
 
@@ -116,7 +115,7 @@ goto MAIN.MEMFILE.DONE
 ;
 :MAIN.MEMFILE.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.MEMFILE.DONE
 
 
@@ -133,7 +132,7 @@ goto MAIN.PDFRASTER.DONE
 ;
 :MAIN.PDFRASTER.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.PDFRASTER.DONE
 
 
@@ -149,7 +148,7 @@ goto MAIN.RESET.DONE
 ;
 :MAIN.RESET.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.RESET.DONE
 
 
@@ -169,7 +168,7 @@ goto MAIN.ADFCHECK.DONE
 ;
 :MAIN.ADFCHECK.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 goto MAIN.DONE
 ;
 :MAIN.ADFCHECK.SKIP
@@ -190,7 +189,7 @@ goto MAIN.STOPFEEDER.DONE
 ;
 :MAIN.STOPFEEDER.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.STOPFEEDER.DONE
 
 
@@ -207,7 +206,7 @@ goto MAIN.PAPERDETECTABLE.DONE
 ;
 :MAIN.PAPERDETECTABLE.FAIL
 echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
-setglobal '${get:certifyresult}' 'fail'
+setlocal certifyresult 'fail'
 :MAIN.PAPERDETECTABLE.DONE
 
 
@@ -216,4 +215,4 @@ setglobal '${get:certifyresult}' 'fail'
 ; All done...
 ;
 :MAIN.DONE
-return 'pass' ; caller figures out what really happened based on certifyresult...
+return '${get:certifyresult}'
