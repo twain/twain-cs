@@ -51,7 +51,7 @@ namespace twaincscert
 
             // Load our configuration information and our arguments,
             // so that we can access them from anywhere in the code...
-            if (!Config.Load(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), a_aszArgs, "appdata.txt"))
+            if (!Config.Load(System.Reflection.Assembly.GetEntryAssembly().Location, a_aszArgs, "appdata.txt"))
             {
                 Console.Out.WriteLine("Error starting.  Try uninstalling and reinstalling this software.");
                 Environment.Exit(1);
@@ -62,7 +62,8 @@ namespace twaincscert
             szExecutableName = Config.Get("executableName", "");
 
             // Turn on logging...
-            Log.Open(szExecutableName, szWriteFolder, (int)Config.Get("logLevel", 0));
+            Log.Open(szExecutableName, szWriteFolder, 1);
+            Log.SetLevel((int)Config.Get("logLevel", 0));
             Log.Info(szExecutableName + " Log Started...");
 
             // Windows needs a window, we need our console and window

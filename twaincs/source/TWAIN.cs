@@ -758,8 +758,12 @@ namespace TWAINWorkingGroup
             STS sts;
             MESSAGE msg;
 
-            // This is only in effect after MSG.ENABLEDS*...
-            if (m_state < STATE.S5)
+            // This is only in effect after MSG.ENABLEDS*, or if we are in
+            // the middle of processing DAT_USERINTERFACE.  We don't want to
+            // bump to state 5 before processing DAT_USERINTERFACE, but some
+            // drivers are really eager to get going, and throw MSG_XFERREADY
+            // before even get a chance to finish the command...
+            if ((m_state < STATE.S5) && !m_blRunningDatUserinterface)
             {
                 return (false);
             }
@@ -11559,32 +11563,16 @@ namespace TWAINWorkingGroup
                 }
             }
 
-            // Well this is weird.  I'm not sure how this design snuck past,
-            // I assume it's because of the async nature of the button presses,
-            // so it's easier to monitor a boolean.  Regardless, we need to
-            // use this data to do the right thing...
-            if (m_blIsMsgclosedsok || m_blIsMsgclosedsreq)
-            {
-                a_msg = MSG.DISABLEDS;
-            }
-
-            // If we're doing a DISABLEDS, use the values we remembered from
-            // the last ENABLEDS...
-            TW_USERINTERFACE twuserinterface = a_twuserinterface;
-            if (a_msg == MSG.DISABLEDS)
-            {
-                twuserinterface = m_twuserinterface;
-            }
-
             // Log it...
             if (Log.GetLevel() > 0)
             {
-                Log.LogSendBefore(a_dg.ToString(), DAT.USERINTERFACE.ToString(), a_msg.ToString(), UserinterfaceToCsv(twuserinterface));
+                Log.LogSendBefore(a_dg.ToString(), DAT.USERINTERFACE.ToString(), a_msg.ToString(), UserinterfaceToCsv(a_twuserinterface));
             }
 
             // We need this to handle data sources that return MSG_XFERREADY in
-            // the midst of processing MSG_ENABLEDS.
+            // the midst of processing MSG_ENABLEDS, otherwise we'll miss it...
             m_blAcceptXferReady = (a_msg == MSG.ENABLEDS);
+            m_blRunningDatUserinterface = (a_msg == MSG.ENABLEDS);
 
             // Windows...
             if (ms_platform == Platform.WINDOWS)
@@ -11596,11 +11584,11 @@ namespace TWAINWorkingGroup
                     {
                         if (m_blUseLegacyDSM)
                         {
-                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                            sts = (STS)NativeMethods.WindowsTwain32DsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
                         }
                         else
                         {
-                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                            sts = (STS)NativeMethods.WindowsTwaindsmDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
                         }
                     }
                     else
@@ -11644,6 +11632,7 @@ namespace TWAINWorkingGroup
                     // The driver crashed...
                     Log.Error("crash - " + exception.Message);
                     Log.LogSendAfter(STS.BUMMER, "");
+                    m_blRunningDatUserinterface = false;
                     return (STS.BUMMER);
                 }
             }
@@ -11656,15 +11645,15 @@ namespace TWAINWorkingGroup
                 {
                     if (m_blFoundLatestDsm64 && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
-                        sts = (STS)NativeMethods.Linux64DsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                        sts = (STS)NativeMethods.Linux64DsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
                     }
                     else if (m_blFoundLatestDsm && (m_linuxdsm == LinuxDsm.IsLatestDsm))
                     {
-                        sts = (STS)NativeMethods.LinuxDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                        sts = (STS)NativeMethods.LinuxDsmEntryUserinterface(ref m_twidentitylegacyApp, ref m_twidentitylegacyDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
                     }
                     else if (m_blFound020302Dsm64bit && (m_linuxdsm == LinuxDsm.Is020302Dsm64bit))
                     {
-                        sts = (STS)NativeMethods.Linux020302Dsm64bitEntryUserinterface(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                        sts = (STS)NativeMethods.Linux020302Dsm64bitEntryUserinterface(ref m_twidentityApp, ref m_twidentityDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
                     }
                     else
                     {
@@ -11677,6 +11666,7 @@ namespace TWAINWorkingGroup
                     // The driver crashed...
                     Log.Error("crash - " + exception.Message);
                     Log.LogSendAfter(STS.BUMMER, "");
+                    m_blRunningDatUserinterface = false;
                     return (STS.BUMMER);
                 }
             }
@@ -11689,11 +11679,11 @@ namespace TWAINWorkingGroup
                 {
                     if (m_blUseLegacyDSM)
                     {
-                        sts = (STS)NativeMethods.MacosxTwainDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                        sts = (STS)NativeMethods.MacosxTwainDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
                     }
                     else
                     {
-                        sts = (STS)NativeMethods.MacosxTwaindsmDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref twuserinterface);
+                        sts = (STS)NativeMethods.MacosxTwaindsmDsmEntryUserinterface(ref m_twidentitymacosxApp, ref m_twidentitymacosxDs, a_dg, DAT.USERINTERFACE, a_msg, ref a_twuserinterface);
                     }
                 }
                 catch (Exception exception)
@@ -11701,6 +11691,7 @@ namespace TWAINWorkingGroup
                     // The driver crashed...
                     Log.Error("crash - " + exception.Message);
                     Log.LogSendAfter(STS.BUMMER, "");
+                    m_blRunningDatUserinterface = false;
                     return (STS.BUMMER);
                 }
             }
@@ -11709,6 +11700,7 @@ namespace TWAINWorkingGroup
             else
             {
                 Log.LogSendAfter(STS.BUMMER, "");
+                m_blRunningDatUserinterface = false;
                 return (STS.BUMMER);
             }
 
@@ -11721,45 +11713,32 @@ namespace TWAINWorkingGroup
                 Log.LogSendAfter(stsRcOrCc, "");
             }
 
-            // If we opened, go to state 5...
-            if ((a_msg == MSG.ENABLEDS) || (a_msg == MSG.ENABLEDSUIONLY))
+            // If successful, decide which way to jump...
+            if (sts == STS.SUCCESS)
             {
-                if (sts == STS.SUCCESS)
+                switch (a_msg)
                 {
-                    m_state = STATE.S5;
+                    // No clue...
+                    default:
+                        break;
 
-                    // Remember the setting...
-                    m_twuserinterface = a_twuserinterface;
+                    // Jump up...
+                    case MSG.ENABLEDS:
+                    case MSG.ENABLEDSUIONLY:
+                        m_state = STATE.S5;
+                        break;
 
-                    // MSG_XFERREADY showed up while we were still processing MSG_ENABLEDS
-                    if (m_blAcceptXferReady && m_blIsMsgxferready)
-                    {
-                        // Change state...
-                        m_blAcceptXferReady = false;
-                        m_state = STATE.S6;
-                        CallerToThreadSet();
-
-                        // Kick off the scan engine...
-                        if (m_scancallback != null)
-                        {
-                            m_scancallback(false);
-                        }
-                    }
-                }
-            }
-
-            // If we disabled, go to state 4...
-            else if (a_msg == MSG.DISABLEDS)
-            {
-                if (sts == STS.SUCCESS)
-                {
-                    m_blIsMsgclosedsreq = false;
-                    m_blIsMsgclosedsok = false;
-                    m_state = STATE.S4;
+                    // Jump down...
+                    case MSG.DISABLEDS:
+                        m_blIsMsgclosedsreq = false;
+                        m_blIsMsgclosedsok = false;
+                        m_state = STATE.S4;
+                        break;
                 }
             }
 
             // All done...
+            m_blRunningDatUserinterface = false;
             return (stsRcOrCc);
         }
 
@@ -12290,6 +12269,13 @@ namespace TWAINWorkingGroup
                     m_threadTwain = null;
                 }
 
+                // This one too...
+                if (m_threadRunningDatUserinterface != null)
+                {
+                    m_threadRunningDatUserinterface.Join();
+                    m_threadRunningDatUserinterface = null;
+                }
+
                 // Clean up our communication thingy...
                 m_twaincommand = null;
 
@@ -12653,30 +12639,29 @@ namespace TWAINWorkingGroup
                 case MSG.XFERREADY:
                     if (m_blAcceptXferReady)
                     {
-                        // MSG_XFERREADY arrived during the handling of the
-                        // call to MSG_ENABLEDS.  We have to defer processing
-                        // it as late as possible.  This flag and the accept
-                        // flag will be checked at the end of DatUserinterface
-                        // to see if we need to send the message to the DSM...
-                        if (m_state == STATE.S4)
+                        // Protect us from driver's that spam this event...
+                        m_blAcceptXferReady = false;
+
+                        // We're still processing DAT_USERINTERFACE, that's a kick the
+                        // teeth.  We can't wait for it here, so launch a thread to wait
+                        // for it to finish, so we can go to the next state as soon as
+                        // it's done...
+                        if (m_blRunningDatUserinterface)
                         {
-                            m_blIsMsgxferready = true;
+                            m_threadRunningDatUserinterface = new Thread(RunningDatUserinterface);
+                            m_threadRunningDatUserinterface.Start();
+                            return;
                         }
 
-                        // MSG_XFERREADY arrived after the completion of the
-                        // call to MSG_ENABLEDS.  We can just do it...
-                        else
-                        {
-                            // Bump our state up...
-                            m_state = STATE.S6;
-                            m_blIsMsgxferready = true;
-                            CallerToThreadSet();
+                        // Change our state...
+                        m_state = STATE.S6;
+                        m_blIsMsgxferready = true;
+                        CallerToThreadSet();
 
-                            // Kick off the scan engine...
-                            if (m_scancallback != null)
-                            {
-                                m_scancallback(false);
-                            }
+                        // Kick off the scan engine...
+                        if (m_scancallback != null)
+                        {
+                            m_scancallback(false);
                         }
                     }
                     break;
@@ -12706,6 +12691,35 @@ namespace TWAINWorkingGroup
                     m_blIsMsgdeviceevent = true;
                     CallerToThreadSet();
                     break;
+            }
+        }
+
+        /// <summary>
+        /// As long as DAT_USERINTERFACE is running we'll spin here...
+        /// </summary>
+        private void RunningDatUserinterface()
+        {
+            // Wait until something kicks us out...
+            while ((m_state >= STATE.S4) && m_blRunningDatUserinterface)
+            {
+                Thread.Sleep(20);
+            }
+
+            // If we never made it to state 5, then bail...
+            if (m_state < STATE.S5)
+            {
+                return;
+            }
+
+            // Bump up our state...
+            m_state = STATE.S6;
+            m_blIsMsgxferready = true;
+            CallerToThreadSet();
+
+            // Kick off the scan engine...
+            if (m_scancallback != null)
+            {
+                m_scancallback(false);
             }
         }
 
@@ -14364,6 +14378,8 @@ namespace TWAINWorkingGroup
         private bool m_blIsMsgclosedsreq;
         private bool m_blIsMsgclosedsok;
         private bool m_blIsMsgdeviceevent;
+        private bool m_blRunningDatUserinterface;
+        private Thread m_threadRunningDatUserinterface;
 
         /// <summary>
         /// Automatically issue DAT.STATUS on TWRC_FAILURE...
@@ -14503,11 +14519,6 @@ namespace TWAINWorkingGroup
         /// Our helper functions from the DSM...
         /// </summary>
         private TW_ENTRYPOINT_DELEGATES m_twentrypointdelegates;
-
-        /// <summary>
-        /// Remember the user interface settings for DISABLEDS...
-        /// </summary>
-        private TW_USERINTERFACE m_twuserinterface;
 
         #endregion
 
@@ -15238,10 +15249,12 @@ namespace TWAINWorkingGroup
             // Filter...
             switch (a_szSeverity)
             {
-                // Always log these...
-                case "A": break;
-                case "E": break;
-                case "W": break;
+                // Always log these, and always flush them to disk...
+                case "A":
+                case "E":
+                case "W":
+                    a_blFlush = true;
+                    break;
 
                 // Log informationals when bit-0 is set...
                 case ".":

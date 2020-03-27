@@ -1299,6 +1299,7 @@ namespace TWAINCSTst
         /// <param name="e">Arguments</param>
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
+            SetMessageFilter(false);
             m_blClosing = true;
             if (m_twain != null)
             {
@@ -2451,6 +2452,10 @@ namespace TWAINCSTst
                                 runinuithreaddelegate,
                                 this.Handle
                             );
+
+                            // Prep for TWAIN events...
+                            SetMessageFilter(true);
+
                         }
                         else
                         {
@@ -2478,6 +2483,9 @@ namespace TWAINCSTst
                                 runinuithreaddelegate,
                                 this.Handle
                             );
+
+                            // Prep for TWAIN events...
+                            SetMessageFilter(true);
                         }
                     }
                     catch (Exception exception)
@@ -2627,7 +2635,7 @@ namespace TWAINCSTst
 
             // Request a scan session...
             ClearEvents();
-            szTwmemref = "0,0," + this.Handle;
+            szTwmemref = "0,0," + m_intptrHwnd;
             szStatus = "";
             sts = Send("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", ref szTwmemref, ref szStatus);
             WriteTriplet("DG_CONTROL", "DAT_USERINTERFACE", "MSG_ENABLEDS", sts.ToString());
