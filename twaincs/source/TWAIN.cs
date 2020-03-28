@@ -1599,7 +1599,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twaudioinfo">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string AudioinfoToCsv(TW_AUDIOINFO a_twaudioinfo)
+        public static string AudioinfoToCsv(TW_AUDIOINFO a_twaudioinfo)
         {
             try
             {
@@ -1621,7 +1621,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twcallback">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string CallbackToCsv(TW_CALLBACK a_twcallback)
+        public static string CallbackToCsv(TW_CALLBACK a_twcallback)
         {
             try
             {
@@ -1644,7 +1644,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcallback">A TWAIN structure</param>
         /// <param name="a_szCallback">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToCallback(ref TW_CALLBACK a_twcallback, string a_szCallback)
+        public static bool CsvToCallback(ref TW_CALLBACK a_twcallback, string a_szCallback)
         {
             // Init stuff...
             a_twcallback = default(TW_CALLBACK);
@@ -1675,7 +1675,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twcallback2">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string Callback2ToCsv(TW_CALLBACK2 a_twcallback2)
+        public static string Callback2ToCsv(TW_CALLBACK2 a_twcallback2)
         {
             try
             {
@@ -1698,7 +1698,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcallback2">A TWAIN structure</param>
         /// <param name="a_szCallback2">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToCallback2(ref TW_CALLBACK2 a_twcallback2, string a_szCallback2)
+        public static bool CsvToCallback2(ref TW_CALLBACK2 a_twcallback2, string a_szCallback2)
         {
             // Init stuff...
             a_twcallback2 = default(TW_CALLBACK2);
@@ -2474,7 +2474,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twdeviceevent">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string DeviceeventToCsv(TW_DEVICEEVENT a_twdeviceevent)
+        public static string DeviceeventToCsv(TW_DEVICEEVENT a_twdeviceevent)
         {
             try
             {
@@ -2531,7 +2531,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twevent">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string EventToCsv(TW_EVENT a_twevent)
+        public static string EventToCsv(TW_EVENT a_twevent)
         {
             try
             {
@@ -2689,7 +2689,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twfilesystem">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string FilesystemToCsv(TW_FILESYSTEM a_twfilesystem)
+        public static string FilesystemToCsv(TW_FILESYSTEM a_twfilesystem)
         {
             try
             {
@@ -2722,7 +2722,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twfilesystem">A TWAIN structure</param>
         /// <param name="a_szFilesystem">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToFilesystem(ref TW_FILESYSTEM a_twfilesystem, string a_szFilesystem)
+        public static bool CsvToFilesystem(ref TW_FILESYSTEM a_twfilesystem, string a_szFilesystem)
         {
             // Init stuff...
             a_twfilesystem = default(TW_FILESYSTEM);
@@ -2763,7 +2763,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twmemory">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string IccprofileToCsv(TW_MEMORY a_twmemory)
+        public static string IccprofileToCsv(TW_MEMORY a_twmemory)
         {
             try
             {
@@ -2786,7 +2786,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twidentity">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string IdentityToCsv(TW_IDENTITY a_twidentity)
+        public static string IdentityToCsv(TW_IDENTITY a_twidentity)
         {
             try
             {
@@ -2818,7 +2818,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twidentity">A TWAIN structure</param>
         /// <param name="a_szIdentity">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToIdentity(ref TW_IDENTITY a_twidentity, string a_szIdentity)
+        public static bool CsvToIdentity(ref TW_IDENTITY a_twidentity, string a_szIdentity)
         {
             // Init stuff...
             a_twidentity = default(TW_IDENTITY);
@@ -2858,7 +2858,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twimageinfo">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string ImageinfoToCsv(TW_IMAGEINFO a_twimageinfo)
+        public static string ImageinfoToCsv(TW_IMAGEINFO a_twimageinfo)
         {
             try
             {
@@ -2894,7 +2894,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twimageinfo">A TWAIN structure</param>
         /// <param name="a_szImageinfo">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToImageinfo(ref TW_IMAGEINFO a_twimageinfo, string a_szImageinfo)
+        public static bool CsvToImageinfo(ref TW_IMAGEINFO a_twimageinfo, string a_szImageinfo)
         {
             // Init stuff...
             a_twimageinfo = default(TW_IMAGEINFO);
@@ -2940,7 +2940,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twimagelayout">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string ImagelayoutToCsv(TW_IMAGELAYOUT a_twimagelayout)
+        public static string ImagelayoutToCsv(TW_IMAGELAYOUT a_twimagelayout)
         {
             try
             {
@@ -2967,7 +2967,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twimagelayout">A TWAIN structure</param>
         /// <param name="a_szImagelayout">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToImagelayout(ref TW_IMAGELAYOUT a_twimagelayout, string a_szImagelayout)
+        public static bool CsvToImagelayout(ref TW_IMAGELAYOUT a_twimagelayout, string a_szImagelayout)
         {
             // Init stuff...
             a_twimagelayout = default(TW_IMAGELAYOUT);
@@ -3008,7 +3008,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twimagememxfer">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string ImagememxferToCsv(TW_IMAGEMEMXFER a_twimagememxfer)
+        public static string ImagememxferToCsv(TW_IMAGEMEMXFER a_twimagememxfer)
         {
             try
             {
@@ -3038,7 +3038,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twimagememxfer">A TWAIN structure</param>
         /// <param name="a_szImagememxfer">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToImagememxfer(ref TW_IMAGEMEMXFER a_twimagememxfer, string a_szImagememxfer)
+        public static bool CsvToImagememxfer(ref TW_IMAGEMEMXFER a_twimagememxfer, string a_szImagememxfer)
         {
             // Init stuff...
             a_twimagememxfer = default(TW_IMAGEMEMXFER);
@@ -3076,7 +3076,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twmetrics">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string MetricsToCsv(TW_METRICS a_twmetrics)
+        public static string MetricsToCsv(TW_METRICS a_twmetrics)
         {
             try
             {
@@ -3099,7 +3099,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twpassthru">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string PassthruToCsv(TW_PASSTHRU a_twpassthru)
+        public static string PassthruToCsv(TW_PASSTHRU a_twpassthru)
         {
             try
             {
@@ -3125,7 +3125,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twpassthru">A TWAIN structure</param>
         /// <param name="a_szPassthru">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToPassthru(ref TW_PASSTHRU a_twpassthru, string a_szPassthru)
+        public static bool CsvToPassthru(ref TW_PASSTHRU a_twpassthru, string a_szPassthru)
         {
             // Init stuff...
             a_twpassthru = default(TW_PASSTHRU);
@@ -3159,7 +3159,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string PendingxfersToCsv(TW_PENDINGXFERS a_twpendingxfers)
+        public static string PendingxfersToCsv(TW_PENDINGXFERS a_twpendingxfers)
         {
             try
             {
@@ -3181,7 +3181,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twpassthru">A TWAIN structure</param>
         /// <param name="a_szPassthru">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToPendingXfers(ref TW_PENDINGXFERS a_twpendingxfers, string a_szPendingxfers)
+        public static bool CsvToPendingXfers(ref TW_PENDINGXFERS a_twpendingxfers, string a_szPendingxfers)
         {
             // Init stuff...
             a_twpendingxfers = default(TW_PENDINGXFERS);
@@ -3211,7 +3211,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string SetupfilexferToCsv(TW_SETUPFILEXFER a_twsetupfilexfer)
+        public static string SetupfilexferToCsv(TW_SETUPFILEXFER a_twsetupfilexfer)
         {
             try
             {
@@ -3234,7 +3234,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
         /// <param name="a_szSetupfilexfer">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToSetupfilexfer(ref TW_SETUPFILEXFER a_twsetupfilexfer, string a_szSetupfilexfer)
+        public static bool CsvToSetupfilexfer(ref TW_SETUPFILEXFER a_twsetupfilexfer, string a_szSetupfilexfer)
         {
             // Init stuff...
             a_twsetupfilexfer = default(TW_SETUPFILEXFER);
@@ -3265,7 +3265,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twsetupmemxfer">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string SetupmemxferToCsv(TW_SETUPMEMXFER a_twsetupmemxfer)
+        public static string SetupmemxferToCsv(TW_SETUPMEMXFER a_twsetupmemxfer)
         {
             try
             {
@@ -3288,7 +3288,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twsetupfilexfer">A TWAIN structure</param>
         /// <param name="a_szSetupfilexfer">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToSetupmemxfer(ref TW_SETUPMEMXFER a_twsetupmemxfer, string a_szSetupmemxfer)
+        public static bool CsvToSetupmemxfer(ref TW_SETUPMEMXFER a_twsetupmemxfer, string a_szSetupmemxfer)
         {
             // Init stuff...
             a_twsetupmemxfer = default(TW_SETUPMEMXFER);
@@ -3319,7 +3319,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twstatus">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string StatusToCsv(TW_STATUS a_twstatus)
+        public static string StatusToCsv(TW_STATUS a_twstatus)
         {
             try
             {
@@ -3366,7 +3366,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twtwaindirect">A TWAIN structure</param>
         /// <param name="a_szTwaindirect">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToTwaindirect(ref TW_TWAINDIRECT a_twtwaindirect, string a_szTwaindirect)
+        public static bool CsvToTwaindirect(ref TW_TWAINDIRECT a_twtwaindirect, string a_szTwaindirect)
         {
             // Init stuff...
             a_twtwaindirect = default(TW_TWAINDIRECT);
@@ -3421,7 +3421,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twtwaindirect">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string TwaindirectToCsv(TW_TWAINDIRECT a_twtwaindirect)
+        public static string TwaindirectToCsv(TW_TWAINDIRECT a_twtwaindirect)
         {
             try
             {
@@ -3447,7 +3447,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twuserinterface">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string UserinterfaceToCsv(TW_USERINTERFACE a_twuserinterface)
+        public static string UserinterfaceToCsv(TW_USERINTERFACE a_twuserinterface)
         {
             try
             {
@@ -3522,7 +3522,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_u32Xfergroup">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string XfergroupToCsv(UInt32 a_u32Xfergroup)
+        public static string XfergroupToCsv(UInt32 a_u32Xfergroup)
         {
             try
             {
@@ -3543,7 +3543,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twcustomdsdata">A TWAIN structure</param>
         /// <param name="a_szCustomdsdata">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToXfergroup(ref UInt32 a_u32Xfergroup, string a_szXfergroup)
+        public static bool CsvToXfergroup(ref UInt32 a_u32Xfergroup, string a_szXfergroup)
         {
             // Init stuff...
             a_u32Xfergroup = 0;
@@ -3573,7 +3573,7 @@ namespace TWAINWorkingGroup
         /// <typeparam name="T">type for the conversion</typeparam>
         /// <param name="a_szValue">value to convert</param>
         /// <returns></returns>
-        private string CvtCapValueToEnumHelper<T>(string a_szValue)
+        private static string CvtCapValueToEnumHelper<T>(string a_szValue)
         {
             T t;
             Int32 i32 = 0;
@@ -3673,7 +3673,7 @@ namespace TWAINWorkingGroup
         /// <typeparam name="T">type for the conversion</typeparam>
         /// <param name="a_szValue">value to convert</param>
         /// <returns></returns>
-        private string CvtCapValueFromEnumHelper<T>(string a_szValue)
+        private static string CvtCapValueFromEnumHelper<T>(string a_szValue)
         {
             // We can figure this one out on our own...
             if ((typeof(T).Name == "bool") || (typeof(T).Name == "Boolean"))
@@ -3697,7 +3697,7 @@ namespace TWAINWorkingGroup
         /// <typeparam name="T">type for the conversion</typeparam>
         /// <param name="a_szValue">value to convert</param>
         /// <returns></returns>
-        private string CvtCapValueFromTwlg(string a_szValue)
+        private static string CvtCapValueFromTwlg(string a_szValue)
         {
             // mono goes "hork", probably because the enum is wackadoodle, this
             // does work on .net, but what'cha gonna do?
@@ -3848,7 +3848,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_cap">capability driving the conversion</param>
         /// <param name="szValue">value to convert</param>
         /// <returns></returns>
-        public string CvtCapValueToEnum(CAP a_cap, string a_szValue)
+        public static string CvtCapValueToEnum(CAP a_cap, string a_szValue)
         {
             switch (a_cap)
             {
@@ -4026,7 +4026,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_cap">capability driving the conversion</param>
         /// <param name="szValue">value to convert</param>
         /// <returns></returns>
-        public string CvtCapValueFromEnum(CAP a_cap, string a_szValue)
+        public static string CvtCapValueFromEnum(CAP a_cap, string a_szValue)
         {
             int ii;
 
@@ -13884,11 +13884,14 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_intptrNative">The pointer to something (presumably a BITMAP or a TIFF image)</param>
         /// <returns>C# Bitmap of image</returns>
-        public byte[] NativeToByteArray(IntPtr a_intptrNative, bool a_blIsHandle)
+        public byte[] NativeToByteArray(IntPtr a_intptrNative, bool a_blIsHandle, out int a_iHeaderBytes)
         {
             ushort u16Magic;
             UIntPtr uintptrBytes;
             IntPtr intptrNative;
+
+            // Init stuff...
+            a_iHeaderBytes = 0;
 
             // Give ourselves what protection we can...
             try
@@ -13929,7 +13932,8 @@ namespace TWAINWorkingGroup
                     Marshal.FreeHGlobal(intptr);
                     intptr = IntPtr.Zero;
 
-                    // Copy the rest of the DIB into our byte array......
+                    // Copy the rest of the DIB into our byte array...
+                    a_iHeaderBytes = (int)Marshal.SizeOf(typeof(BITMAPFILEHEADER));
                     Marshal.Copy(intptrNative, abBitmap, Marshal.SizeOf(typeof(BITMAPFILEHEADER)), (int)bitmapfileheader.bfSize - Marshal.SizeOf(typeof(BITMAPFILEHEADER)));
 
                     // Unlock the handle, and return our byte array...
@@ -13970,6 +13974,7 @@ namespace TWAINWorkingGroup
                         if (tifftag.u16Tag == 273)
                         {
                             iTiffSize += (int)tifftag.u32Value;
+                            a_iHeaderBytes = (int)tifftag.u32Value;
                         }
 
                         // StripByteCounts...

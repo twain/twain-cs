@@ -522,7 +522,7 @@ namespace twaincscert
                     {
                         TWAIN.TW_AUDIOINFO twaudioinfo = default(TWAIN.TW_AUDIOINFO);
                         a_functionarguments.sts = m_twain.DatAudioinfo((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twaudioinfo);
-                        a_functionarguments.szReturnValue = m_twain.AudioinfoToCsv(twaudioinfo);
+                        a_functionarguments.szReturnValue = TWAIN.AudioinfoToCsv(twaudioinfo);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -543,9 +543,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.CALLBACK:
                     {
                         TWAIN.TW_CALLBACK twcallback = default(TWAIN.TW_CALLBACK);
-                        m_twain.CsvToCallback(ref twcallback, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToCallback(ref twcallback, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatCallback((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twcallback);
-                        a_functionarguments.szReturnValue = m_twain.CallbackToCsv(twcallback);
+                        a_functionarguments.szReturnValue = TWAIN.CallbackToCsv(twcallback);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -555,9 +555,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.CALLBACK2:
                     {
                         TWAIN.TW_CALLBACK2 twcallback2 = default(TWAIN.TW_CALLBACK2);
-                        m_twain.CsvToCallback2(ref twcallback2, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToCallback2(ref twcallback2, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatCallback2((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twcallback2);
-                        a_functionarguments.szReturnValue = m_twain.Callback2ToCsv(twcallback2);
+                        a_functionarguments.szReturnValue = TWAIN.Callback2ToCsv(twcallback2);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -627,7 +627,7 @@ namespace twaincscert
                     {
                         TWAIN.TW_DEVICEEVENT twdeviceevent = default(TWAIN.TW_DEVICEEVENT);
                         a_functionarguments.sts = m_twain.DatDeviceevent((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twdeviceevent);
-                        a_functionarguments.szReturnValue = m_twain.DeviceeventToCsv(twdeviceevent);
+                        a_functionarguments.szReturnValue = TWAIN.DeviceeventToCsv(twdeviceevent);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -650,7 +650,7 @@ namespace twaincscert
                     {
                         TWAIN.TW_EVENT twevent = default(TWAIN.TW_EVENT);
                         a_functionarguments.sts = m_twain.DatEvent((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twevent);
-                        a_functionarguments.szReturnValue = m_twain.EventToCsv(twevent);
+                        a_functionarguments.szReturnValue = TWAIN.EventToCsv(twevent);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -672,9 +672,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.FILESYSTEM:
                     {
                         TWAIN.TW_FILESYSTEM twfilesystem = default(TWAIN.TW_FILESYSTEM);
-                        m_twain.CsvToFilesystem(ref twfilesystem, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToFilesystem(ref twfilesystem, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatFilesystem((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twfilesystem);
-                        a_functionarguments.szReturnValue = m_twain.FilesystemToCsv(twfilesystem);
+                        a_functionarguments.szReturnValue = TWAIN.FilesystemToCsv(twfilesystem);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -709,7 +709,7 @@ namespace twaincscert
                     {
                         TWAIN.TW_MEMORY twmemory = default(TWAIN.TW_MEMORY);
                         a_functionarguments.sts = m_twain.DatIccprofile((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twmemory);
-                        a_functionarguments.szReturnValue = m_twain.IccprofileToCsv(twmemory);
+                        a_functionarguments.szReturnValue = TWAIN.IccprofileToCsv(twmemory);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -719,9 +719,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.IDENTITY:
                     {
                         TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
-                        m_twain.CsvToIdentity(ref twidentity, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToIdentity(ref twidentity, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatIdentity((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twidentity);
-                        a_functionarguments.szReturnValue = m_twain.IdentityToCsv(twidentity);
+                        a_functionarguments.szReturnValue = TWAIN.IdentityToCsv(twidentity);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -741,9 +741,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.IMAGEINFO:
                     {
                         TWAIN.TW_IMAGEINFO twimageinfo = default(TWAIN.TW_IMAGEINFO);
-                        m_twain.CsvToImageinfo(ref twimageinfo, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToImageinfo(ref twimageinfo, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatImageinfo((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twimageinfo);
-                        a_functionarguments.szReturnValue = m_twain.ImageinfoToCsv(twimageinfo);
+                        a_functionarguments.szReturnValue = TWAIN.ImageinfoToCsv(twimageinfo);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -753,9 +753,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.IMAGELAYOUT:
                     {
                         TWAIN.TW_IMAGELAYOUT twimagelayout = default(TWAIN.TW_IMAGELAYOUT);
-                        m_twain.CsvToImagelayout(ref twimagelayout, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToImagelayout(ref twimagelayout, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatImagelayout((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twimagelayout);
-                        a_functionarguments.szReturnValue = m_twain.ImagelayoutToCsv(twimagelayout);
+                        a_functionarguments.szReturnValue = TWAIN.ImagelayoutToCsv(twimagelayout);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -765,9 +765,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.IMAGEMEMFILEXFER:
                     {
                         TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
-                        m_twain.CsvToImagememxfer(ref twimagememxfer, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToImagememxfer(ref twimagememxfer, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatImagememfilexfer((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twimagememxfer);
-                        a_functionarguments.szReturnValue = m_twain.ImagememxferToCsv(twimagememxfer);
+                        a_functionarguments.szReturnValue = TWAIN.ImagememxferToCsv(twimagememxfer);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -777,9 +777,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.IMAGEMEMXFER:
                     {
                         TWAIN.TW_IMAGEMEMXFER twimagememxfer = default(TWAIN.TW_IMAGEMEMXFER);
-                        m_twain.CsvToImagememxfer(ref twimagememxfer, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToImagememxfer(ref twimagememxfer, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatImagememxfer((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twimagememxfer);
-                        a_functionarguments.szReturnValue = m_twain.ImagememxferToCsv(twimagememxfer);
+                        a_functionarguments.szReturnValue = TWAIN.ImagememxferToCsv(twimagememxfer);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -814,7 +814,7 @@ namespace twaincscert
                         TWAIN.TW_METRICS twmetrics = default(TWAIN.TW_METRICS);
                         twmetrics.SizeOf = (uint)Marshal.SizeOf(twmetrics);
                         a_functionarguments.sts = m_twain.DatMetrics((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twmetrics);
-                        a_functionarguments.szReturnValue = m_twain.MetricsToCsv(twmetrics);
+                        a_functionarguments.szReturnValue = TWAIN.MetricsToCsv(twmetrics);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -843,9 +843,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.PASSTHRU:
                     {
                         TWAIN.TW_PASSTHRU twpassthru = default(TWAIN.TW_PASSTHRU);
-                        m_twain.CsvToPassthru(ref twpassthru, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToPassthru(ref twpassthru, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatPassthru((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twpassthru);
-                        a_functionarguments.szReturnValue = m_twain.PassthruToCsv(twpassthru);
+                        a_functionarguments.szReturnValue = TWAIN.PassthruToCsv(twpassthru);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -857,7 +857,7 @@ namespace twaincscert
                         // Send the command...
                         TWAIN.TW_PENDINGXFERS twpendingxfers = default(TWAIN.TW_PENDINGXFERS);
                         a_functionarguments.sts = m_twain.DatPendingxfers((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twpendingxfers);
-                        a_functionarguments.szReturnValue = m_twain.PendingxfersToCsv(twpendingxfers);
+                        a_functionarguments.szReturnValue = TWAIN.PendingxfersToCsv(twpendingxfers);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
 
@@ -892,9 +892,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.SETUPFILEXFER:
                     {
                         TWAIN.TW_SETUPFILEXFER twsetupfilexfer = default(TWAIN.TW_SETUPFILEXFER);
-                        m_twain.CsvToSetupfilexfer(ref twsetupfilexfer, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToSetupfilexfer(ref twsetupfilexfer, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatSetupfilexfer((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twsetupfilexfer);
-                        a_functionarguments.szReturnValue = m_twain.SetupfilexferToCsv(twsetupfilexfer);
+                        a_functionarguments.szReturnValue = TWAIN.SetupfilexferToCsv(twsetupfilexfer);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -905,7 +905,7 @@ namespace twaincscert
                     {
                         TWAIN.TW_SETUPMEMXFER twsetupmemxfer = default(TWAIN.TW_SETUPMEMXFER);
                         a_functionarguments.sts = m_twain.DatSetupmemxfer((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twsetupmemxfer);
-                        a_functionarguments.szReturnValue = m_twain.SetupmemxferToCsv(twsetupmemxfer);
+                        a_functionarguments.szReturnValue = TWAIN.SetupmemxferToCsv(twsetupmemxfer);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -916,7 +916,7 @@ namespace twaincscert
                     {
                         TWAIN.TW_STATUS twstatus = default(TWAIN.TW_STATUS);
                         a_functionarguments.sts = m_twain.DatStatus((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twstatus);
-                        a_functionarguments.szReturnValue = m_twain.StatusToCsv(twstatus);
+                        a_functionarguments.szReturnValue = TWAIN.StatusToCsv(twstatus);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -937,9 +937,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.TWAINDIRECT:
                     {
                         TWAIN.TW_TWAINDIRECT twtwaindirect = default(TWAIN.TW_TWAINDIRECT);
-                        m_twain.CsvToTwaindirect(ref twtwaindirect, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToTwaindirect(ref twtwaindirect, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatTwaindirect((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twtwaindirect);
-                        a_functionarguments.szReturnValue = m_twain.TwaindirectToCsv(twtwaindirect);
+                        a_functionarguments.szReturnValue = TWAIN.TwaindirectToCsv(twtwaindirect);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -962,7 +962,7 @@ namespace twaincscert
                         TWAIN.TW_USERINTERFACE twuserinterface = default(TWAIN.TW_USERINTERFACE);
                         m_twain.CsvToUserinterface(ref twuserinterface, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatUserinterface((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twuserinterface);
-                        a_functionarguments.szReturnValue = m_twain.UserinterfaceToCsv(twuserinterface);
+                        a_functionarguments.szReturnValue = TWAIN.UserinterfaceToCsv(twuserinterface);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
 
@@ -1137,7 +1137,7 @@ namespace twaincscert
             if (m_blVerbose)
             {
                 TWAIN.TW_IDENTITY twidentity = default(TWAIN.TW_IDENTITY);
-                m_twain.CsvToIdentity(ref twidentity, m_twain.GetAppIdentity());
+                TWAIN.CsvToIdentity(ref twidentity, m_twain.GetAppIdentity());
                 DisplayBlue("Application TW_IDENTITY.Id.................." + twidentity.Id);
                 DisplayBlue("Application TW_IDENTITY.Version.MajorNum...." + twidentity.Version.MajorNum);
                 DisplayBlue("Application TW_IDENTITY.Version.MinorNum...." + twidentity.Version.MinorNum);
@@ -3308,6 +3308,7 @@ namespace twaincscert
         private bool CmdImage(ref Interpreter.FunctionArguments a_functionarguments)
         {
             int iResult = 0;
+            int iHeaderBytes;
             UInt64 u64Ptr = 0;
             IntPtr intptrPtr = IntPtr.Zero;
             bool blGlobal = false;
@@ -3344,7 +3345,7 @@ namespace twaincscert
 
                     // Validate...
                     keyvalue.szKey = a_functionarguments.aszCmd[2];
-                    if (!m_twain.CsvToImageinfo(ref twimageinfo, a_functionarguments.aszCmd[3]))
+                    if (!TWAIN.CsvToImageinfo(ref twimageinfo, a_functionarguments.aszCmd[3]))
                     {
                         DisplayError("invalid tw_imageinfo data <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
                         return (false);
@@ -3445,7 +3446,7 @@ namespace twaincscert
 
                     // Validate...
                     keyvalue.szKey = a_functionarguments.aszCmd[2];
-                    if (!m_twain.CsvToImagememxfer(ref twimagememxfer, a_functionarguments.aszCmd[3]))
+                    if (!TWAIN.CsvToImagememxfer(ref twimagememxfer, a_functionarguments.aszCmd[3]))
                     {
                         DisplayError("invalid tw_imagememxfer data <" + a_functionarguments.aszCmd[3] + ">", a_functionarguments);
                         return (false);
@@ -3597,7 +3598,7 @@ namespace twaincscert
                     {
                         default:
                         case "native":
-                            abImage = m_twain.NativeToByteArray(intptrPtr, true);
+                            abImage = m_twain.NativeToByteArray(intptrPtr, true, out iHeaderBytes);
                             try
                             {
                                 szFilename = szFolder;
@@ -4295,6 +4296,7 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdSaveImage(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            int iHeaderBytes;
             byte[] abImage;
             UInt64 u64Handle;
 
@@ -4345,7 +4347,7 @@ namespace twaincscert
                         return (false);
                     }
                     // This beastie autodetects the image type...
-                    abImage = m_twain.NativeToByteArray((IntPtr)u64Handle, true);
+                    abImage = m_twain.NativeToByteArray((IntPtr)u64Handle, true, out iHeaderBytes);
                     try
                     {
                         File.WriteAllBytes(szImageFile, abImage);

@@ -200,7 +200,7 @@ namespace TWAINCSScan
             // 4 --> 3
             if ((m_twain.GetState() == TWAIN.STATE.S4) && (a_state < TWAIN.STATE.S4))
             {
-                m_twain.CsvToIdentity(ref twidentity, m_twain.GetDsIdentity());
+                TWAIN.CsvToIdentity(ref twidentity, m_twain.GetDsIdentity());
                 m_twain.DatIdentity(TWAIN.DG.CONTROL, TWAIN.MSG.CLOSEDS, ref twidentity);
             }
 
@@ -535,7 +535,7 @@ namespace TWAINCSScan
                 // Memory transfers...
                 case TWAIN.STATE.S6:
                 case TWAIN.STATE.S7:
-                    m_twain.CsvToImagememxfer(ref twimagememxfer, "0,0,0,0,0,0,0," + ((int)TWAIN.TWMF.APPOWNS | (int)TWAIN.TWMF.POINTER) + "," + m_twsetupmemxfer.Preferred + "," + m_intptrXfer);
+                    TWAIN.CsvToImagememxfer(ref twimagememxfer, "0,0,0,0,0,0,0," + ((int)TWAIN.TWMF.APPOWNS | (int)TWAIN.TWMF.POINTER) + "," + m_twsetupmemxfer.Preferred + "," + m_intptrXfer);
                     sts = m_twain.DatImagememxfer(TWAIN.DG.IMAGE, TWAIN.MSG.GET, ref twimagememxfer);
                     break;
             }
@@ -1001,7 +1001,7 @@ namespace TWAINCSScan
             sts = m_twain.DatIdentity(TWAIN.DG.CONTROL, TWAIN.MSG.GETDEFAULT, ref twidentity);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                szDefault = m_twain.IdentityToCsv(twidentity);
+                szDefault = TWAIN.IdentityToCsv(twidentity);
             }
 
             // Enumerate the drivers...
@@ -1009,7 +1009,7 @@ namespace TWAINCSScan
                  sts != TWAIN.STS.ENDOFLIST;
                  sts = m_twain.DatIdentity(TWAIN.DG.CONTROL, TWAIN.MSG.GETNEXT, ref twidentity))
             {               
-                lszIdentity.Add(m_twain.IdentityToCsv(twidentity));
+                lszIdentity.Add(TWAIN.IdentityToCsv(twidentity));
             }
 
             // Ruh-roh...
@@ -1055,7 +1055,7 @@ namespace TWAINCSScan
 
             // Make it the default, we don't care if this succeeds...
             twidentity = default(TWAIN.TW_IDENTITY);
-            m_twain.CsvToIdentity(ref twidentity, szIdentity);
+            TWAIN.CsvToIdentity(ref twidentity, szIdentity);
             m_twain.DatIdentity(TWAIN.DG.CONTROL, TWAIN.MSG.SET, ref twidentity);
 
             // Open it...
