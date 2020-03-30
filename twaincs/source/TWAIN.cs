@@ -13933,7 +13933,7 @@ namespace TWAINWorkingGroup
                     intptr = IntPtr.Zero;
 
                     // Copy the rest of the DIB into our byte array...
-                    a_iHeaderBytes = (int)Marshal.SizeOf(typeof(BITMAPFILEHEADER));
+                    a_iHeaderBytes = (int)bitmapfileheader.bfOffBits;
                     Marshal.Copy(intptrNative, abBitmap, Marshal.SizeOf(typeof(BITMAPFILEHEADER)), (int)bitmapfileheader.bfSize - Marshal.SizeOf(typeof(BITMAPFILEHEADER)));
 
                     // Unlock the handle, and return our byte array...
