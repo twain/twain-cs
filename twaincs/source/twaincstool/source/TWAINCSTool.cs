@@ -1377,7 +1377,7 @@ namespace TWAINWorkingGroupToolkit
             sts = m_twain.DatEntrypoint(a_dg, a_msg, ref twentrypoint);
             if (sts == TWAIN.STS.SUCCESS)
             {
-                a_szMemref = m_twain.EntrypointToCsv(twentrypoint);
+                a_szMemref = TWAIN.EntrypointToCsv(twentrypoint);
             }
 
             // All done...

@@ -2505,7 +2505,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twentrypoint">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string EntrypointToCsv(TW_ENTRYPOINT a_twentrypoint)
+        public static string EntrypointToCsv(TW_ENTRYPOINT a_twentrypoint)
         {
             try
             {
@@ -2553,7 +2553,7 @@ namespace TWAINWorkingGroup
         /// </summary>
         /// <param name="a_twextimageinfo">A TWAIN structure</param>
         /// <returns>A CSV string of the TWAIN structure</returns>
-        public string ExtimageinfoToCsv(TW_EXTIMAGEINFO a_twextimageinfo)
+        public static string ExtimageinfoToCsv(TW_EXTIMAGEINFO a_twextimageinfo)
         {
             try
             {
@@ -2616,7 +2616,7 @@ namespace TWAINWorkingGroup
         /// <param name="a_twextimageinfo">A TWAIN structure</param>
         /// <param name="a_szExtimageinfo">A CSV string of the TWAIN structure</param>
         /// <returns>True if the conversion is successful</returns>
-        public bool CsvToExtimageinfo(ref TW_EXTIMAGEINFO a_twextimageinfo, string a_szExtimageinfo)
+        public static bool CsvToExtimageinfo(ref TW_EXTIMAGEINFO a_twextimageinfo, string a_szExtimageinfo)
         {
             // Init stuff...
             a_twextimageinfo = default(TW_EXTIMAGEINFO);

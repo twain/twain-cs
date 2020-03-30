@@ -639,7 +639,7 @@ namespace twaincscert
                         TWAIN.TW_ENTRYPOINT twentrypoint = default(TWAIN.TW_ENTRYPOINT);
                         twentrypoint.Size = (uint)Marshal.SizeOf(twentrypoint);
                         a_functionarguments.sts = m_twain.DatEntrypoint((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twentrypoint);
-                        a_functionarguments.szReturnValue = m_twain.EntrypointToCsv(twentrypoint);
+                        a_functionarguments.szReturnValue = TWAIN.EntrypointToCsv(twentrypoint);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
@@ -660,9 +660,9 @@ namespace twaincscert
                 case (int)TWAIN.DAT.EXTIMAGEINFO:
                     {
                         TWAIN.TW_EXTIMAGEINFO twextimageinfo = default(TWAIN.TW_EXTIMAGEINFO);
-                        m_twain.CsvToExtimageinfo(ref twextimageinfo, a_functionarguments.aszCmd[6]);
+                        TWAIN.CsvToExtimageinfo(ref twextimageinfo, a_functionarguments.aszCmd[6]);
                         a_functionarguments.sts = m_twain.DatExtimageinfo((TWAIN.DG)a_functionarguments.iDg, (TWAIN.MSG)a_functionarguments.iMsg, ref twextimageinfo);
-                        a_functionarguments.szReturnValue = m_twain.ExtimageinfoToCsv(twextimageinfo);
+                        a_functionarguments.szReturnValue = TWAIN.ExtimageinfoToCsv(twextimageinfo);
                         callstack.functionarguments.sts = a_functionarguments.sts;
                         callstack.functionarguments.szReturnValue = a_functionarguments.szReturnValue;
                     }
