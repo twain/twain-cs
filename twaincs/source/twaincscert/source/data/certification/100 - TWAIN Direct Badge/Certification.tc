@@ -16,6 +16,10 @@
 ; Returns
 ;   (none)
 ;
+; History
+;   v1.0 24-Mar-2020 - first version
+;   v1.1 29-Apr-2020 - added clarification that failing this doesn't fail cert
+;
 
 
 
@@ -23,6 +27,10 @@
 ; Initialize stuff, load tables if not already done for us...
 ;
 echo.titlesuite 'TWAIN Direct Badge v1.0 24-Mar-2020'
+echo.yellow '***********************************************************************************'
+echo.yellow '*** This test is for the TWAIN Direct Badge.  Failing means the driver does not ***'
+echo.yellow '*** support this functionality.  It does not prevent it from being certified.   ***'
+echo.yellow '***********************************************************************************'
 setlocal twidentity.productname '${arg:1}'
 setglobal g_localcertifyresult 'pass' ; assume success
 if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP

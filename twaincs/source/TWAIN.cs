@@ -3593,7 +3593,7 @@ namespace TWAINWorkingGroup
                 {
                     t = (T)Enum.Parse(typeof(T), a_szValue, true);
                     szCvt = t.ToString();
-                    if (szCvt != u32.ToString())
+                    if (szCvt != i32.ToString())
                     {
                         return (typeof(T).ToString().Replace("TWAINWorkingGroup.TWAIN+", "") + "_" + szCvt);
                     }
@@ -3930,7 +3930,7 @@ namespace TWAINWorkingGroup
                 case CAP.CAP_UICONTROLLABLE: return (CvtCapValueToEnumHelper<bool>(a_szValue));
                 case CAP.CAP_XFERCOUNT: return (a_szValue);
                 case CAP.ICAP_AUTOBRIGHT: return (CvtCapValueToEnumHelper<bool>(a_szValue));
-                case CAP.ICAP_AUTODISCARDBLANKPAGES: return (CvtCapValueToEnumHelper<TWBP>(a_szValue));
+                case CAP.ICAP_AUTODISCARDBLANKPAGES: return (a_szValue);
                 case CAP.ICAP_AUTOMATICBORDERDETECTION: return (CvtCapValueToEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_AUTOMATICCOLORENABLED: return (CvtCapValueToEnumHelper<bool>(a_szValue));
                 case CAP.ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE: return (CvtCapValueToEnumHelper<TWPT>(a_szValue));

@@ -24,13 +24,17 @@
 ; Returns
 ;   pass or fail
 ;
+; History
+;   v1.0 21-Feb-2020 - first version
+;   v1.1 29-Apr-2020 - fixed MSG_SET test to use TW_ONEVALUE, per the spec
+;
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_CAPABILITY v1.0 21-Feb-2020'
+echo.titletest 'DAT_CAPABILITY v1.1 04-Apr-2020'
 setlocal indent ''
 setlocal pixeltype.itemlist 'TWPT_BW,TWPT_GRAY,TWPT_RGB'
 setlocal pixeltype.index '-1'
@@ -504,6 +508,10 @@ return
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: MSGSET
+;   First we're going to do a MSG_GET followed by a MSG_SET with either a TW_ARRAY or a
+;   TW_ONEVALUE, as indicated by the spec.  Note that prior to 2.4 MSG_SET allowed one
+;   to send any container.  For the second round we do a MSG_GETCURRENT and set with that
+;   value, which also must be a TW_ARRAY or TW_ONEVALUE.
 ;
 ; Arguments
 ;   arg:1 - capability to check
@@ -539,11 +547,29 @@ if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal capability '${ret:}'
 setlocal name 'Send MSG_SET with that GET'
+if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' == 'TWON_ONEVALUE' goto MSGSET.SET ; ready to go as-is
+if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' == 'TWON_ARRAY' goto MSGSET.SET  ; ready to go as-is
+if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' == 'TWON_RANGE' goto MSGSET.SETRANGE ; the rest must convert to TW_ONEVALUE
+;
+increment currentindex '${get:TW_ENUMERATION.ItemList}' '${getindex:capability:${get:TW_ENUMERATION.CurrentIndex}}'
+setlocal currentvalue '${getindex:capability:${get:currentindex}}'
+if '${get:currentvalue}' contains ',' goto MSGSET.NEEDQUOTES ; if the data has a comma in it, we're going to need quotes
+;
+setlocal capability '${getindex:capability:${get:TW_CAPABILITY.Cap}},TWON_ONEVALUE,${getindex:capability:${get:TW_ENUMERATION.ItemType}},${get:currentvalue}'
+goto MSGSET.SET
+;
+:MSGSET.NEEDQUOTES
+setlocal capability '${getindex:capability:${get:TW_CAPABILITY.Cap}},TWON_ONEVALUE,${getindex:capability:${get:TW_ENUMERATION.ItemType}},"${get:currentvalue}"'
+goto MSGSET.SET
+;
+:MSGSET.SETRANGE
+setlocal capability '${getindex:capability:${get:TW_CAPABILITY.Cap}},TWON_ONEVALUE,${getindex:capability:${get:TW_RANGE.ItemType}},${getindex:capability:${get:TW_RANGE.CurrentValue}}'
+;
+:MSGSET.SET
 dsmentry src ds dg_control dat_capability msg_set '${get:capability}'
 if '/CHECKSTATUS/SUCCESS/' !~contains '/${sts:}/' goto MSGSET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal name 'Send MSG_GET to confirm MSG_SET'
-dsmentry src ds dg_control dat_capability msg_get '${arg:1},0,0,0'
+setlocal name 'Send MSG_GETCURRENTpability msg_getcurrent '${arg:1},0,0,0'
 setlocal value '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MSGSET.ERROR.ECHOPASSFAIL
 if '${get:value}' != '${get:capability}' goto MSGSET.ERROR.ECHOPASSFAIL

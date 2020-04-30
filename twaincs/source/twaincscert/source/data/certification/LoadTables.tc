@@ -628,7 +628,7 @@ setglobal ICAP_AUTOBRIGHT.Flags                              ''
 setglobal ICAP_AUTODISCARDBLANKPAGES.ConType                 TWON_RANGE,TWON_ONEVALUE
 setglobal ICAP_AUTODISCARDBLANKPAGES.ItemType                TWTY_INT32
 setglobal ICAP_AUTODISCARDBLANKPAGES.ValueAfterOpen          UNDEFINED
-setglobal ICAP_AUTODISCARDBLANKPAGES.ValueAfterReset         TWBP_DISABLE
+setglobal ICAP_AUTODISCARDBLANKPAGES.ValueAfterReset         -2 ; TWBP_DISABLE
 setglobal ICAP_AUTODISCARDBLANKPAGES.Flags                   ''
 ;
 setglobal ICAP_AUTOMATICBORDERDETECTION.ConType              TWON_ENUMERATION

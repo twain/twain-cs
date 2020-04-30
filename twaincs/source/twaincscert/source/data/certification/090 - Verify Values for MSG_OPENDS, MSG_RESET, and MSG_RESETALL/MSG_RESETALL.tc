@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; MSG_RESETALL
 ;   Compare the CAP.ValueAfterReset values of all TWAIN standard capabilities
-;   for the values of CAP_FEEDERENABLES and ICAP_PIXELTYPE to make sure they
+;   for the values of CAP_FEEDERENABLED and ICAP_PIXELTYPE to make sure they
 ;   have their mandatory settting after running MSG_RESETALL.
 ;
 ;   Our loop takes the form:
