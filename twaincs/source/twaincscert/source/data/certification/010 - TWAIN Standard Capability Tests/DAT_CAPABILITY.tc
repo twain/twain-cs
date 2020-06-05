@@ -27,6 +27,7 @@
 ; History
 ;   v1.0 21-Feb-2020 - first version
 ;   v1.1 29-Apr-2020 - fixed MSG_SET test to use TW_ONEVALUE, per the spec
+;   v1.2 03-Jun-2020 - skip MSG_SET if any previous test failed
 ;
 
 
@@ -34,7 +35,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_CAPABILITY v1.1 04-Apr-2020'
+echo.titletest 'DAT_CAPABILITY v1.2 03-Jun-2020'
 setlocal indent ''
 setlocal pixeltype.itemlist 'TWPT_BW,TWPT_GRAY,TWPT_RGB'
 setlocal pixeltype.index '-1'
@@ -533,6 +534,7 @@ return
 ;
 ; Skip if not supported (TWQC_SET)...
 if '${arg:2}' & '0x0002' == '0' goto MSGSET.SKIP
+if '${arg:3}' != 'pass' goto MSGSET.SKIP
 setlocal indent '    '
 ;
 ; Explain what's going on...
@@ -633,8 +635,10 @@ echo.passfail '${get:indent}${get:name}' 'fail ${sts:} <${get:capability}> <${ge
 call RESTORECAPABILITY '${arg:1}'
 setglobal '${arg:3}' 'fail'
 return
+;
 :MSGSET.SKIP
 return
+;
 :MSGSET.PASS
 call RESTORECAPABILITY '${arg:1}'
 return

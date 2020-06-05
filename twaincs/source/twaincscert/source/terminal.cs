@@ -2636,9 +2636,11 @@ namespace twaincscert
                 return (false);
             }
 
-            // Developer warning...
+            // Developer warning, release or debug folder detected, but not under the releases folder...
             string szLocation = Assembly.GetEntryAssembly().Location;
-            if (szLocation.Contains(Path.DirectorySeparatorChar + "Debug" + Path.DirectorySeparatorChar) || szLocation.Contains(Path.DirectorySeparatorChar + "Release" + Path.DirectorySeparatorChar))
+            if (   !szLocation.Contains(Path.DirectorySeparatorChar + "releases" + Path.DirectorySeparatorChar)
+                && (szLocation.Contains(Path.DirectorySeparatorChar + "Debug" + Path.DirectorySeparatorChar)
+                ||  szLocation.Contains(Path.DirectorySeparatorChar + "Release" + Path.DirectorySeparatorChar)))
             {
                 DisplayYellow("  Developer environment detected...");
                 blDeveloper = true;
