@@ -98,6 +98,7 @@ namespace twaincscert
             m_szSetRecordRemove = "";
             m_szSetRecordData = "";
             m_szTwainSelfCertFolder = "";
+            m_szSelfCertDataCertFolder = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
             if (a_formmain != null)
             {
                 m_formmain = a_formmain;
@@ -2836,26 +2837,40 @@ namespace twaincscert
                 Display("");
                 Display("");
 
-                // Try our binary path first, if that fails use the current folder...
-                string szCertificationFolder = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
-                if (!Directory.Exists(szCertificationFolder))
+                // If we're in the development tree, use the folder the binary is in...
+                if (blDeveloper)
                 {
-                    szCertificationFolder = Path.Combine(Directory.GetCurrentDirectory(), Path.Combine("data", "Certification"));
-                    if (!Directory.Exists(szCertificationFolder))
-                    {
-                        Display("");
-                        DisplayRed("Can't find our data/Certification folder, it should be in the");
-                        DisplayRed("same folder as this application, or the current folder.");
-                        m_blRunningScript = blRunningScriptRestore;
-                        m_blVerbose = blVerboseRestore;
-                        m_szSelfCertDriverVersion = "";
-                        return (false);
-                    }
+                    m_szSelfCertDataCertFolder = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
+                    Directory.SetCurrentDirectory(Path.GetDirectoryName(Application.ExecutablePath));
                 }
+                // Otherwise use the 'Twain Self Certification' folder...
+                else
+                {
+                    m_szSelfCertDataCertFolder = Path.Combine(m_szTwainSelfCertFolder, Path.Combine("data", "Certification"));
+                    Directory.SetCurrentDirectory(m_szTwainSelfCertFolder);
+                }
+
+                // No joy...
+                if (!Directory.Exists(m_szSelfCertDataCertFolder))
+                {
+                    Display("");
+                    DisplayRed("Can't find our data/Certification folder, it should be in the");
+                    DisplayRed("same folder as this application, or the current folder.");
+                    m_blRunningScript = blRunningScriptRestore;
+                    m_blVerbose = blVerboseRestore;
+                    m_szSelfCertDriverVersion = "";
+                    return (false);
+                }
+
+                // Make a note of it...
+                DisplayGreen("Using folder: " + m_szSelfCertDataCertFolder);
+                Display("");
+                Display("");
+                Display("");
 
                 // Go there and fire up the intepreter...
                 string szCurrentDirectory = Directory.GetCurrentDirectory();
-                Directory.SetCurrentDirectory(szCertificationFolder);
+                Directory.SetCurrentDirectory(m_szSelfCertDataCertFolder);
                 Interpreter.FunctionArguments functionarguments = new Interpreter.FunctionArguments();
                 functionarguments = new Interpreter.FunctionArguments();
                 if (m_blVerbose)
@@ -5358,7 +5373,7 @@ namespace twaincscert
                     {
                         if (szSymbol == "${folder:certification}")
                         {
-                            szValue = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), Path.Combine("data", "Certification"));
+                            szValue = m_szSelfCertDataCertFolder;
                         }
                         else if (szSymbol == "${folder:certimages}")
                         {
@@ -5936,6 +5951,7 @@ namespace twaincscert
         private string m_szSelfCertReportProductname;
         private string m_szTwainSelfCertFolder;
         private string m_szSelfCertDriverVersion;
+        private string m_szSelfCertDataCertFolder;
 
         /// <summary>
         /// The opening banner (program, version, etc)...
