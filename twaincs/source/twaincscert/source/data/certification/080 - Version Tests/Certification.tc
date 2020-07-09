@@ -47,6 +47,11 @@ if '${bits:}' !~ '32' goto MAIN.PASS ; if not 32-bit, we're done
 ;
 if '${get:g_skipprompts}' != '' goto MAIN.SKIP.PROMPTS
 call CERTIFY '${folder:certification}/Opends'  '${get:identity.productname}' embedded
+if '${ret:}' != 'fail' goto MAIN.FEEDERENABLED
+call CERTIFY '${folder:certification}/Closeds' '${get:identity.productname}' embedded
+return
+;
+:MAIN.FEEDERENABLED
 dsmentry src ds dg_control dat_capability msg_get 'CAP_FEEDERENABLED,0,0,0'
 setlocal feederenabled '${ret:}'
 call CERTIFY '${folder:certification}/Closeds' '${get:identity.productname}' embedded

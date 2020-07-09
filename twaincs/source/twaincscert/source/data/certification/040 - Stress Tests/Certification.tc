@@ -35,6 +35,7 @@ run '${folder:certification}/LoadTables'
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
+if '${get:g_localcertifyresult}' == 'fail' goto MAIN.ERROR
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded

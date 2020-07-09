@@ -36,7 +36,9 @@ run '${folder:certification}/LoadTables'
 ;
 
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'
+if '${get:${get:certifyresult}}' == 'fail' goto MAIN.CLOSEDS
 call CERTIFY 'DAT_CAPABILITY'                  '${get:twidentity.productname}' '${get:certifyresult}'
+:MAIN.CLOSEDS
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}'
 return
 

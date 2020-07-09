@@ -40,12 +40,14 @@ run '${folder:certification}/LoadTables'
 ; Open the scanner...
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'
+if '${get:${get:certifyresult}}' == 'fail' goto MAIN.CLOSEDS
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Prompt the user, if they have an ADF...
 ;
+:MAIN.PROMPT
 if '${get:g_skipprompts}' != '' goto MAIN.SKIP.PROMPTS
 dsmentry src ds dg_control dat_capability msg_get 'CAP_FEEDERENABLED,0,0,0'
 if '${ret:}' !~contains 'TRUE' goto MAIN.SKIP.PROMPTS
@@ -91,6 +93,7 @@ call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '
 call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '${folder:parent}'
 call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '${folder:parent}' '${get:xfermech}'
 call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' 'TRUE' '${folder:parent}' '${get:xfermech}'
+:MAIN.CLOSEDS
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}'
 return
 

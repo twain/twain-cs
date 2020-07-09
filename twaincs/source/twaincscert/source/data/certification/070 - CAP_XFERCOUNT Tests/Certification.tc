@@ -37,6 +37,7 @@ run '${folder:certification}/LoadTables'
 ; Run the tests...
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '${get:certifyresult}'
+if '${get:${get:certifyresult}}' == 'fail' goto MAIN.CLOSEDS
 
 ; Get ICAP_XFERMECH...
 setlocal name 'ICAP_XFERMECH MSG_GET'
@@ -50,6 +51,7 @@ call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '
 call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
 call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '${get:xfermech}'
 call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '${get:xfermech}'
+:MAIN.CLOSEDS
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '${get:certifyresult}'
 return
 

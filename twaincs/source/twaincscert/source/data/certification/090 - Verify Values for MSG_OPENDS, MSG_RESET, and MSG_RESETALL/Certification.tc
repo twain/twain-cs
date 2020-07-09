@@ -39,8 +39,10 @@ run '${folder:certification}/LoadTables'
 ; Run the tests...
 ;
 call CERTIFY 'MSG_OPENDS'   '${get:twidentity.productname}' '${get:certifyresult}'
+if '${get:${get:certifyresult}}' == 'fail' goto MAIN.RETURN
 call CERTIFY 'MSG_RESET'    '${get:twidentity.productname}' '${get:certifyresult}'
 call CERTIFY 'MSG_RESETALL' '${get:twidentity.productname}' '${get:certifyresult}'
+:MAIN.RETURN
 return
 
 

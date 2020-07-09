@@ -253,6 +253,12 @@ setglobal CAP_CAPTION.ValueAfterOpen                         ''
 setglobal CAP_CAPTION.ValueAfterReset                        ''
 setglobal CAP_CAPTION.Flags                                  ''
 ;
+setglobal CAP_CLEARBUFFERS.ConType                           TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_CLEARBUFFERS.ItemType                          TWTY_BOOL
+setglobal CAP_CLEARBUFFERS.ValueAfterOpen                    UNDEFINED
+setglobal CAP_CLEARBUFFERS.ValueAfterReset                   UNDEFINED
+setglobal CAP_CLEARBUFFERS.Flags                             'deprecated'
+;
 setglobal CAP_CLEARPAGE.ConType                              TWON_ENUMERATION
 setglobal CAP_CLEARPAGE.ItemType                             TWTY_BOOL
 setglobal CAP_CLEARPAGE.ValueAfterOpen                       FALSE
@@ -401,7 +407,7 @@ setglobal CAP_JOBCONTROL.ConType                             TWON_ENUMERATION,TW
 setglobal CAP_JOBCONTROL.ItemType                            TWTY_UINT16
 setglobal CAP_JOBCONTROL.ValueAfterOpen                      UNDEFINED
 setglobal CAP_JOBCONTROL.ValueAfterReset                     TWJC_NONE
-setglobal CAP_JOBCONTROL.Flags                                ''
+setglobal CAP_JOBCONTROL.Flags                               ''
 ;
 setglobal CAP_LANGUAGE.ConType                               TWON_ENUMERATION,TWON_ONEVALUE
 setglobal CAP_LANGUAGE.ItemType                              TWTY_UINT16
@@ -410,7 +416,7 @@ setglobal CAP_LANGUAGE.ValueAfterReset                       UNDEFINED
 setglobal CAP_LANGUAGE.Flags                                 ''
 ;
 setglobal CAP_MAXBATCHBUFFERS.ConType                        TWON_RANGE,TWON_ONEVALUE
-setglobal CAP_MAXBATCHBUFFERS.ItemType                       TWTY_INT32
+setglobal CAP_MAXBATCHBUFFERS.ItemType                       TWTY_UINT32
 setglobal CAP_MAXBATCHBUFFERS.ValueAfterOpen                 UNDEFINED
 setglobal CAP_MAXBATCHBUFFERS.ValueAfterReset                UNDEFINED
 setglobal CAP_MAXBATCHBUFFERS.Flags                          ''
@@ -420,6 +426,18 @@ setglobal CAP_MICRENABLED.ItemType                           TWTY_BOOL
 setglobal CAP_MICRENABLED.ValueAfterOpen                     UNDEFINED
 setglobal CAP_MICRENABLED.ValueAfterReset                    FALSE
 setglobal CAP_MICRENABLED.Flags                              ''
+;
+setglobal CAP_PAGEMULTIREACQUIRE.ConType                     TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_PAGEMULTIREACQUIRE.ItemType                    TWTY_BOOL
+setglobal CAP_PAGEMULTIREACQUIRE.ValueAfterOpen              UNDEFINED
+setglobal CAP_PAGEMULTIREACQUIRE.ValueAfterReset             UNDEFINED
+setglobal CAP_PAGEMULTIREACQUIRE.Flags                       'deprecated'
+;
+setglobal CAP_PAPERBINDING.ConType                           TWON_ENUMERATION
+setglobal CAP_PAPERBINDING.ItemType                          TWTY_UINT16
+setglobal CAP_PAPERBINDING.ValueAfterOpen                    UNDEFINED
+setglobal CAP_PAPERBINDING.ValueAfterReset                   UNDEFINED
+setglobal CAP_PAPERBINDING.Flags                             'deprecated'
 ;
 setglobal CAP_PAPERDETECTABLE.ConType                        TWON_ENUMERATION
 setglobal CAP_PAPERDETECTABLE.ItemType                       TWTY_BOOL
@@ -432,6 +450,12 @@ setglobal CAP_PAPERHANDLING.ItemType                         TWTY_UINT16
 setglobal CAP_PAPERHANDLING.ValueAfterOpen                   UNDEFINED
 setglobal CAP_PAPERHANDLING.ValueAfterReset                  TWPH_NORMAL
 setglobal CAP_PAPERHANDLING.Flags                            ''
+;
+setglobal CAP_PASSTHRU.ConType                               TWON_ENUMERATION,TWON_ONEVALUE
+setglobal CAP_PASSTHRU.ItemType                              TWTY_BOOL
+setglobal CAP_PASSTHRU.ValueAfterOpen                        UNDEFINED
+setglobal CAP_PASSTHRU.ValueAfterReset                       UNDEFINED
+setglobal CAP_PASSTHRU.Flags                                 'deprecated'
 ;
 setglobal CAP_POWERSAVETIME.ConType                          TWON_RANGE
 setglobal CAP_POWERSAVETIME.ItemType                         TWTY_INT32
@@ -571,6 +595,12 @@ setglobal CAP_SUPPORTEDCAPS.ValueAfterOpen                   UNDEFINED
 setglobal CAP_SUPPORTEDCAPS.ValueAfterReset                  UNDEFINED
 setglobal CAP_SUPPORTEDCAPS.Flags                            'mandatory'
 ;
+setglobal CAP_SUPPORTEDCAPSEXT.ConType                       TWON_ARRAY
+setglobal CAP_SUPPORTEDCAPSEXT.ItemType                      TWTY_UINT16
+setglobal CAP_SUPPORTEDCAPSEXT.ValueAfterOpen                UNDEFINED
+setglobal CAP_SUPPORTEDCAPSEXT.ValueAfterReset               UNDEFINED
+setglobal CAP_SUPPORTEDCAPSEXT.Flags                         'deprecated'
+;
 setglobal CAP_SUPPORTEDCAPSSEGMENTUNIQUE.ConType             TWON_ARRAY
 setglobal CAP_SUPPORTEDCAPSSEGMENTUNIQUE.ItemType            TWTY_UINT16
 setglobal CAP_SUPPORTEDCAPSSEGMENTUNIQUE.ValueAfterOpen      UNDEFINED
@@ -599,7 +629,7 @@ setglobal CAP_TIMEDATE.ConType                               TWON_ONEVALUE
 setglobal CAP_TIMEDATE.ItemType                              TWTY_STR32
 setglobal CAP_TIMEDATE.ValueAfterOpen                        UNDEFINED
 setglobal CAP_TIMEDATE.ValueAfterReset                       UNDEFINED
-setglobal CAP_TIMEDATE.Flags                                 ''
+setglobal CAP_TIMEDATE.Flags                                 'notstate4'
 ;
 setglobal CAP_THUMBNAILSENABLED.ConType                      TWON_ENUMERATION
 setglobal CAP_THUMBNAILSENABLED.ItemType                     TWTY_BOOL

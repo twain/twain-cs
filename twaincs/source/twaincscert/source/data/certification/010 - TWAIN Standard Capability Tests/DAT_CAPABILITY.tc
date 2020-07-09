@@ -60,7 +60,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; of exercising every available capability).  Remember the pixeltype setting,
 ; because we have to restore it as part of the MSG_RESET and MSG_SET tests.
 ;
-:NEXTTWPT
+:MAIN.NEXTTWPT
 setlocal indent ''
 increment pixeltype.index '${get:pixeltype.index}'
 setglobal g_pixeltype.value '${getindex:pixeltype.itemlist:${get:pixeltype.index}}'
@@ -70,7 +70,7 @@ goto MAIN.PASS
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,TWTY_UINT16,${get:g_pixeltype.value}'
 if '${sts:}' == 'SUCCESS' goto MAIN.TWPTCONTINUE
 echo.passfail '${get:indent}${get:g_pixeltype.value}' 'skip'
-goto NEXTTWPT
+goto MAIN.NEXTTWPT
 :MAIN.TWPTCONTINUE
 echo.passfail '${get:indent}${get:g_pixeltype.value}' 'pass'
 
@@ -104,12 +104,12 @@ call ENABLECAPABILITIES '${get:supportedcaps}'
 ;
 setlocal supportedcaps.index '${get:TW_ARRAY.ItemList}'
 increment supportedcaps.index '${get:supportedcaps.index}' -1
-:NEXTCAP
+:MAIN.NEXTCAP
+;
 increment supportedcaps.index '${get:supportedcaps.index}'
 setlocal supportedcaps.value '${getindex:supportedcaps:${get:supportedcaps.index}}'
-if '${get:supportedcaps.value}' == '' goto NEXTTWPT
-if '${get:supportedcaps.value}' ~contains '0x' goto NEXTCAP
-
+if '${get:supportedcaps.value}' == '' goto MAIN.NEXTTWPT ; we've run out of supportedcaps values
+if '${get:supportedcaps.value}' ~contains '0x' goto MAIN.NEXTCAP ; not a standard cap
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -123,7 +123,7 @@ call MSGGETCURRENT   '${get:supportedcaps.value}' '${get:g_querysupport}' g_datc
 call MSGGETDEFAULT   '${get:supportedcaps.value}' '${get:g_querysupport}' g_datcapabilityresult
 call MSGRESET        '${get:supportedcaps.value}' '${get:g_querysupport}' g_datcapabilityresult
 call MSGSET          '${get:supportedcaps.value}' '${get:g_querysupport}' g_datcapabilityresult
-goto NEXTCAP
+goto MAIN.NEXTCAP
 
 
 
@@ -166,10 +166,16 @@ return 'fail'
 ;
 :MSGQUERYSUPPORT
 ;
-; Send the command...
+; Header...
 setlocal indent '    '
 echo ' '
 echo '  ${arg:1}'
+;
+; Check if it's deprecated...
+setlocal capabilitytable.flags '${get:${arg:1}.Flags}' ; ex: ICAP_PIXELTYPE.Flags
+if '${get:capabilitytable.flags}' ~contains 'deprecated' goto MSGQUERYSUPPORT.DEPRECATED
+;
+; Send the command...
 setlocal name 'Send MSG_QUERYSUPPORT'
 dsmentry src ds dg_control dat_capability msg_querysupport '${arg:1},0,0,0'
 if '${sts:}' != 'SUCCESS' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
@@ -207,16 +213,22 @@ setlocal name 'Verify SET, RESET with GETs'
 if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x0012' == '0' goto MSGQUERYSUPPORT.PASS
 if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x001F' != '0x001F' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+goto MSGQUERYSUPPORT.PASS
 ;
 ; All done...
-goto MSGQUERYSUPPORT.PASS
 :MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'fail'
 setglobal '${arg:2}' '0'
 setglobal '${arg:3}' 'fail'
 return
+;
 :MSGQUERYSUPPORT.PASS
 setglobal '${arg:2}' '${getindex:capability:${get:TW_ONEVALUE.Item}}' ; the value for this capability
+return
+;
+:MSGQUERYSUPPORT.DEPRECATED
+echo.passfail '${get:indent}Note' 'deprecated (this is not a failure)'
+setglobal '${arg:2}' '0' ; the value for this capability
 return
 
 
