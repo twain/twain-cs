@@ -49,6 +49,9 @@ setglobal TW_ENUMERATION.CurrentIndex             4
 setglobal TW_ENUMERATION.DefaultIndex             5
 setglobal TW_ENUMERATION.ItemList                 6
 ;
+setglobal TW_EXTIMAGEINFO.NumInfos                0
+setglobal TW_EXTIMAGEINFO.Info                    1
+;
 setglobal TW_FILESYSTEM.InputName                 0
 setglobal TW_FILESYSTEM.OutputName                1
 setglobal TW_FILESYSTEM.Context                   2
@@ -97,6 +100,13 @@ setglobal TW_IMAGELAYOUT.Frame.Bottom             3
 setglobal TW_IMAGELAYOUT.Frame.DocumentNumber     4
 setglobal TW_IMAGELAYOUT.Frame.PageNumber         5
 setglobal TW_IMAGELAYOUT.Frame.FrameNumber        6
+;
+; These index off TW_EXTIMAGEINFO, which is why they don't start at 0...
+setglobal TW_INFO.InfoID                          1
+setglobal TW_INFO.ItemType                        2
+setglobal TW_INFO.NumItems                        3
+setglobal TW_INFO.ReturnCode                      4
+setglobal TW_INFO.Item                            5
 ;
 setglobal TW_METRICS.SizeOf                       0
 setglobal TW_METRICS.ImageCount                   1
@@ -385,11 +395,137 @@ setglobal CAP_FEEDERPREP.ValueAfterOpen                      UNDEFINED
 setglobal CAP_FEEDERPREP.ValueAfterReset                     FALSE
 setglobal CAP_FEEDERPREP.Flags                               ''
 ;
-setglobal CAP_FEEDERPAGE.ConType                             TWON_ENUMERATION
-setglobal CAP_FEEDERPAGE.ItemType                            TWTY_BOOL
-setglobal CAP_FEEDERPAGE.ValueAfterOpen                      UNDEFINED
-setglobal CAP_FEEDERPAGE.ValueAfterReset                     UNDEFINED
-setglobal CAP_FEEDERPAGE.Flags                               ''
+setglobal CAP_FEEDPAGE.ConType                               TWON_ENUMERATION
+setglobal CAP_FEEDPAGE.ItemType                              TWTY_BOOL
+setglobal CAP_FEEDPAGE.ValueAfterOpen                        UNDEFINED
+setglobal CAP_FEEDPAGE.ValueAfterReset                       UNDEFINED
+setglobal CAP_FEEDPAGE.Flags                                 ''
+;
+setglobal CAP_IAFIELDA_LASTPAGE.ConType                      TWON_ONEVALUE
+setglobal CAP_IAFIELDA_LASTPAGE.ItemType                     TWTY_STR32
+setglobal CAP_IAFIELDA_LASTPAGE.ValueAfterOpen               UNDEFINED
+setglobal CAP_IAFIELDA_LASTPAGE.ValueAfterReset              UNDEFINED
+setglobal CAP_IAFIELDA_LASTPAGE.Flags                        ''
+;
+setglobal CAP_IAFIELDB_LASTPAGE.ConType                      TWON_ONEVALUE
+setglobal CAP_IAFIELDB_LASTPAGE.ItemType                     TWTY_STR32
+setglobal CAP_IAFIELDB_LASTPAGE.ValueAfterOpen               UNDEFINED
+setglobal CAP_IAFIELDB_LASTPAGE.ValueAfterReset              UNDEFINED
+setglobal CAP_IAFIELDB_LASTPAGE.Flags                        ''
+;
+setglobal CAP_IAFIELDC_LASTPAGE.ConType                      TWON_ONEVALUE
+setglobal CAP_IAFIELDC_LASTPAGE.ItemType                     TWTY_STR32
+setglobal CAP_IAFIELDC_LASTPAGE.ValueAfterOpen               UNDEFINED
+setglobal CAP_IAFIELDC_LASTPAGE.ValueAfterReset              UNDEFINED
+setglobal CAP_IAFIELDC_LASTPAGE.Flags                        ''
+;
+setglobal CAP_IAFIELDD_LASTPAGE.ConType                      TWON_ONEVALUE
+setglobal CAP_IAFIELDD_LASTPAGE.ItemType                     TWTY_STR32
+setglobal CAP_IAFIELDD_LASTPAGE.ValueAfterOpen               UNDEFINED
+setglobal CAP_IAFIELDD_LASTPAGE.ValueAfterReset              UNDEFINED
+setglobal CAP_IAFIELDD_LASTPAGE.Flags                        ''
+;
+setglobal CAP_IAFIELDE_LASTPAGE.ConType                      TWON_ONEVALUE
+setglobal CAP_IAFIELDE_LASTPAGE.ItemType                     TWTY_STR32
+setglobal CAP_IAFIELDE_LASTPAGE.ValueAfterOpen               UNDEFINED
+setglobal CAP_IAFIELDE_LASTPAGE.ValueAfterReset              UNDEFINED
+setglobal CAP_IAFIELDE_LASTPAGE.Flags                        ''
+;
+setglobal CAP_IAFIELDA_LEVEL.ConType                         TWON_ENUMERATION
+setglobal CAP_IAFIELDA_LEVEL.ItemType                        TWTY_UINT16
+setglobal CAP_IAFIELDA_LEVEL.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDA_LEVEL.ValueAfterReset                 TWIA_UNUSED
+setglobal CAP_IAFIELDA_LEVEL.Flags                           ''
+;
+setglobal CAP_IAFIELDB_LEVEL.ConType                         TWON_ENUMERATION
+setglobal CAP_IAFIELDB_LEVEL.ItemType                        TWTY_UINT16
+setglobal CAP_IAFIELDB_LEVEL.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDB_LEVEL.ValueAfterReset                 TWIA_UNUSED
+setglobal CAP_IAFIELDB_LEVEL.Flags                           ''
+;
+setglobal CAP_IAFIELDC_LEVEL.ConType                         TWON_ENUMERATION
+setglobal CAP_IAFIELDC_LEVEL.ItemType                        TWTY_UINT16
+setglobal CAP_IAFIELDC_LEVEL.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDC_LEVEL.ValueAfterReset                 TWIA_UNUSED
+setglobal CAP_IAFIELDC_LEVEL.Flags                           ''
+;
+setglobal CAP_IAFIELDD_LEVEL.ConType                         TWON_ENUMERATION
+setglobal CAP_IAFIELDD_LEVEL.ItemType                        TWTY_UINT16
+setglobal CAP_IAFIELDD_LEVEL.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDD_LEVEL.ValueAfterReset                 TWIA_UNUSED
+setglobal CAP_IAFIELDD_LEVEL.Flags                           ''
+;
+setglobal CAP_IAFIELDE_LEVEL.ConType                         TWON_ENUMERATION
+setglobal CAP_IAFIELDE_LEVEL.ItemType                        TWTY_UINT16
+setglobal CAP_IAFIELDE_LEVEL.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDE_LEVEL.ValueAfterReset                 TWIA_UNUSED
+setglobal CAP_IAFIELDE_LEVEL.Flags                           ''
+;
+setglobal CAP_IAFIELDA_PRINTFORMAT.ConType                   TWON_ONEVALUE
+setglobal CAP_IAFIELDA_PRINTFORMAT.ItemType                  TWTY_STR32
+setglobal CAP_IAFIELDA_PRINTFORMAT.ValueAfterOpen            UNDEFINED
+setglobal CAP_IAFIELDA_PRINTFORMAT.ValueAfterReset           UNDEFINED
+setglobal CAP_IAFIELDA_PRINTFORMAT.Flags                     ''
+;
+setglobal CAP_IAFIELDB_PRINTFORMAT.ConType                   TWON_ONEVALUE
+setglobal CAP_IAFIELDB_PRINTFORMAT.ItemType                  TWTY_STR32
+setglobal CAP_IAFIELDB_PRINTFORMAT.ValueAfterOpen            UNDEFINED
+setglobal CAP_IAFIELDB_PRINTFORMAT.ValueAfterReset           UNDEFINED
+setglobal CAP_IAFIELDB_PRINTFORMAT.Flags                     ''
+;
+setglobal CAP_IAFIELDC_PRINTFORMAT.ConType                   TWON_ONEVALUE
+setglobal CAP_IAFIELDC_PRINTFORMAT.ItemType                  TWTY_STR32
+setglobal CAP_IAFIELDC_PRINTFORMAT.ValueAfterOpen            UNDEFINED
+setglobal CAP_IAFIELDC_PRINTFORMAT.ValueAfterReset           UNDEFINED
+setglobal CAP_IAFIELDC_PRINTFORMAT.Flags                     ''
+;
+setglobal CAP_IAFIELDD_PRINTFORMAT.ConType                   TWON_ONEVALUE
+setglobal CAP_IAFIELDD_PRINTFORMAT.ItemType                  TWTY_STR32
+setglobal CAP_IAFIELDD_PRINTFORMAT.ValueAfterOpen            UNDEFINED
+setglobal CAP_IAFIELDD_PRINTFORMAT.ValueAfterReset           UNDEFINED
+setglobal CAP_IAFIELDD_PRINTFORMAT.Flags                     ''
+;
+setglobal CAP_IAFIELDE_PRINTFORMAT.ConType                   TWON_ONEVALUE
+setglobal CAP_IAFIELDE_PRINTFORMAT.ItemType                  TWTY_STR32
+setglobal CAP_IAFIELDE_PRINTFORMAT.ValueAfterOpen            UNDEFINED
+setglobal CAP_IAFIELDE_PRINTFORMAT.ValueAfterReset           UNDEFINED
+setglobal CAP_IAFIELDE_PRINTFORMAT.Flags                     ''
+;
+setglobal CAP_IAFIELDA_VALUE.ConType                         TWON_ONEVALUE
+setglobal CAP_IAFIELDA_VALUE.ItemType                        TWTY_STR32
+setglobal CAP_IAFIELDA_VALUE.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDA_VALUE.ValueAfterReset                 UNDEFINED
+setglobal CAP_IAFIELDA_VALUE.Flags                           ''
+;
+setglobal CAP_IAFIELDB_VALUE.ConType                         TWON_ONEVALUE
+setglobal CAP_IAFIELDB_VALUE.ItemType                        TWTY_STR32
+setglobal CAP_IAFIELDB_VALUE.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDB_VALUE.ValueAfterReset                 UNDEFINED
+setglobal CAP_IAFIELDB_VALUE.Flags                           ''
+;
+setglobal CAP_IAFIELDC_VALUE.ConType                         TWON_ONEVALUE
+setglobal CAP_IAFIELDC_VALUE.ItemType                        TWTY_STR32
+setglobal CAP_IAFIELDC_VALUE.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDC_VALUE.ValueAfterReset                 UNDEFINED
+setglobal CAP_IAFIELDC_VALUE.Flags                           ''
+;
+setglobal CAP_IAFIELDD_VALUE.ConType                         TWON_ONEVALUE
+setglobal CAP_IAFIELDD_VALUE.ItemType                        TWTY_STR32
+setglobal CAP_IAFIELDD_VALUE.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDD_VALUE.ValueAfterReset                 UNDEFINED
+setglobal CAP_IAFIELDD_VALUE.Flags                           ''
+;
+setglobal CAP_IAFIELDE_VALUE.ConType                         TWON_ONEVALUE
+setglobal CAP_IAFIELDE_VALUE.ItemType                        TWTY_STR32
+setglobal CAP_IAFIELDE_VALUE.ValueAfterOpen                  UNDEFINED
+setglobal CAP_IAFIELDE_VALUE.ValueAfterReset                 UNDEFINED
+setglobal CAP_IAFIELDE_VALUE.Flags                           ''
+;
+setglobal CAP_IMAGEADDRESSENABLED.ConType                    TWON_ENUMERATION
+setglobal CAP_IMAGEADDRESSENABLED.ItemType                   TWTY_BOOL
+setglobal CAP_IMAGEADDRESSENABLED.ValueAfterOpen             UNDEFINED
+setglobal CAP_IMAGEADDRESSENABLED.ValueAfterReset            FALSE
+setglobal CAP_IMAGEADDRESSENABLED.Flags                      ''
 ;
 setglobal CAP_INDICATORS.ConType                             TWON_ENUMERATION
 setglobal CAP_INDICATORS.ItemType                            TWTY_BOOL
@@ -829,7 +965,7 @@ setglobal ICAP_FILMTYPE.ValueAfterOpen                       UNDEFINED
 setglobal ICAP_FILMTYPE.ValueAfterReset                      UNDEFINED
 setglobal ICAP_FILMTYPE.Flags                                ''
 ;
-setglobal ICAP_FILTER.ConType                                TWON_ARRAY
+setglobal ICAP_FILTER.ConType                                TWON_ARRAY,TWON_ONEVALUE
 setglobal ICAP_FILTER.ItemType                               TWTY_UINT16
 setglobal ICAP_FILTER.ValueAfterOpen                         UNDEFINED
 setglobal ICAP_FILTER.ValueAfterReset                        ''

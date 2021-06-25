@@ -184,23 +184,27 @@ setlocal capability '${ret:}'
 ;
 ; If TW_CAPABILITY.Cap is not #CAP#, then end with error
 setlocal name 'Verify Cap'
+setlocal failinfo ' (found ${getindex:capability:${get:TW_CAPABILITY.Cap}})'
 if '${getindex:capability:${get:TW_CAPABILITY.Cap}}' != '${arg:1}' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TW_CAPABILITY.ConType is not TWON_ONEVALUE, then end with error.
 setlocal name 'Verify ConType is TWON_ONEVALUE'
+setlocal failinfo ' (found ${getindex:capability:${get:TW_CAPABILITY.ConType}})'
 if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TW_ONEVALUE.ItemType is not TWTY_UINT32, then end with error
 ; SPECNOTE: spec says TWTY_INT32, test says TWTY_UINT32...spec wins...
 setlocal name 'Verify ItemType is TWTY_INT32'
+setlocal failinfo ' (found ${getindex:capability:${get:TW_ONEVALUE.ItemType}}'
 if '${getindex:capability:${get:TW_ONEVALUE.ItemType}}' != 'TWTY_INT32' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; If TWQC_GET, TWQC_GETCURRENT or TWQC_GETDEFAULT is detected, then
 ; all three must be present, if any are missing end with error
 setlocal name 'Verify GET, GETCURRENT, GETDEFAULT'
+setlocal failinfo ' (found ${getindex:capability:${get:TW_ONEVALUE.Item}}'
 if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x000D' == '0' goto MSGQUERYSUPPORT.VERIFYSET
 if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x000D' != '0x000D' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -210,6 +214,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; then end with error
 :MSGQUERYSUPPORT.VERIFYSET
 setlocal name 'Verify SET, RESET with GETs'
+setlocal failinfo ' (found ${getindex:capability:${get:TW_ONEVALUE.Item}}'
 if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x0012' == '0' goto MSGQUERYSUPPORT.PASS
 if '${getindex:capability:${get:TW_ONEVALUE.Item}}' & '0x001F' != '0x001F' goto MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -217,7 +222,7 @@ goto MSGQUERYSUPPORT.PASS
 ;
 ; All done...
 :MSGQUERYSUPPORT.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'fail'
+echo.passfail '${get:indent}${get:name}' 'woof${get:failinfo}'
 setglobal '${arg:2}' '0'
 setglobal '${arg:3}' 'fail'
 return

@@ -1,6 +1,6 @@
 These are the scripts for doing the certification tests.  This folder will
 be deleted and rewritten by the certify command, so don't put anything in
-here that you care about.
+here you care about.
 
 These have been designed such that it's possible to use the run command
 on any "Certification.tc" file.

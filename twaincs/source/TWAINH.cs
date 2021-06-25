@@ -8,6 +8,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    17-May-2021     2.5.0.0     Updated to latest spec
 //  M.McLaughlin    13-Mar-2019     2.4.0.3     Add language code page support for strings
 //  M.McLaughlin    13-Nov-2015     2.4.0.0     Updated to latest spec
 //  M.McLaughlin    13-Sep-2015     2.3.1.2     DsmMem bug fixes
@@ -19,7 +20,7 @@
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2020 Kodak Alaris Inc.
+//  Copyright (C) 2013-2021 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -42,7 +43,6 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -65,9 +65,10 @@ namespace TWAINWorkingGroup
         public enum TWON_PROTOCOL
         {
             MAJOR = 2,
-            MINOR = 4 // Changed for Version 2.4
+            MINOR = 5 // Changed for Version 2.5
         };
         #endregion
+
 
         ///////////////////////////////////////////////////////////////////////////////
         // Type Definitions...
@@ -2933,6 +2934,19 @@ namespace TWAINWorkingGroup
             UNKNOWN = 8
         }
 
+        ///
+        /// CAP_IAFIELD*_LEVEL values
+        ///
+        public enum TWIA : ushort
+        {
+            UNUSED = 0,
+            FIXED = 1,
+            LEVEL1 = 2,
+            LEVEL2 = 3,
+            LEVEL3 = 4,
+            LEVEL4 = 5
+        }
+
         /// <summary>
         /// ICAP_ICCPROFILE values
         /// </summary>
@@ -3112,7 +3126,8 @@ namespace TWAINWorkingGroup
         {
             SINGLESTRING = 0,
             MULTISTRING = 1,
-            COMPOUNDSTRING = 2
+            COMPOUNDSTRING = 2,
+            IMAGEADDRESSSTRING = 3
         }
 
         /// <summary>
@@ -4029,6 +4044,27 @@ namespace TWAINWorkingGroup
             CAP_PRINTERINDEXTRIGGER = 0x104D,
             CAP_PRINTERSTRINGPREVIEW = 0x104E,
             CAP_SHEETCOUNT = 0x104F,
+            CAP_IMAGEADDRESSENABLED = 0x1050,
+            CAP_IAFIELDA_LEVEL = 0x1051,
+            CAP_IAFIELDB_LEVEL = 0x1052,
+            CAP_IAFIELDC_LEVEL = 0x1053,
+            CAP_IAFIELDD_LEVEL = 0x1054,
+            CAP_IAFIELDE_LEVEL = 0x1055,
+            CAP_IAFIELDA_PRINTFORMAT = 0x1056,
+            CAP_IAFIELDB_PRINTFORMAT = 0x1057,
+            CAP_IAFIELDC_PRINTFORMAT = 0x1058,
+            CAP_IAFIELDD_PRINTFORMAT = 0x1059,
+            CAP_IAFIELDE_PRINTFORMAT = 0x105A,
+            CAP_IAFIELDA_VALUE = 0x105B,
+            CAP_IAFIELDB_VALUE = 0x105C,
+            CAP_IAFIELDC_VALUE = 0x105D,
+            CAP_IAFIELDD_VALUE = 0x105E,
+            CAP_IAFIELDE_VALUE = 0x105F,
+            CAP_IAFIELDA_LASTPAGE = 0x1060,
+            CAP_IAFIELDB_LASTPAGE = 0x1061,
+            CAP_IAFIELDC_LASTPAGE = 0x1062,
+            CAP_IAFIELDD_LASTPAGE = 0x1063,
+            CAP_IAFIELDE_LASTPAGE = 0x1064,
 
             // image data sources MAY support these caps.
             ICAP_AUTOBRIGHT = 0x1100,
@@ -4207,7 +4243,15 @@ namespace TWAINWorkingGroup
             MAGDATALENGTH = 0x1248,
             PAPERCOUNT = 0x1249,
             PRINTERTEXT = 0x124A,
-            TWAINDIRECTMETADATA = 0x124B
+            TWAINDIRECTMETADATA = 0x124B,
+            IAFIELDA_VALUE = 0x124C,
+            IAFIELDB_VALUE = 0x124D,
+            IAFIELDC_VALUE = 0x124E,
+            IAFIELDD_VALUE = 0x124F,
+            IAFIELDE_VALUE = 0x1250,
+            IALEVEL = 0x1251,
+            PRINTER = 0x1252,
+            BARCODETEXT2 = 0x1253
         }
 
         public enum TWEJ : ushort

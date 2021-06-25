@@ -9,6 +9,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 //  Author          Date            TWAIN       Comment
+//  M.McLaughlin    17-May-2021     2.5.0.0     Updated to latest spec
 //  M.McLaughlin    13-Mar-2019     2.4.0.3     Add language code page support for strings
 //  M.McLaughlin    13-Nov-2015     2.4.0.0     Updated to latest spec
 //  M.McLaughlin    13-Sep-2015     2.3.1.2     DsmMem bug fixes
@@ -20,7 +21,7 @@
 //  M.McLaughlin    27-Feb-2014     2.3.0.1     AnyCPU support
 //  M.McLaughlin    21-Oct-2013     2.3.0.0     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2013-2020 Kodak Alaris Inc.
+//  Copyright (C) 2013-2021 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -2595,7 +2596,6 @@ namespace TWAINWorkingGroup
                     {
                         csv.Add(string.Format("0x{0:X}", twinfo.ReturnCode));
                     }
-                    csv.Add(twinfo.ReturnCode.ToString());
                     csv.Add(twinfo.Item.ToString());
                     uTwinfo += 1;
                 }

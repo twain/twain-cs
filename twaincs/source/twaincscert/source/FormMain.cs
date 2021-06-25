@@ -82,7 +82,7 @@ namespace twaincscert
         /// This helps to make sure we're always running in the context
         /// of FormMain on Windows, which is critical if we want drivers
         /// to work properly.  It also gives a way to break up the calls
-        /// so the message pump is still reponsive.
+        /// so the message pump is still responsive.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>

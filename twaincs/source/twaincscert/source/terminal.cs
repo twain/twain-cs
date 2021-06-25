@@ -8,7 +8,7 @@
 //  Author          Date            Comment
 //  M.McLaughlin    01-Jan-2020     Initial Release
 ///////////////////////////////////////////////////////////////////////////////////////
-//  Copyright (C) 2020-2020 Kodak Alaris Inc.
+//  Copyright (C) 2020-2021 Kodak Alaris Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -1977,6 +1977,9 @@ namespace twaincscert
             {
                 Display(m_szBanner);
                 Display("");
+                Display("Argumements in square brackets [] are optional, and don't have to be provided");
+                Display("to the command.  Arguments in curly brackets must be provided.");
+                Display("");
                 DisplayYellow("Overview");
                 Display("help intro......................................introduction to this program");
                 Display("help certification..............................certifying a scanner");
@@ -2136,6 +2139,14 @@ namespace twaincscert
                 Display("");
                 Display("  '${get:target}'");
                 Display("  The value last assigned to the target using the set command.");
+                Display("");
+                Display("  '${gethandle:target:type:bytes}'");
+                Display("  Memlocks the target, and based on the type and the bytes converts the value to a string.");
+                Display("  The lock is freed when done.");
+                Display("");
+                Display("  '${gethandleindex:target:index:type}'");
+                Display("  Memlocks the target, and based on the type converts the value at the index");
+                Display("  to a string.  The lock is freed when done.");
                 Display("");
                 Display("  '${getindex:target:index}'");
                 Display("  Runs the target through CSV and returns the item at the requested index.");
@@ -2813,7 +2824,18 @@ namespace twaincscert
             Display("");
             while (true)
             {
+                // Parse and check the data...
                 string[] aszDriver = CSV.Parse(szSelection);
+                if (aszDriver.Length < 2)
+                {
+                    DisplayRed("ProductName not found: <" + szSelection + ">");
+                    Display("Running the certify command without arguements shows a list of the available scanners.");
+                    m_blRunningScript = blRunningScriptRestore;
+                    m_blVerbose = blVerboseRestore;
+                    return (false);
+                }
+
+                // Prompt the user to see if this is good...
                 interpreter.SetPrompt("Certify '" + aszDriver[0] + " " + aszDriver[1] + "'" + " (yes/no)? ");
                 string szAnswer = interpreter.Prompt(m_streamreaderConsole, 0);
                 if (szAnswer.ToLowerInvariant().StartsWith("y"))
@@ -5217,6 +5239,8 @@ namespace twaincscert
                         || szSymbol.StartsWith("${folder:")
                         || szSymbol.StartsWith("${format:")
                         || szSymbol.StartsWith("${get:")
+                        || szSymbol.StartsWith("${gethandle:")
+                        || szSymbol.StartsWith("${gethandleindex:")
                         || szSymbol.StartsWith("${getindex:")
                         || szSymbol.StartsWith("${localtime:")
                         || szSymbol.StartsWith("${platform:")
@@ -5470,10 +5494,226 @@ namespace twaincscert
                     }
 
                     // Use value as a GET key to get a value, we don't allow a null in this
+                    // case, it has to be an empty string.  We search the local list first,
+                    // and if that fails go to the global list.  Once we have the value we
+                    // lock ts and extract the value based on the type.  If the type is a
+                    // handle when we also need the number of bytes...
+                    else if (szSymbol.StartsWith("${gethandle:"))
+                    {
+                        // Strip off ${...}
+                        string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(12);
+                        string[] aszGet = szGet.Split(':');
+
+                        // Are we good?  We need gethandle:target:type:bytes...
+                        if (aszGet.Length == 3)
+                        {
+                            // Only keep going if we got a value and bytes...
+                            if (!string.IsNullOrEmpty(aszGet[0]))
+                            {
+                                ulong u64Handle;
+                                // Convert the value to an IntPtr...
+                                if (UInt64.TryParse(aszGet[0], out u64Handle))
+                                {
+                                    // Lock...
+                                    int iDataBytes;
+                                    byte[] abValue = null;
+                                    IntPtr intptrPointer;
+                                    IntPtr intptrHandle = (IntPtr)u64Handle;
+                                    intptrPointer = m_twain.DsmMemLock(intptrHandle);
+
+                                    // Okay, let's trigger off the type...
+                                    switch (aszGet[1])
+                                    {
+                                        default:
+                                            szValue = "";
+                                            break;
+                                        case "TWTY_INT8":
+                                            abValue = new byte[1];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 1);
+                                            szValue = ((sbyte)abValue[0]).ToString();
+                                            break;
+                                        case "TWTY_INT16":
+                                            abValue = new byte[2];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 2);
+                                            szValue = BitConverter.ToInt16(abValue, 0).ToString();
+                                            break;
+                                        case "TWTY_INT32":
+                                            abValue = new byte[4];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 4);
+                                            szValue = BitConverter.ToInt32(abValue, 0).ToString();
+                                            break;
+                                        case "TWTY_INT64":
+                                            abValue = new byte[8];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 8);
+                                            szValue = BitConverter.ToInt64(abValue, 0).ToString();
+                                            break;
+                                        case "TWTY_UINT8":
+                                            abValue = new byte[1];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 1);
+                                            szValue = ((byte)abValue[0]).ToString();
+                                            break;
+                                        case "TWTY_UINT16":
+                                            abValue = new byte[2];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 2);
+                                            szValue = BitConverter.ToUInt16(abValue, 0).ToString();
+                                            break;
+                                        case "TWTY_UINT32":
+                                            abValue = new byte[4];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 4);
+                                            szValue = BitConverter.ToUInt32(abValue, 0).ToString();
+                                            break;
+                                        case "TWTY_UINT64":
+                                            abValue = new byte[8];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 8);
+                                            szValue = BitConverter.ToUInt64(abValue, 0).ToString();
+                                            break;
+                                        case "TWTY_STR32":
+                                            break;
+                                        case "TWTY_STR64":
+                                            break;
+                                        case "TWTY_STR128":
+                                            break;
+                                        case "TWTY_STR255":
+                                            break;
+                                        case "TWTY_HANDLE":
+                                            szValue = "";
+                                            if (int.TryParse(aszGet[2], out iDataBytes))
+                                            {
+                                                if (iDataBytes > 0)
+                                                {
+                                                    abValue = new byte[iDataBytes];
+                                                    Marshal.Copy(intptrPointer, abValue, 0, iDataBytes);
+                                                    szValue = Encoding.UTF8.GetString(abValue);
+                                                }
+                                            }
+                                            break;
+                                    }
+
+                                    // Unlock...
+                                    m_twain.DsmMemUnlock(intptrHandle);
+                                }
+                            }
+                        }
+                    }
+
+                    // Use value as a GET key to get a value, we don't allow a null in this
+                    // case, it has to be an empty string.  We search the local list first,
+                    // and if that fails go to the global list.  Once we have the value we
+                    // lock it and extract the value based on the type.  We index into the
+                    // array.  Note that we do not dig deeper into TW_HANDLE.  The caller
+                    // has to get the handle at the index using this call, and then get the
+                    // data at that handle using gethandle.  This is so that we done't hide
+                    // too much of what's going on from the scripts...
+                    else if (szSymbol.StartsWith("${gethandleindex:"))
+                    {
+                        // Strip off ${...}
+                        string szGet = szSymbol.Substring(0, szSymbol.Length - 1).Substring(17);
+                        string[] aszGet = szGet.Split(':'); // name:handle:index:type
+
+                        // Are we good?  We need gethandleindex:target:index:type...
+                        if (aszGet.Length == 3)
+                        {
+                            // Only keep going if we got a value and bytes...
+                            if (!string.IsNullOrEmpty(aszGet[0]))
+                            {
+                                ulong u64Handle;
+
+                                // Get our index...
+                                int iIndex = -1;
+                                int.TryParse(aszGet[1], out iIndex);
+
+                                // Convert the value to an IntPtr, if we have a valid index...
+                                if ((iIndex >= 0) && UInt64.TryParse(aszGet[0], out u64Handle))
+                                {
+                                    // Lock...
+                                    byte[] abValue = null;
+                                    IntPtr intptrPointer;
+                                    IntPtr intptrHandle = (IntPtr)u64Handle;
+                                    intptrPointer = m_twain.DsmMemLock(intptrHandle);
+
+                                    // Okay, let's trigger off the type...
+                                    switch (aszGet[2])
+                                    {
+                                        default:
+                                            szValue = "";
+                                            break;
+                                        case "TWTY_INT8":
+                                            abValue = new byte[1 * (iIndex + 1)];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 1 * (iIndex + 1));
+                                            szValue = ((sbyte)abValue[iIndex]).ToString();
+                                            break;
+                                        case "TWTY_INT16":
+                                            abValue = new byte[2 * (iIndex + 1)];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 2 * (iIndex + 1));
+                                            szValue = BitConverter.ToInt16(abValue, 2 * iIndex).ToString();
+                                            break;
+                                        case "TWTY_INT32":
+                                            abValue = new byte[4 * (iIndex + 1)];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 4 * (iIndex + 1));
+                                            szValue = BitConverter.ToInt32(abValue, 4 * iIndex).ToString();
+                                            break;
+                                        case "TWTY_INT64":
+                                            abValue = new byte[8 * (iIndex + 1)];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 8 * (iIndex + 1));
+                                            szValue = BitConverter.ToInt64(abValue, 8 * iIndex).ToString();
+                                            break;
+                                        case "TWTY_UINT8":
+                                            abValue = new byte[1 * (iIndex + 1)];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 1 * (iIndex + 1));
+                                            szValue = ((byte)abValue[iIndex]).ToString();
+                                            break;
+                                        case "TWTY_UINT16":
+                                            abValue = new byte[2 * (iIndex + 1)];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 2 * (iIndex + 1));
+                                            szValue = BitConverter.ToUInt16(abValue, 2 * iIndex).ToString();
+                                            break;
+                                        case "TWTY_UINT32":
+                                            abValue = new byte[4 * (iIndex + 1)];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 4 * (iIndex + 1));
+                                            szValue = BitConverter.ToUInt32(abValue, 4 * iIndex).ToString();
+                                            break;
+                                        case "TWTY_UINT64":
+                                            abValue = new byte[8 * (iIndex + 1)];
+                                            Marshal.Copy(intptrPointer, abValue, 0, 8 * (iIndex + 1));
+                                            szValue = BitConverter.ToUInt64(abValue, 8 * iIndex).ToString();
+                                            break;
+                                        case "TWTY_STR32":
+                                            break;
+                                        case "TWTY_STR64":
+                                            break;
+                                        case "TWTY_STR128":
+                                            break;
+                                        case "TWTY_STR255":
+                                            break;
+                                        case "TWTY_HANDLE":
+                                            szValue = "";
+                                            if (Marshal.SizeOf(typeof(IntPtr)) == 4)
+                                            {
+                                                abValue = new byte[4 * (iIndex + 1)];
+                                                Marshal.Copy(intptrPointer, abValue, 0, 4 * (iIndex + 1));
+                                                szValue = BitConverter.ToUInt32(abValue, 4 * iIndex).ToString();
+                                            }
+                                            else
+                                            {
+                                                abValue = new byte[8 * (iIndex + 1)];
+                                                Marshal.Copy(intptrPointer, abValue, 0, 8 * (iIndex + 1));
+                                                szValue = BitConverter.ToUInt64(abValue, 8 * iIndex).ToString();
+                                            }
+                                            break;
+                                    }
+
+                                    // Unlock...
+                                    m_twain.DsmMemUnlock(intptrHandle);
+                                }
+                            }
+                        }
+                    }
+
+                    // Use value as a GET key to get a value, we don't allow a null in this
                     // case, it has to be an empty string.  CSV the value we get, and return
                     // just the item indicated by the index.    We search the local list
                     // first, and if that fails go to the global list...
-                    if (szSymbol.StartsWith("${getindex:"))
+                    else if (szSymbol.StartsWith("${getindex:"))
                     {
                         int iIndex = 0;
                         int iBytes = 0;

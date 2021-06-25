@@ -104,7 +104,7 @@ echo.passfail '${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; SPECNOTE: the tests ask that CAP_SUPPORTEDCAPS, ICAP_PIXELTYPE, ICAP_XFERMECH be
 ; confirmed, but the spec lists many manadatory capabilities.  So we'll go through
-; the table to identify them all.  Not the use of the extra commas to make sure we
+; the table to identify them all.  Note the use of the extra commas to make sure we
 ; correctly identify full items, and not substrings...
 ;
 setlocal name 'Check for mandatory capabilities'

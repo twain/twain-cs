@@ -486,7 +486,7 @@ namespace TWAINCSScan
                 SetButtons(EBUTTONSTATE.OPEN);
             }
 
-            // This is where the statemachine runs that transfers and optionally
+            // This is where the state machine transfers and optionally
             // saves the images to disk (it also displays them).  It'll go back
             // and forth between states 6 and 7 until an error occurs, or until
             // we run out of images...
