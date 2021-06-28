@@ -1,0 +1,218 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; SetCapabilities
+;   Reset the driver's capabilites, and then capabilities for this test.
+;
+;   We follow the capability ordering:
+;   MSG_RESETALL
+;   set ICAP_XFERMECH.....................${arg:1}
+;   set CAP_FEEDERENABLED.................TRUE
+;   set CAP_XFERCOUNT.....................-1
+;   set ICAP_EXTIMAGEINFO.................TRUE
+;   set ICAP_BARCODETECTIONENABLED........TRUE
+;   set ICAP_BARCODESEARCHMODE............TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT
+;   set ICAP_BARCODEMAXSEARCHPRIORITIES...set to its max value
+;   get ICAP_SUPPORTEDBARCODETYPES
+;   set ICAP_BARCODESEARCHPRIORITIES......set to first ICAP_BARCODEMAXSEARCHPRIORITIES of ICAP_SUPPORTEDBARCODETYPES
+;
+;   The test passes if all operations return TWRC_SUCCESS.
+;
+; Arguments
+;   arg:1 - TWSX_* value for ICAP_XFERMECH
+;   arg:2 - value of caller's indent
+;
+; Globals
+;   g_barcodemaxsearchpriorities.max - maximum barcodes we can get (max of ICAP_BARCODEMAXSEARCHPRIORITIES)
+;
+; Locals
+;   barcodesearchpriorities.itemlist - first ICAP_BARCODEMAXSEARCHPRIORITIES of ICAP_SUPPORTEDBARCODETYPES
+;   comma - used to construct the value for ICAP_BARCODESEARCHPRIORITIES
+;   indent - indent the passfail text
+;   name - name of the current test
+;   supportedbarcodetypes.itemlist - return value from MSG_GET of ICAP_SUPPORTEDBARCODETYPES
+;   supportedbarcodetypes.index - index counter for ICAP_SUPPORTEDBARCODETYPES
+;   supportedbarcodetypes.lastindex - index of ICAP_BARCODEMAXSEARCHPRIORITIES item in ICAP_SUPPORTEDBARCODETYPES
+;   twsx - TWSX_* value for ICAP_XFERMECH
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+setlocal twsx '${arg:1}'
+setlocal indent '${arg:2}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; MSG_RESETALL
+; If return code is not TWRC_SUCCESS, end with an error
+;
+setlocal name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_XFERMECH to TWSX_NATIVE...
+;
+setlocal name 'ICAP_XFERMECH MSG_SET TWSX_NATIVE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,${get:twsx}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_FEEDERENABLED to TRUE
+;
+setlocal name 'CAP_FEEDERENABLED MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_FEEDERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_XFERCOUNT to -1
+;
+setlocal name 'CAP_XFERCOUNT MSG_SET -1'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,-1'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_EXTIMAGEINFO to TRUE
+;
+setlocal name 'ICAP_EXTIMAGEINFO MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_EXTIMAGEINFO,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_BARCODEDETECTIONENABLED to TRUE
+;
+setlocal name 'ICAP_BARCODEDETECTIONENABLED MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Try to set ICAP_BARCODESEARCHMODE to TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT
+;
+setlocal name 'ICAP_BARCODESEARCHMODE MSG_SET TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_BARCODESEARCHMODE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+;
+if '${ret:}' contains 'TWBD_HORZVERT' goto MAIN.ICAP_BARCODESEARCHMODE.TWBD_HORZVERT
+if '${ret:}' contains 'TWBD_VERTHORZ' goto MAIN.ICAP_BARCODESEARCHMODE.TWBD_VERTHORZ
+if '${ret:}' contains 'TWBD_VERT' goto MAIN.ICAP_BARCODESEARCHMODE.TWBD_VERT
+;
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODESEARCHMODE,TWON_ONEVALUE,TWTY_UINT16,TWBD_HORZ'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.ICAP_BARCODESEARCHMODE.DONE
+;
+:MAIN.ICAP_BARCODESEARCHMODE.TWBD_HORZVERT
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODESEARCHMODE,TWON_ONEVALUE,TWTY_UINT16,TWBD_HORZVERT'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.ICAP_BARCODESEARCHMODE.DONE
+;
+:MAIN.ICAP_BARCODESEARCHMODE.TWBD_VERTHORZ
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODESEARCHMODE,TWON_ONEVALUE,TWTY_UINT16,TWBD_VERTHORZ'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.ICAP_BARCODESEARCHMODE.DONE
+;
+:MAIN.ICAP_BARCODESEARCHMODE.TWBD_VERT
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODESEARCHMODE,TWON_ONEVALUE,TWTY_UINT16,TWBD_VERT'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.ICAP_BARCODESEARCHMODE.DONE
+;
+:MAIN.ICAP_BARCODESEARCHMODE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Try to set ICAP_BARCODEMAXSEARCHPRIORITIES to its maximum value...
+;
+setlocal name 'ICAP_BARCODEMAXSEARCHPRIORITIES MSG_SET max value'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_BARCODEMAXSEARCHPRIORITIES'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+setglobal g_barcodemaxsearchpriorities.max '${ret:${get:TW_RANGE.MaxValue}}'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEMAXSEARCHPRIORITIES,TWON_ONEVALUE,TWTY_UINT32,${get:g_barcodemaxsearchpriorities.max}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get the ICAP_SUPPORTEDBARCODETYPES...
+;
+setlocal name 'ICAP_SUPPORTEDBARCODETYPES MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDBARCODETYPES'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal supportedbarcodetypes.itemlist '${ret:}'
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Pare the ICAP_SUPPORTEDBARCODETYPES list down to the first ICAP_BARCODEMAXSEARCHPRIORITIES items
+;
+setlocal comma ''
+setlocal name 'Get the first ${get:g_barcodemaxsearchpriorities.max} from ICAP_SUPPORTEDBARCODETYPES'
+setlocal barcodesearchpriorities.itemlist ''
+;
+setlocal supportedbarcodetypes.index '${get:TW_ARRAY.NumItems}' ; TW_ARRAY.ItemList - 1
+increment supportedbarcodetypes.lastindex '${get:supportedbarcodetypes.index}' 1                              ; first index
+increment supportedbarcodetypes.lastindex '${get:supportedbarcodetypes.lastindex}' ${get:g_barcodemaxsearchpriorities.max} ; + g_barcodemaxsearchpriorities.max
+;
+:MAIN.BARCODESEARCHPRIORITIES.NEXT
+increment supportedbarcodetypes.index '${get:supportedbarcodetypes.index}' 1
+if '${get:supportedbarcodetypes.index}' > '${get:supportedbarcodetypes.lastindex}' goto MAIN.BARCODESEARCHPRIORITIES.DONE
+setlocal barcodesearchpriorities.value '${getindex:supportedbarcodetypes.itemlist:${get:supportedbarcodetypes.index}}'
+if '${get:barcodesearchpriorities.value}' == '' goto MAIN.BARCODESEARCHPRIORITIES.DONE
+setlocal barcodesearchpriorities.itemlist '${get:barcodesearchpriorities.itemlist}${get:comma}${get:barcodesearchpriorities.value}'
+setlocal comma ','
+goto MAIN.BARCODESEARCHPRIORITIES.NEXT
+;
+:MAIN.BARCODESEARCHPRIORITIES.DONE
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_BARCODESEARCHPRIORITIES to first g_barcodemaxsearchpriorities.max of ICAP_SUPPORTEDBARCODETYPES...
+;
+setlocal name 'ICAP_BARCODESEARCHPRIORITIES MSG_SET first ${get:g_barcodemaxsearchpriorities.max} of ICAP_SUPPORTEDBARCODETYPES'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODESEARCHPRIORITIES,TWON_ARRAY,TWTY_UINT16,${get:g_barcodemaxsearchpriorities.max},${get:barcodesearchpriorities.itemlist}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+:MAIN.PASS
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
+return 'fail'

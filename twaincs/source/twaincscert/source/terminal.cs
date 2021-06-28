@@ -142,6 +142,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitlesuite,   new string[] { "echo.titlesuite" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoTitletest,    new string[] { "echo.titletest" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoYellow,       new string[] { "echo.yellow" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFileWrite,        new string[] { "filewrite" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdFree,             new string[] { "free" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGc,               new string[] { "gc" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdGoto,             new string[] { "goto" }));
@@ -1832,6 +1833,42 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Write data to a file...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdFileWrite(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            string szFilename;
+            string szValue;
+            CallStack callstack = m_lcallstack[m_lcallstack.Count - 1];
+
+            // Validate...
+            if (a_functionarguments.aszCmd.Length != 3)
+            {
+                DisplayError("command needs two arguments, file and value", a_functionarguments);
+                return (false);
+            }
+
+            // Get the filename and the value...
+            szFilename = a_functionarguments.aszCmd[1];
+            szValue = a_functionarguments.aszCmd[2];
+
+            // Write the value to the file...
+            try
+            {
+                File.WriteAllText(szFilename, szValue);
+            }
+            catch
+            {
+                return (false);
+            }
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
         /// Free a handle or a pointer...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
@@ -2006,6 +2043,7 @@ namespace twaincscert
                 Display("echo.prompt [text]..............................echo prior to using the input command");
                 Display("echo.titlesuite {title}.........................echo test suite");
                 Display("echo.titletest {title}..........................echo test title");
+                Display("filewrite {file} {value}........................write data to a file");
                 Display("free {flag} {variable}..........................free memory");
                 Display("goto {label}....................................jump to the :label in the script");
                 Display("if {item1} {operator} {item2} goto {label}......if statement");
@@ -2380,6 +2418,14 @@ namespace twaincscert
             {
                 DisplayYellow("ECHO.PROMPT [TEXT]");
                 Display("Use prior to an input command.");
+                return (false);
+            }
+
+            // Filewrite...
+            if ((szCommand == "filewrite"))
+            {
+                DisplayYellow("FILEWRITE {FILE} {VALUE}");
+                Display("Write the value to a file.");
                 return (false);
             }
 
@@ -3554,6 +3600,36 @@ namespace twaincscert
                         aszFiles = Directory.GetFiles(szFolder, "*.tif");
                         foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
                         aszFiles = Directory.GetFiles(szFolder, "*.jpg");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                        aszFiles = Directory.GetFiles(szFolder, "*.pdf");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                    }
+                    return (false);
+
+                // Cleanfolderandmeta...
+                case "cleanfolderandmeta":
+                    // Validate
+                    if (a_functionarguments.aszCmd.Length != 3)
+                    {
+                        DisplayError("must specify 3 arguments", a_functionarguments);
+                        return (false);
+                    }
+                    szFolder = a_functionarguments.aszCmd[2];
+                    if (!Directory.Exists(szFolder))
+                    {
+                        try { Directory.CreateDirectory(szFolder); } catch { /* don't care */ }
+                    }
+                    else
+                    {
+                        string[] aszFiles = Directory.GetFiles(szFolder, "*.bmp");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                        aszFiles = Directory.GetFiles(szFolder, "*.tif");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                        aszFiles = Directory.GetFiles(szFolder, "*.jpg");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                        aszFiles = Directory.GetFiles(szFolder, "*.pdf");
+                        foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
+                        aszFiles = Directory.GetFiles(szFolder, "*.txt");
                         foreach (string szFile in aszFiles) try { File.Delete(szFile); } catch { /* don't care */ }
                     }
                     return (false);

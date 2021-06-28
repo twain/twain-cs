@@ -1,0 +1,210 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Barcode Badge
+;   These tests establish the minimum requirements for a TWAIN driver to claim that it has barcode
+;   support.  The specification makes clear that many of the barcode capabilities are optional, so
+;   the test focuses on the ability to turn barcode detection on and off, identifying which bacodes
+;   are supported, and making sure barcode metadata is reported.
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   (none)
+;
+; Locals
+;   certifyresult - track if we fail
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+setlocal certifyresult 'pass' ; assume we'll pass
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Reset to a known state...
+;
+setlocal name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.MSG_RESETALL.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.MSG_RESETALL.DONE
+;
+:MAIN.MSG_RESETALL.FAIL
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.MSG_RESETALL.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_BARCODEDETECTIONENABLED must be supported, and must offer both TRUE
+; and FALSE, and must currently be FALSE, otherwise skip it all
+;
+setlocal name 'ICAP_BARCODEDETECTIONENABLED is supported'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_BARCODEDETECTIONENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_BARCODEDETECTIONENABLEDSUPPORTED.SKIP
+if '${ret:},' !~contains ',TRUE,' goto MAIN.ICAP_BARCODEDETECTIONENABLEDSUPPORTED.SKIP
+if '${ret:},' !~contains ',FALSE,' goto MAIN.ICAP_BARCODEDETECTIONENABLEDSUPPORTED.SKIP
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ICAP_BARCODEDETECTIONENABLEDSUPPORTED.DONE
+;
+:MAIN.ICAP_BARCODEDETECTIONENABLEDSUPPORTED.SKIP
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'skip'
+goto MAIN.DONE
+:MAIN.ICAP_BARCODEDETECTIONENABLEDSUPPORTED.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_SUPPORTEDCAPS: check that all required capabilities are reported
+;
+setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_BARCODEDETECTIONENABLED found'
+if '${ret:},' !~contains ',ICAP_BARCODEDETECTIONENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_BARCODEMAXSEARCHPRIORITIES found'
+if '${ret:},' !~contains ',ICAP_BARCODEMAXSEARCHPRIORITIES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_BARCODESEARCHMODE found'
+if '${ret:},' !~contains ',ICAP_BARCODESEARCHMODE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_BARCODESEARCHPRIORITIES found'
+if '${ret:},' !~contains ',ICAP_BARCODESEARCHPRIORITIES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_SUPPORTEDBARCODETYPES found'
+if '${ret:},' !~contains ',ICAP_SUPPORTEDBARCODETYPES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+goto MAIN.CAP_SUPPORTEDCAPS.DONE
+:MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.CAP_SUPPORTEDCAPS.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_SUPPORTEDEXTIMAGEINFO: check that all metadata is reported
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_BARCODECONFIDENCE found'
+if '${ret:},' !~contains ',TWEI_BARCODECONFIDENCE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_BARCODECOUNT found'
+if '${ret:},' !~contains ',TWEI_BARCODECOUNT,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_BARCODEROTATION found'
+if '${ret:},' !~contains ',TWEI_BARCODEROTATION,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_BARCODETEXT2 found'
+if '${ret:},' !~contains ',TWEI_BARCODETEXT2,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_BARCODETEXTLENGTH found'
+if '${ret:},' !~contains ',TWEI_BARCODETEXTLENGTH,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_BARCODETYPE found'
+if '${ret:},' !~contains ',TWEI_BARCODETYPE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_BARCODEX found'
+if '${ret:},' !~contains ',TWEI_BARCODEX,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_BARCODEY found'
+if '${ret:},' !~contains ',TWEI_BARCODEY,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
+:MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+:MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_BARCODEDETECTIONENABLED must currently be FALSE
+;
+setlocal name 'ICAP_BARCODEDETECTIONENABLED resets to FALSE'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'ICAP_BARCODEDETECTIONENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_BARCODEDETECTIONENABLEDFALSE.FAIL
+if '${ret:},' !~contains ',FALSE,' goto MAIN.ICAP_BARCODEDETECTIONENABLEDFALSE.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ICAP_BARCODEDETECTIONENABLEDFALSE.DONE
+;
+:MAIN.ICAP_BARCODEDETECTIONENABLEDFALSE.SKIP
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.ICAP_BARCODEDETECTIONENABLEDFALSE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_BARCODEDETECTIONENABLED set to TRUE
+;
+setlocal name 'ICAP_BARCODEDETECTIONENABLED set to TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_BARCODEDETECTIONENABLEDTRUE.FAIL
+dsmentry src ds dg_control dat_capability msg_getcurrent 'ICAP_BARCODEDETECTIONENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_BARCODEDETECTIONENABLEDTRUE.FAIL
+if '${ret:},' !~contains ',TRUE,' goto MAIN.ICAP_BARCODEDETECTIONENABLEDTRUE.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ICAP_BARCODEDETECTIONENABLEDTRUE.DONE
+;
+:MAIN.ICAP_BARCODEDETECTIONENABLEDTRUE.FAIL
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.ICAP_BARCODEDETECTIONENABLEDTRUE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get ICAP_XFERMECH...
+;
+setlocal name 'ICAP_XFERMECH MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+if '${sts:}' == 'SUCCESS' goto MAIN.ICAP_XFERMECH.DONE
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+;
+:MAIN.ICAP_XFERMECH.DONE
+setglobal g_xfermech '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; All done...
+;
+:MAIN.DONE
+return '${get:certifyresult}'

@@ -1,0 +1,275 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_IMAGEFILEXFER
+;   This test scans three sheets of paper for the default pixeltype.  An ADF
+;   is required to pass this test, but that was already been tested before
+;   we got to this function.  The three sheets are as follows.but don't have
+;   to be in any special order:
+;
+;       - one without any barcodes, which must report TWRC_DATANOTAVAILABLE
+;
+;	    - one with a single barcode, which must report TWRC_SUCCESS for all
+;         of the TWEI_BARCODE* items, and put the data in a TW_HANDLE
+;
+;       - one with multiple barcodes; which must report TWRC_SUCCESS for all
+;         of the TWEI_BARCODE* items, and return a TW_HANDLE that contains
+;         an array of TW_HANDLE value, each of which points to barcode data;
+;         if the scanner cannot return multiple barcodes, it still passes
+;
+;   Here's the basic flow:
+;       SetCapabilities
+;       start scanning
+;       while images
+;           transfer image
+;           DAT_EXTIMAGEINFO
+;           end image
+;       end
+;       end scanning
+;       verify the results
+;
+;   The test passes if:
+;       - g_barcodecount.none >= 1
+;         and (((barcodemaxsearchpriorities.max > 1)  and (g_barcodecount.one >= 1) and (g_barcodecount.many >= 1))
+;         or   ((barcodemaxsearchpriorities.max == 1) and (g_barcodecount.one >= 2) and (g_barcodecount.many == 0)))
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global for us to update on failure
+;   arg:3 - value of ShowUI (TRUE or FALSE)
+;   arg:4 - test name for the image folder
+;
+; Globals
+;   g_barcodemaxsearchpriorities.max - maximum barcodes we can get
+;   g_barcodecount.none - increment if no barcodes are found
+;   g_barcodecount.one - increment if one barcodes is found
+;   g_barcodecount.many - increment if many barcodes are found
+;
+; Locals
+;   name - current test being done
+;   indent - indent the passfail text
+;   twimageinfo.compression - compression for current image
+;   showui - value of showui
+;
+;   image.count - count of images from 1
+;   image.folder - folder to put the images in
+;
+;   feederenabled.list - scanner's feederenabled values
+;   feederenabled.index - index of feederenabled values
+;   feederenabled.value - current feederenabled value
+;
+;   pixeltype.list - scanner's pixeltype values for this feederenabled
+;   pixeltype.index - index of pixeltype values
+;   pixeltype.value - current pixeltype value
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; If not supported, quietly leave...
+;
+if '${get:g_xfermech}' ~contains 'TWSX_FILE' goto MAIN.CONTINUE
+return 'pass'
+:MAIN.CONTINUE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+echo.titletest 'DAT_IMAGEFILEXFER v1.0 28-Jun-2021'
+;
+setlocal indent ''
+setlocal image.count '0'
+setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEFILEXFER'
+setlocal image.showname ''
+setlocal showui '${arg:3}'
+;
+setglobal g_barcodemaxsearchpriorities.max '0'
+setglobal g_barcodecount.none '0'
+setglobal g_barcodecount.one '0'
+setglobal g_barcodecount.many '0'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Clean the image folder for this test...
+;
+image cleanfolderandmeta '${get:image.folder}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; SetCapabilities
+; This resets the driver and sets all the capabilities we need for the test.
+; If its return code is not 'pass', end with an error
+;
+run SetCapabilities 'TWSX_FILE' '${get:indent}'
+if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Prompt the user...
+;
+echo.prompt
+echo.prompt "Scanning will take place during this test.  There will be no"
+echo.prompt "need to press any button on the TWAIN user interface to start"
+echo.prompt "the scanner.  A progress indicator may appear during scanning."
+echo.prompt
+echo.prompt "Place 3 sheets in the scanner's feeder in no particular order:"
+echo.prompt "one sheet has no barcodes, one has a single barcode that the"
+echo.prompt "scanner is known to recognize, and one has multiple barcodes"
+echo.prompt "that scanner is known to recognize.  If the scanner is only"
+echo.prompt "able to see one barcode at a time it can still pass the test."
+echo.prompt
+pause '(press the ENTER key when ready to continue)'
+echo.prompt
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Start scanning...
+;
+:MAIN.USERINTERFACE
+setlocal name 'dg_control/dat_userinterface/msg_enableds'
+wait reset
+dsmentry src null dg_control dat_userinterface msg_enableds '${get:showui},0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Wait for MSG_XFERREADY, if we don't see it then scoot...
+;
+setlocal name 'wait ${get:sys_waittimeout} seconds for MSG_XFERREADY'
+wait '${get:sys_waittimeout}000'
+if '${ret:}' !~contains 'msg_xferready' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get information about the image...
+;
+:MAIN.IMAGEINFO.NEXT
+setlocal name 'dg_image/dat_imageinfo/msg_get'
+dsmentry src ds dg_image dat_imageinfo msg_get '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal twimageinfo.compression '${ret:${get:index.twimageinfo.compression}}'
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set up the file transfer...
+;
+increment image.count '${get:image.count}' 1
+if '${get:twimageinfo.compression}' == 'JPEG' goto MAIN.SETUPFILEXFER.JPEG
+setlocal image.showname 'DAT_IMAGEFILEXFER/adf${format:D6|${get:image.count}}.tif'
+setlocal twsetupfilexfer.filename '${get:image.folder}/adf${format:D6|${get:image.count}}.tif'
+setlocal twsetupfilexfer.format 'TWFF_TIFF'
+goto MAIN.SETUPFILEXFER
+:MAIN.SETUPFILEXFER.JPEG
+setlocal image.showname 'DAT_IMAGEFILEXFER/adf${format:D6|${get:image.count}}.jpg'
+setlocal twsetupfilexfer.filename '${get:image.folder}/adf${format:D6|${get:image.count}}.jpg'
+setlocal twsetupfilexfer.format 'TWFF_JFIF'
+:MAIN.SETUPFILEXFER
+setlocal name 'dg_control/dat_setupfilexfer/msg_set'
+dsmentry src ds dg_control dat_setupfilexfer msg_set '"${get:twsetupfilexfer.filename}",${get:twsetupfilexfer.format},0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Transfer the image...
+;
+setlocal name 'dg_image/dat_imagefilexfer/msg_get'
+dsmentry src ds dg_image dat_imagefilexfer msg_get null
+if '${sts:}' != 'XFERDONE' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+echo.passfail '${get:indent}image <${get:image.showname}>' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_EXTIMAGEINFO
+; Check the barcode metadata...
+;
+run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}'
+if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; End the transfer, see if we're done...
+;
+setlocal name 'dg_control/dat_pendingxfers/msg_endxfer'
+dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGEINFO.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We're out of images, so disable...
+;
+setlocal name 'dg_control/dat_userinterface/msg_disableds'
+dsmentry src ds dg_control dat_userinterface msg_disableds '0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check to see if we passed.  We need one sheet of paper with no barcodes.  Two or more sheets
+; with one barcode, and no sheets with multiple barecodes if the maximum value of
+; ICAP_BARCODEMAXSEARCHPRIORITIES is 1.  And one or more sheets with one barcode, and one or
+; more sheets with multiple barcodes of ICAP_BARCODEMAXSEARCHPRIORITIES is greater than 1.
+;
+setlocal name 'Final Check: detected a sheet with 0 barcodes
+if '${get:g_barcodecount.none}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+if '${get:g_barcodemaxsearchpriorities.max}' >= '2' goto MAIN.FINALCHECK.MANYBARCODES
+setlocal name 'Final Check: detected multiple sheets with 1 barcode'
+if '${get:g_barcodecount.one}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Final Check: detected 0 sheets with many barcodes (not supported)'
+if '${get:g_barcodecount.many}' > '0' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.FINALCHECK.DONE
+;
+:MAIN.FINALCHECK.MANYBARCODES
+setlocal name 'Final Check: detected a sheet with 1 barcode'
+if '${get:g_barcodecount.one}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Final Check: detected a sheet with many barcodes'
+if '${get:g_barcodecount.many}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+:MAIN.FINALCHECK.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass? (do an extra check)
+:MAIN.PASS
+echo.passfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
+echo.passfail 'SUMMARY' 'fail'
+return 'fail'
+;
+; Ruh-roh...
+:MAIN.ERROR.FAIL
+echo.passfail 'SUMMARY' 'fail'
+return 'fail'

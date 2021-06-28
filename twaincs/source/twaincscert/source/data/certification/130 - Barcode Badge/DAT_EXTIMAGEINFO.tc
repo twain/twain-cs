@@ -1,0 +1,321 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_EXTIMAGEINFO
+;   Check the return values from DAT_EXTIMAGEINFO to make sure the barcode
+;   metadata is being properly reported.
+;
+;   Here's the basic flow:
+;       SetCapabilities
+;       for 1 to 3
+;         scan
+;         if barcodes == 0 increment nobarcodes
+;         if barcodes == 1 increment onebarcodes
+;         if barcodes >1 increment multiplebarcodes
+;       end
+;       verify the results
+;
+;   The test passes if:
+;       - g_barcodecount.none >= 1
+;         and (((barcodemaxsearchpriorities.max > 1)  and (g_barcodecount.one >= 1) and (g_barcodecount.many >= 1))
+;         or   ((barcodemaxsearchpriorities.max == 1) and (g_barcodecount.one >= 2) and (g_barcodecount.many == 0)))
+;
+; Arguments
+;   arg:1 - indent the passfail text
+;   arg:2 - base filename (no extension)
+;
+; Globals
+;   g_barcodecount.none - increment if no barcodes are found
+;   g_barcodecount.one - increment if one barcodes is found
+;   g_barcodecount.many - increment if many barcodes are found
+;
+; Locals
+;   barcodecount - the number of barcodes found on the image
+;   barcodedata - the return value from DAT_EXTIMAGEINFO
+;   barcodetext2.index - index into the current TWEI_BARCODETEXT2 value
+;   barcodetexthandle - barcodetext2.index handle from TW_INFO[n].Item array of handles 
+;   barcodetextlength - one or more comma separated TWEI_BARCODETEXTLENGTH values, depending on TWEI_BARCODECOUNT
+;   barcodetextlength.index - index of the current TWEI_BARCODETEXTLENGTH value
+;   name - current test being done
+;   indent - indent the passfail text
+;   item - data from barcodetexthandle
+;   twinfo.infoid.index - index to TW_INFO[n].infoid from the start of barcodedata
+;   twinfo.itemtype.index - index to TW_INFO[n].itemtype from the start of barcodedata
+;   twinfo.numitems.index - index to TW_INFO[n].numitems from the start of barcodedata
+;   twinfo.returncode.index - index to TW_INFO[n].returncode from the start of barcodedata
+;   twinfo.item.index - index to TW_INFO[n].item from the start of barcodedata
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get the extended image info, save the data to 'barcodedata'.  We've deliberately
+; asked for TWEI_BARCODECOUNT first, and for TWEI_BARCODETEXTLENGTH before
+; TWEI_BARCODETEXT2 to make it easier to parse the data we get back.  You'll see
+; why further below...
+;
+setlocal indent '${arg:1}    '
+setlocal name 'dg_image/dat_extimageinfo/msg_get'
+dsmentry src ds dg_image dat_extimageinfo msg_get '8,TWEI_BARCODECOUNT,0,0,0,0,TWEI_BARCODECONFIDENCE,0,0,0,0,TWEI_BARCODEROTATION,0,0,0,0,TWEI_BARCODETYPE,0,0,0,0,TWEI_BARCODEX,0,0,0,0,TWEI_BARCODEY,0,0,0,0,TWEI_BARCODETEXTLENGTH,0,0,0,0,TWEI_BARCODETEXT2,0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal barcodedata '${ret:}'
+filewrite '${arg:2}_extimageinfo.txt' '${get:barcodedata}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Confirm that we got back all the barcode extimageinfo data...
+;
+setlocal name 'Found TWEI_BARCODECOUNT'
+if '${get:barcodedata}' !contains 'TWEI_BARCODECOUNT' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_BARCODECONFIDENCE'
+if '${get:barcodedata}' !contains 'TWEI_BARCODECONFIDENCE' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_BARCODEROTATION'
+if '${get:barcodedata}' !contains 'TWEI_BARCODEROTATION' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_BARCODETYPE'
+if '${get:barcodedata}' !contains 'TWEI_BARCODETYPE' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_BARCODEX'
+if '${get:barcodedata}' !contains 'TWEI_BARCODEX' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_BARCODEY'
+if '${get:barcodedata}' !contains 'TWEI_BARCODEY' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_BARCODETEXTLENGTH'
+if '${get:barcodedata}' !contains 'TWEI_BARCODETEXTLENGTH' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_BARCODETEXT2'
+if '${get:barcodedata}' !contains 'TWEI_BARCODETEXT2' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Validate the contents of TWEI_BARCODECOUNT, which is TW_INFO[0]...
+;
+setlocal name 'TW_INFO[0].InfoID is TWEI_BARCODECOUNT'
+if '${getindex:barcodedata:${get:TW_INFO.InfoID}}' != 'TWEI_BARCODECOUNT' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'TW_INFO[0].ItemType is TWTY_UINT32'
+if '${getindex:barcodedata:${get:TW_INFO.ItemType}}' != 'TWTY_UINT32' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'TW_INFO[0].NumItems is 1'
+if '${getindex:barcodedata:${get:TW_INFO.NumItems}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'TW_INFO[0].ReturnCode is TWRC_SUCCESS'
+if '${getindex:barcodedata:${get:TW_INFO.ReturnCode}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal barcodecount '${getindex:barcodedata:${get:TW_INFO.Item}}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Jump to the correct analysis section, depending on how many barcodes we detected
+; in the first TW_INFO, which we expect to be TWEI_BARCODECOUNT, because that's where
+; we put it...
+;
+setlocal twinfo.infoid.index '${get:TW_INFO.InfoID}'
+setlocal twinfo.itemtype.index '${get:TW_INFO.ItemType}'
+setlocal twinfo.numitems.index '${get:TW_INFO.NumItems}'
+setlocal twinfo.returncode.index '${get:TW_INFO.ReturnCode}'
+setlocal twinfo.item.index '${get:TW_INFO.Item}'
+if '${getindex:barcodedata:${get:TW_INFO.Item}}' == '0' goto MAIN.NOBARCODES
+if '${getindex:barcodedata:${get:TW_INFO.Item}}' == '1' goto MAIN.ONEBARCODE
+goto MAIN.MANYBARCODES
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Validate what happens when we can't find a barcode, we're looking at the NumItems
+; and the ReturnCodes for all of the TWEI_BARCODE* items.  We expect the number of
+; items to be 0 (matching the value of TWEI_BARCODECOUNT), and we expect the return
+; code to be TWRC_DATANOTAVAILABLE...
+;
+:MAIN.NOBARCODES
+increment g_barcodecount.none '${get:g_barcodecount.none}' 1
+increment twinfo.infoid.index '${get:twinfo.infoid.index}' 5 ; skip to the InfoID in the next TW_INFO
+increment twinfo.itemtype.index '${get:twinfo.itemtype.index}' 5 ; skip to the InfoID in the next TW_INFO
+increment twinfo.numitems.index '${get:twinfo.numitems.index}' 5 ; skip to the NumItems in the next TW_INFO
+increment twinfo.returncode.index '${get:twinfo.returncode.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+increment twinfo.item.index '${get:twinfo.item.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+;
+:MAIN.NOBARCODES.NEXT
+setlocal name 'No barcodes: '${getindex:barcodedata:${get:twinfo.infoid.index}}'
+if '${getindex:barcodedata:${get:twinfo.infoid.index}}' == '' goto MAIN.PASS ; out of items
+if '${getindex:barcodedata:${get:twinfo.numitems.index}}' != '0' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:barcodedata:${get:twinfo.returncode.index}}' != 'TWRC_DATANOTAVAILABLE' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+increment twinfo.infoid.index '${get:twinfo.infoid.index}' 5 ; skip to the InfoID in the next TW_INFO
+increment twinfo.itemtype.index '${get:twinfo.itemtype.index}' 5 ; skip to the InfoID in the next TW_INFO
+increment twinfo.numitems.index '${get:twinfo.numitems.index}' 5 ; skip to the NumItems in the next TW_INFO
+increment twinfo.returncode.index '${get:twinfo.returncode.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+increment twinfo.item.index '${get:twinfo.item.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+goto MAIN.NOBARCODES.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Validate one barcode item, we're looking at the NumItems and the ReturnCodes
+; for all of the TWEI_BARCODE* items.  We expect the number of items to be 1
+; (matching the value of TWEI_BARCODECOUNT), and we expect the return code to
+; be TWRC_SUCCESS.  We expect all TWEI_BARCODE* itemtypes to be TWTY_UINT32,
+; except for TWEI_BARCODETEXT2, which must be TWTY_HANDLE...
+;
+:MAIN.ONEBARCODE
+increment g_barcodecount.one '${get:g_barcodecount.one}' 1
+;
+; Increment to the next TW_INFO, this skips TW_INFO[0] for us, bail from the
+; loop when we run out of items...
+:MAIN.ONEBARCODE.NEXT
+increment twinfo.infoid.index '${get:twinfo.infoid.index}' 5 ; skip to the InfoID in the next TW_INFO
+increment twinfo.itemtype.index '${get:twinfo.itemtype.index}' 5 ; skip to the InfoID in the next TW_INFO
+increment twinfo.numitems.index '${get:twinfo.numitems.index}' 5 ; skip to the NumItems in the next TW_INFO
+increment twinfo.returncode.index '${get:twinfo.returncode.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+increment twinfo.item.index '${get:twinfo.item.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+if '${getindex:barcodedata:${get:twinfo.infoid.index}}' == '' goto MAIN.PASS ; out of items
+;
+; Check NumItems...
+setlocal name 'One barcode: ${getindex:barcodedata:${get:twinfo.infoid.index}}.NumItems is TWEI_BARCODECOUNT'
+if '${getindex:barcodedata:${get:twinfo.numitems.index}}' != '${get:barcodecount}' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+; Check ReturnCode...
+setlocal name 'One barcode: ${getindex:barcodedata:${get:twinfo.infoid.index}}.ReturnCode is TWRC_SUCCESS'
+if '${getindex:barcodedata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+; Check ItemType for non-TWEI_BARCODETEXT2 stuff...
+if '${getindex:barcodedata:${get:twinfo.infoid.index}}' == 'TWEI_BARCODETEXT2' goto MAIN.ONEBARCODE.ITEMTYPE.BARCODETEXT2
+setlocal name 'One barcode: ${getindex:barcodedata:${get:twinfo.infoid.index}}.ItemType is TWTY_UINT32'
+if '${getindex:barcodedata:${get:twinfo.itemtype.index}}' != 'TWTY_UINT32' MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+; Get the length, when we see it...
+if '${getindex:barcodedata:${get:twinfo.infoid.index}}' != 'TWEI_BARCODETEXTLENGTH' goto MAIN.ONEBARCODE.NEXT
+setlocal barcodetextlength '${getindex:barcodedata:${get:twinfo.item.index}}'
+goto MAIN.ONEBARCODE.NEXT
+;
+; Check ItemType for TWEI_BARCODETEXT2...
+:MAIN.ONEBARCODE.ITEMTYPE.BARCODETEXT2
+setlocal name 'One barcode: ${getindex:barcodedata:${get:twinfo.infoid.index}}.ItemType is TWTY_HANDLE'
+if '${getindex:barcodedata:${get:twinfo.itemtype.index}}' != 'TWTY_HANDLE' MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+; Check Item for TWEI_BARCODETEXT2...
+:MAIN.ONEBARCODE.ITEMTYPE.BARCODETEXT2
+setlocal name 'One barcode: ${getindex:barcodedata:${get:twinfo.infoid.index}}.Item contains TWAIN-Barcode-Test'
+if '${getindex:barcodedata:${get:twinfo.item.index}}' == '0' MAIN.ERROR.ECHOPASSFAIL
+setlocal item '${gethandle:${getindex:barcodedata:${get:twinfo.item.index}}:TWTY_HANDLE:${get:barcodetextlength}}'
+filewrite '${arg:2}_barcode.txt' '${get:item}'
+if '${get:item}' !~contains 'TWAIN-Barcode-Test' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+goto MAIN.ONEBARCODE.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Validate mamny barcodes, we're looking at the NumItems and the ReturnCodes
+; for all of the TWEI_BARCODE* items.  We expect the number of items to be
+; greater than 1 (matching the value of TWEI_BARCODECOUNT), and we expect the
+; return code to be TWRC_SUCCESS.  We expect all TWEI_BARCODE* itemtypes to be
+; TWTY_UINT32, except for TWEI_BARCODETEXT2, which must be a TWTY_HANDLE
+; pointing to an array of TWTY_HANDLES...
+;
+:MAIN.MANYBARCODES
+increment g_barcodecount.many '${get:g_barcodecount.many}' 1
+;
+; Increment to the next TW_INFO, this skips TW_INFO[0] for us, bail from the
+; loop when we run out of items...
+:MAIN.MANYBARCODES.NEXT
+increment twinfo.infoid.index '${get:twinfo.infoid.index}' 5 ; skip to the InfoID in the next TW_INFO
+increment twinfo.itemtype.index '${get:twinfo.itemtype.index}' 5 ; skip to the InfoID in the next TW_INFO
+increment twinfo.numitems.index '${get:twinfo.numitems.index}' 5 ; skip to the NumItems in the next TW_INFO
+increment twinfo.returncode.index '${get:twinfo.returncode.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+increment twinfo.item.index '${get:twinfo.item.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+if '${getindex:barcodedata:${get:twinfo.infoid.index}}' == '' goto MAIN.PASS ; out of items
+;
+; Check NumItems...
+setlocal name 'Many barcodes: ${getindex:barcodedata:${get:twinfo.infoid.index}}.NumItems is TWEI_BARCODECOUNT'
+if '${getindex:barcodedata:${get:twinfo.numitems.index}}' != '${get:barcodecount}' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+; Check ReturnCode...
+setlocal name 'Many barcodes: ${getindex:barcodedata:${get:twinfo.infoid.index}}.ReturnCode is TWRC_SUCCESS'
+if '${getindex:barcodedata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+; Check ItemType for non-TWEI_BARCODETEXT2 stuff...
+if '${getindex:barcodedata:${get:twinfo.infoid.index}}' == 'TWEI_BARCODETEXT2' goto MAIN.MANYBARCODES.ITEMTYPE.BARCODETEXT2
+setlocal name 'Many barcodes: ${getindex:barcodedata:${get:twinfo.infoid.index}}.ItemType is TWTY_UINT32'
+if '${getindex:barcodedata:${get:twinfo.itemtype.index}}' != 'TWTY_UINT32' MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+; Get the length, when we see it, we're going to make a comma separated
+; list of all the lengths...
+if '${getindex:barcodedata:${get:twinfo.infoid.index}}' != 'TWEI_BARCODETEXTLENGTH' goto MAIN.MANYBARCODES.NEXT
+setlocal barcodetextlength ''         ; start empty
+setlocal barcodetextlength.index '0'  ; index is at 0
+setlocal comma ''                     ; no comma
+:MAIN.MANYBARCODES.BARCODETEXTLENGTH.NEXT
+setlocal barcodetextlength '${get:barcodetextlength}${get:comma}${gethandleindex:${getindex:barcodedata:${get:twinfo.item.index}}:${get:barcodetextlength.index}:TWTY_UINT32}' ; gethandleindex:handle:index:type
+setlocal comma ','
+increment barcodetextlength.index ${get:barcodetextlength.index} 1
+if '${get:barcodetextlength.index}' >= '${get:barcodecount}' goto MAIN.MANYBARCODES.NEXT ; out of items
+goto MAIN.MANYBARCODES.BARCODETEXTLENGTH.NEXT ; look into adding another barcodetextlength
+;
+; Check ItemType for TWEI_BARCODETEXT2...
+:MAIN.MANYBARCODES.ITEMTYPE.BARCODETEXT2
+setlocal name 'Many barcodes: ${getindex:barcodedata:${get:twinfo.infoid.index}}.ItemType is TWTY_HANDLE'
+if '${getindex:barcodedata:${get:twinfo.itemtype.index}}' != 'TWTY_HANDLE' MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+; Check Item for TWEI_BARCODETEXT2...
+:MAIN.MANYBARCODES.ITEM.BARCODETEXT2
+setlocal barcodetext2.index '0'  ; index starts at 0
+;
+; Look here for every barcodetext2 indexed at 0 to (barcodecount-1)
+:MAIN.MANYBARCODES.ITEM.BARCODETEXT2.NEXT
+setlocal name 'Many barcodes: ${getindex:barcodedata:${get:twinfo.infoid.index}}.Item contains TWAIN-Barcode-Test'
+;
+; Yeah, okay, these two lines look like a bit of a mess.  But honestly, it's not as insane as you might
+; think.  The first setlocal is going to memlock the TW_INFO[n].Item we're working on.  Then it'll go in
+; and pull out the handle at the current index (barcodetext.index).
+;
+; The second setlocal takes that handle, does a memlock on it, and extracts barcodetextlength bytes of
+; data.  barcodetextlength is an array, since each barcode can have a different size.
+setlocal barcodetexthandle '${gethandleindex:${getindex:barcodedata:${get:twinfo.item.index}}:${get:barcodetext2.index}:TWTY_HANDLE}' ; gethandleindex:handle:index:TWTY_HANDLE
+setlocal item '${gethandle:${get:barcodetexthandle}:TWTY_HANDLE:${getindex:barcodetextlength:${get:barcodetext2.index}}}' ; gethandle:handle:TWTY_HANDLE:length
+filewrite '${arg:2}_barcode_${get:barcodetext2.index}.txt' '${get:item}'
+;
+; The data needs to contain "TWAIN-Barcode-Test" (it can contain more stuff).  If that passes, then
+; increment our index and go back to MAIN.MANYBARCODES.ITEM.BARCODETEXT2.NEXT to process the next barcode...
+if '${get:item}' !~contains 'TWAIN-Barcode-Test' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+increment barcodetext2.index ${get:barcodetext2.index} 1
+if '${get:barcodetext2.index}' >= '${get:barcodecount}' goto MAIN.MANYBARCODES.NEXT ; out of items
+goto MAIN.MANYBARCODES.ITEM.BARCODETEXT2.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass? (do an extra check)
+:MAIN.PASS
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
+return 'fail'
