@@ -750,7 +750,7 @@ dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERENABLED,TWON_ONEVA
 if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.CAP_PRINTERENABLED.ECHOPASSFAIL
 echo.passfail '${get:indent}Restore CAP_PRINTERENABLED value to TRUE' 'pass'
 return
-:RESTORECAPABILITY.CAP_PRINTERENABLED.FAIL
+:RESTORECAPABILITY.CAP_PRINTERENABLED.ECHOPASSFAIL
 echo.passfail '${get:indent}Restore CAP_PRINTERENABLED value to TRUE' 'fail (but we won't fail on it here)'
 return
 ;
@@ -760,7 +760,7 @@ dsmentry src ds dg_control dat_capability msg_set 'ICAP_BARCODEDETECTIONENABLED,
 if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
 echo.passfail '${get:indent}Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'pass'
 return
-:RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.FAIL
+:RESTORECAPABILITY.ICAP_BARCODEDETECTIONENABLED.ECHOPASSFAIL
 echo.passfail '${get:indent}Restore ICAP_BARCODEDETECTIONENABLED value to TRUE' 'fail (but we won't fail on it here)'
 return
 ;
@@ -770,7 +770,7 @@ dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEDETECTIONENABLE
 if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
 echo.passfail '${get:indent}Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'pass'
 return
-:RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.FAIL
+:RESTORECAPABILITY.ICAP_PATCHCODEDETECTIONENABLED.ECHOPASSFAIL
 echo.passfail '${get:indent}Restore ICAP_PATCHCODEDETECTIONENABLED value to TRUE' 'fail (but we won't fail on it here)'
 return
 ;
@@ -780,6 +780,6 @@ dsmentry src ds dg_control dat_capability msg_set 'ICAP_PIXELTYPE,TWON_ONEVALUE,
 if '${sts:}' != 'SUCCESS' goto RESTORECAPABILITY.ICAP_PIXELTYPE.ECHOPASSFAIL
 echo.passfail '${get:indent}Restore ICAP_PIXELTYPE value to ${get:g_pixeltype.value}' 'pass'
 return
-:RESTORECAPABILITY.ICAP_PIXELTYPE.FAIL
+:RESTORECAPABILITY.ICAP_PIXELTYPE.ECHOPASSFAIL
 echo.passfail '${get:indent}Restore ICAP_PIXELTYPE value to ${get:g_pixeltype.value}' 'fail (but we won't fail on it here)'
 return

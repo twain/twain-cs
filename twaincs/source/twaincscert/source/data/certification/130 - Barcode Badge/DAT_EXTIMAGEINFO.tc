@@ -4,14 +4,29 @@
 ;   metadata is being properly reported.
 ;
 ;   Here's the basic flow:
-;       SetCapabilities
-;       for 1 to 3
-;         scan
-;         if barcodes == 0 increment nobarcodes
-;         if barcodes == 1 increment onebarcodes
-;         if barcodes >1 increment multiplebarcodes
-;       end
-;       verify the results
+;       DAT_EXTIMAGEINFO
+;       confirm that we have the following TWEI_BARCODE* items
+;           TWEI_BARCODECOUNT
+;           TWEI_BARCODECONFIDENCE
+;           TWEI_BARCODEROTATION
+;           TWEI_BARCODETYPE
+;           TWEI_BARCODEX
+;           TWEI_BARCODEY
+;           TWEI_BARCODETEXTLENGTH
+;           TWEI_BARCODETEXT2
+;       confirm TWEI_BARCODECOUNT fields in TW_INFO[0]
+;       confirm a sheet with no barcodes  (TWEI_BARCODECOUNT == 0)
+;           all TW_INFO[n].ReturnCode values TWRC_DATANOTAVAILABLE
+;       confirm a sheet with one barcode (TWEI_BARCODECOUNT == 1)
+;           all TW_INFO[n].ReturnCode values are TWRC_SUCCESS
+;           all TW_INFO[n].ItemType values match the spec
+;           all TW_INFO[n].NumItems match ICAP_BARCODECOUNT
+;           all TW_INFO[n].Item handle contains 'TWAIN-Barcode-Test'
+;       confirm a sheet with many barcodes  (TWEI_BARCODECOUNT > 1)
+;           all TW_INFO[n].ReturnCode values are TWRC_SUCCESS
+;           all TW_INFO[n].ItemType values match the spec
+;           all TW_INFO[n].NumItems match ICAP_BARCODECOUNT
+;           all TW_INFO[n].Item handle points to array of handles, and each contains 'TWAIN-Barcode-Test'
 ;
 ;   The test passes if:
 ;       - g_barcodecount.none >= 1

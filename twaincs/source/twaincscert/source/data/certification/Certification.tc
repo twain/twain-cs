@@ -4,12 +4,14 @@
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - comma separated list of: all, twaindirect, barcode, printing, or imageaddress
 ;
 ; Globals
 ;   g_certifyresult - pass/fail result of all standard tests
 ;   g_certifytwaindirect - pass/fail result of twain direct badge
 ;
 ; Locals
+;   bagdge - badges to check
 ;   title - script info
 ;   twidentity.productname - product name of scanner to test
 ;
@@ -24,6 +26,7 @@
 ;
 setlocal title 'TWAIN Certification Script v1.0 21-Feb-2020'
 setlocal twidentity.productname '${arg:1}'
+setlocal badges '${arg:2}'
 setglobal g_certifyresult 'pass'
 setglobal g_certifytwaindirect 'pass'
 
@@ -66,7 +69,19 @@ call RUNCERTIFICATION '090 - Verify Values for MSG_OPENDS, MSG_RESET, and MSG_RE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Do the badges...
 ;
+if ',${get:badges},' ~contains ',all,' goto MAIN.BADGE.TWAINDIRECT
+if ',${get:badges},' ~contains ',twaindirect,' goto MAIN.BADGE.TWAINDIRECT
+goto MAIN.BADGE.TWAINDIRECT.SKIP
+:MAIN.BADGE.TWAINDIRECT
 call RUNCERTIFICATION '100 - TWAIN Direct Badge'               '${get:twidentity.productname}' g_certifytwaindirect
+:MAIN.BADGE.TWAINDIRECT.SKIP
+;
+if ',${get:badges},' ~contains ',all,' goto MAIN.BADGE.BARCODE
+if ',${get:badges},' ~contains ',barcode,' goto MAIN.BADGE.BARCODE
+goto MAIN.BADGE.BARCODE.SKIP
+:MAIN.BADGE.BARCODE
+call RUNCERTIFICATION '130 - Barcode Badge'                   '${get:twidentity.productname}' g_certifytwaindirect
+:MAIN.BADGE.BARCODE.SKIP
 
 
 

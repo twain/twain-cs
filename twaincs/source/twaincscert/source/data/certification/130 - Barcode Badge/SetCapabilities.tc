@@ -1,6 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; SetCapabilities
-;   Reset the driver's capabilites, and then capabilities for this test.
+;   Reset the driver's capabilites, and then set capabilities for this test.  Note that one can only
+;   get this badge for the ADF.  This is a production mode feature, so we're not testing the flatbed.
 ;
 ;   We follow the capability ordering:
 ;   MSG_RESETALL
@@ -15,6 +16,11 @@
 ;   set ICAP_BARCODESEARCHPRIORITIES......set to first ICAP_BARCODEMAXSEARCHPRIORITIES of ICAP_SUPPORTEDBARCODETYPES
 ;
 ;   The test passes if all operations return TWRC_SUCCESS.
+;
+;   We are not testing ICAP_BARCODEMAXRETRIES or ICAP_BARCODETIMEOUT.  We're going to assume that the driver's
+;   default values offer the best user experience.  ICAP_BARCODETIMEOUT is especially problematic, since the
+;   spec doesn't tell use the units.  We're also not testing TWEI_BARCODETEXT, since it was replaced by the better
+;   defined TWEI_BARCODETEXT2.
 ;
 ; Arguments
 ;   arg:1 - TWSX_* value for ICAP_XFERMECH
@@ -59,7 +65,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Set ICAP_XFERMECH to TWSX_NATIVE...
+; Set ICAP_XFERMECH...
 ;
 setlocal name 'ICAP_XFERMECH MSG_SET TWSX_NATIVE'
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,${get:twsx}'
