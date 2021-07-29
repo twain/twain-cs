@@ -1,0 +1,212 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; SetCapabilities
+;   Reset the driver's capabilites, and then set capabilities for this test.  Note that one can only
+;   get this badge for the ADF.  This is a production mode feature, so we're not testing the flatbed.
+;   Printing performs two main tasks: it endorses a sheet of paper to confirm it passed through the
+;   scanner, and the string printed on the sheet of paper may allow the user to find the corresponding
+;   image, if it's printed before the image is scanned.
+;
+;   We follow the capability ordering:
+;   MSG_RESETALL
+;   set ICAP_XFERMECH.....................${arg:1}
+;   set CAP_FEEDERENABLED.................TRUE
+;   set CAP_XFERCOUNT.....................1
+;   set ICAP_EXTIMAGEINFO.................TRUE
+;   set CAP_PRINTERENABLED................TRUE
+;   set CAP_PRINTER.......................TWPR_IMPRINTERTOPBEFORE, TWPR_IMPRINTERTOPAFTER,
+;                                         TWPR_IMPRINTERBOTTOMBEFORE,or TWPR_IMPRINTERBOTTOMAFTER
+;   set CAP_PRINTERMODE...................TWPM_COMPOUNDSTRING
+;   set CAP_PRINTERSTRING.................TWAIN
+;   set CAP_PRINTERINDEX..................TWAIN
+;   set CAP_PRINTERSUFFIX.................TWAIN
+;   set CAP_PRINTERVERTICALOFFSET.........set to its max value
+;
+;   The test passes if all operations return TWRC_SUCCESS.
+;
+; Arguments
+;   arg:1 - TWSX_* value for ICAP_XFERMECH
+;   arg:2 - value of caller's indent
+;   arg:3 - global variable to store the CAP_PRINTER value
+;
+; Locals
+;   indent - indent the passfail text
+;   name - name of the current test
+;   twsx - TWSX_* value for ICAP_XFERMECH
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+setlocal twsx '${arg:1}'
+setlocal indent '${arg:2}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; MSG_RESETALL
+; If return code is not TWRC_SUCCESS, end with an error
+;
+setlocal name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_XFERMECH...
+;
+setlocal name 'ICAP_XFERMECH MSG_SET TWSX_NATIVE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,${get:twsx}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_FEEDERENABLED to TRUE
+;
+setlocal name 'CAP_FEEDERENABLED MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_FEEDERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_XFERCOUNT to 1
+;
+setlocal name 'CAP_XFERCOUNT MSG_SET 1'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,1'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_EXTIMAGEINFO to TRUE
+;
+setlocal name 'ICAP_EXTIMAGEINFO MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_EXTIMAGEINFO,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTERENABLED must currently be FALSE
+;
+setlocal name 'CAP_PRINTERENBLED resets to FALSE'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PRINTERENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+if '${ret:},' !~contains ',FALSE,' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTERENABLED set to TRUE
+;
+setlocal name 'CAP_PRINTERENBLED set to TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PRINTERENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+if '${ret:},' !~contains ',TRUE,' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTER must be supported with at least one of the printer values,
+; squirrel away the value in the global argument stored in ${arg:3}
+;
+setlocal name 'CAP_PRINTER is supported'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PRINTER,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+if '${ret:},' ~contains ',TWPR_IMPRINTERTOPBEFORE,' goto MAIN.PRINTER.PASS
+if '${ret:},' ~contains ',TWPR_IMPRINTERTOPAFTER,' goto MAIN.PRINTER.PASS
+if '${ret:},' ~contains ',TWPR_IMPRINTERBOTTOMBEFORE,' goto MAIN.PRINTER.PASS
+if '${ret:},' ~contains ',TWPR_IMPRINTERBOTTOMAFTER,' goto MAIN.PRINTER.PASS
+goto MAIN.ERROR.ECHOPASSFAIL
+;
+; Save the value so we can set it later...
+:MAIN.PRINTER.PASS
+setglobal ${arg:3} ${ret:${get:TW_ONEVALUE.Item}}
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTERMODE must be supported, and allow TWPM_COMPOUNDSTRING
+;
+setlocal name 'CAP_PRINTERMODE is supported'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERMODE,TWON_ONEVALUE,TWTY_UINT16,TWPM_COMPOUNDSTRING'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTERSTRING must be supported, and allow setting to 'TWAIN'...
+;
+setlocal name 'CAP_PRINTERSTRING is supported'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERSTRING,TWON_ONEVALUE,TWTY_STR255,TWAIN'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTERINDEX must be supported, and allow setting to 1...
+;
+setlocal name 'CAP_PRINTERINDEX is supported'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERINDEX,TWON_ONEVALUE,TWTY_UINT32,1'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTERSUFFIX must be supported, and allow setting to 'TEST'...
+;
+setlocal name 'CAP_PRINTERSUFFIX is supported'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PRINTERSUFFIX,TWON_ONEVALUE,TWTY_STR255,TEST'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTERVERTICALOFFSET must be supported, and allow setting to the current value...
+;
+setlocal name 'CAP_PRINTERVERTICALOFFSET is supported'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PRINTERVERTICALOFFSET'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERVERTICALOFFSET,TWON_ONEVALUE,TWTY_FIX32,${ret:${get:TW_ONEVALUE.Item}}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+:MAIN.PASS
+return 'pass'
+;
+; Skip this item...
+:MAIN.SKIP
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+return 'skip'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
+return 'fail'

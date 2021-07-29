@@ -1,0 +1,149 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Printing Badge
+;   These tests establish the minimum requirements for a TWAIN driver to claim that is has printing
+;   support.  To pass the driver must support the following capabilites:
+;      CAP_PRINTERENABLED
+;      CAP_PRINTER
+;      CAP_PRINTERMODE
+;      CAP_PRINTERSTRING
+;      CAP_PRINTERINDEX
+;      CAP_PRINTERSUFFIX
+;      CAP_PRINTERVERTICALOFFSET
+;
+;   And the following extended image info items:
+;      TWEI_PRINTERTEXT
+;      TWEI_PRINTER
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   (none)
+;
+; Locals
+;   certifyresult - track if we fail
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+setlocal certifyresult 'pass' ; assume we'll pass
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Reset to a known state...
+;
+setlocal name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.MSG_RESETALL.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.MSG_RESETALL.DONE
+;
+:MAIN.MSG_RESETALL.FAIL
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.MSG_RESETALL.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_PRINTERENABLED must be supported, and must offer both TRUE
+; and FALSE, and must currently be FALSE, otherwise skip it all
+;
+setlocal name 'CAP_PRINTERENBLED is supported'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_PRINTERENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
+if '${ret:},' !~contains ',TRUE,' goto MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
+if '${ret:},' !~contains ',FALSE,' goto MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
+echo.passfail '${get:name}' 'pass'
+goto MAIN.CAP_PRINTERENABLEDSUPPORTED.DONE
+;
+:MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'skip'
+goto MAIN.DONE
+:MAIN.CAP_PRINTERENABLEDSUPPORTED.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_SUPPORTEDCAPS: check that all required capabilities are reported
+;
+setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERENABLED found'
+if '${ret:},' !~contains ',CAP_PRINTERENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTER found'
+if '${ret:},' !~contains ',CAP_PRINTER,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERMODE found'
+if '${ret:},' !~contains ',CAP_PRINTERMODE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERSTRING found'
+if '${ret:},' !~contains ',CAP_PRINTERSTRING,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERINDEX found'
+if '${ret:},' !~contains ',CAP_PRINTERINDEX,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERSUFFIX found'
+if '${ret:},' !~contains ',CAP_PRINTERSUFFIX,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERVERTICALOFFSET found'
+if '${ret:},' !~contains ',CAP_PRINTERVERTICALOFFSET,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.CAP_SUPPORTEDCAPS.DONE
+;
+:MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.CAP_SUPPORTEDCAPS.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_SUPPORTEDEXTIMAGEINFO: check that all metadata is reported
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_PRINTERTEXT found'
+if '${ret:},' !~contains ',TWEI_PRINTERTEXT,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_PRINTER found'
+if '${ret:},' !~contains ',TWEI_PRINTER,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
+;
+:MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+:MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; All done...
+;
+:MAIN.DONE
+return '${get:certifyresult}'

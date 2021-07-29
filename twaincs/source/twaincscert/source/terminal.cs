@@ -2189,6 +2189,10 @@ namespace twaincscert
                 Display("  '${getindex:target:index}'");
                 Display("  Runs the target through CSV and returns the item at the requested index.");
                 Display("");
+                Display("  '${gettwei:twei:target}'");
+                Display("  Look up a TWEI value in TWAINH.CS (ex: ${gettwei:TWEI_PIXELFLAVOR:TWPF_CHOCOLATE}.  This");
+                Display("  is useful when processing data returned by DAT_EXTIMAGEINFO.");
+                Display("");
                 Display("  '${localtime:[format]}'");
                 Display("  Returns the current local time using the DateTime format.");
                 Display("");
@@ -5315,6 +5319,7 @@ namespace twaincscert
                         || szSymbol.StartsWith("${folder:")
                         || szSymbol.StartsWith("${format:")
                         || szSymbol.StartsWith("${get:")
+                        || szSymbol.StartsWith("${gettwei:")
                         || szSymbol.StartsWith("${gethandle:")
                         || szSymbol.StartsWith("${gethandleindex:")
                         || szSymbol.StartsWith("${getindex:")
@@ -5644,12 +5649,32 @@ namespace twaincscert
                                             szValue = BitConverter.ToUInt64(abValue, 0).ToString();
                                             break;
                                         case "TWTY_STR32":
+                                            szValue = "";
+                                            iDataBytes = Marshal.SizeOf(typeof(TWAIN.TW_STR32));
+                                            abValue = new byte[iDataBytes];
+                                            Marshal.Copy(intptrPointer, abValue, 0, iDataBytes);
+                                            szValue = Encoding.UTF8.GetString(abValue).Replace("\0", "");
                                             break;
                                         case "TWTY_STR64":
+                                            szValue = "";
+                                            iDataBytes = Marshal.SizeOf(typeof(TWAIN.TW_STR64));
+                                            abValue = new byte[iDataBytes];
+                                            Marshal.Copy(intptrPointer, abValue, 0, iDataBytes);
+                                            szValue = Encoding.UTF8.GetString(abValue).Replace("\0", "");
                                             break;
                                         case "TWTY_STR128":
+                                            szValue = "";
+                                            iDataBytes = Marshal.SizeOf(typeof(TWAIN.TW_STR128));
+                                            abValue = new byte[iDataBytes];
+                                            Marshal.Copy(intptrPointer, abValue, 0, iDataBytes);
+                                            szValue = Encoding.UTF8.GetString(abValue).Replace("\0", "");
                                             break;
                                         case "TWTY_STR255":
+                                            szValue = "";
+                                            iDataBytes = Marshal.SizeOf(typeof(TWAIN.TW_STR255));
+                                            abValue = new byte[iDataBytes];
+                                            Marshal.Copy(intptrPointer, abValue, 0, iDataBytes);
+                                            szValue = Encoding.UTF8.GetString(abValue).Replace("\0","");
                                             break;
                                         case "TWTY_HANDLE":
                                             szValue = "";
@@ -5803,6 +5828,25 @@ namespace twaincscert
                         if ((aszGet.Length > 1) && int.TryParse(aszGet[1], out iIndex))
                         {
                             GetVariable(aszGet[0], iIndex, out szValue, out iBytes, out blGlobal);
+                        }
+                    }
+
+                    // Look up an enum value from TWAINH.CS...
+                    else if (szSymbol.StartsWith("${gettwei:"))
+                    {
+                        TWAIN.TWEI twei;
+
+                        // Strip off ${...}
+                        string szGetTwei = szSymbol.Substring(0, szSymbol.Length - 1).Substring(10);
+                        string[] aszGetTwei = szGetTwei.Split(':');
+
+                        // Do the lookup...
+                        if (aszGetTwei.Length > 1)
+                        {
+                            if (Enum.TryParse(aszGetTwei[0].Replace("TWEI_","").Replace("twei_",""), out twei))
+                            {
+                                szValue = TWAIN.CvtTweiValueToEnum(twei, aszGetTwei[1]);
+                            }
                         }
                     }
 

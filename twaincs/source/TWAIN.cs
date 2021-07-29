@@ -2135,7 +2135,7 @@ namespace TWAINWorkingGroup
                 {
                     try
                     {
-                        a_twcapability.ConType = (TWON)Enum.Parse(typeof(TWON), asz[1].Replace("TWON_", ""), true);
+                        a_twcapability.ConType = (TWON)Enum.Parse(typeof(TWON), asz[1].Replace("TWON_", "").Replace("twon_", ""), true);
                     }
                     catch
                     {
@@ -2149,7 +2149,7 @@ namespace TWAINWorkingGroup
                 {
                     try
                     {
-                        twty = (TWTY)Enum.Parse(typeof(TWTY), asz[2].Replace("TWTY_", ""), true);
+                        twty = (TWTY)Enum.Parse(typeof(TWTY), asz[2].Replace("TWTY_", "").Replace("twty_", ""), true);
                     }
                     catch
                     {
@@ -4210,6 +4210,103 @@ namespace TWAINWorkingGroup
                 case CAP.ICAP_YRESOLUTION: return (a_szValue);
                 case CAP.ICAP_YSCALING: return (a_szValue);
                 case CAP.ICAP_ZOOMFACTOR: return (a_szValue);
+            }
+        }
+
+        /// <summary>
+        /// Convert a value to the 'friendly' name, based on the TWEI...
+        /// </summary>
+        /// <param name="a_twei">TWEI driving the conversion</param>
+        /// <param name="szValue">value to convert</param>
+        /// <returns></returns>
+        public static string CvtTweiValueToEnum(TWEI a_twei, string a_szValue)
+        {
+            switch (a_twei)
+            {
+                default: return (a_szValue);
+                case TWEI.BARCODECONFIDENCE: return (a_szValue);
+                case TWEI.BARCODECOUNT: return (a_szValue);
+                case TWEI.BARCODEROTATION: return (CvtCapValueToEnumHelper<TWBCOR>(a_szValue));
+                case TWEI.BARCODETEXT: return (a_szValue);
+                case TWEI.BARCODETEXT2: return (a_szValue);
+                case TWEI.BARCODETEXTLENGTH: return (a_szValue);
+                case TWEI.BARCODETYPE: return (CvtCapValueToEnumHelper<TWBT>(a_szValue));
+                case TWEI.BARCODEX: return (a_szValue);
+                case TWEI.BARCODEY: return (a_szValue);
+                case TWEI.BLACKSPECKLESREMOVED: return (a_szValue);
+                case TWEI.BOOKNAME: return (a_szValue);
+                case TWEI.CAMERA: return (a_szValue);
+                case TWEI.CHAPTERNUMBER: return (a_szValue);
+                case TWEI.DESHADEBLACKCOUNTNEW: return (a_szValue);
+                case TWEI.DESHADEBLACKCOUNTOLD: return (a_szValue);
+                case TWEI.DESHADEBLACKRLMAX: return (a_szValue);
+                case TWEI.DESHADEBLACKRLMIN: return (a_szValue);
+                case TWEI.DESHADECOUNT: return (a_szValue);
+                case TWEI.DESHADEHEIGHT: return (a_szValue);
+                case TWEI.DESHADELEFT: return (a_szValue);
+                case TWEI.DESHADESIZE: return (a_szValue);
+                case TWEI.DESHADETOP: return (a_szValue);
+                case TWEI.DESHADEWHITECOUNTNEW: return (a_szValue);
+                case TWEI.DESHADEWHITECOUNTOLD: return (a_szValue);
+                case TWEI.DESHADEWHITERLAVE: return (a_szValue);
+                case TWEI.DESHADEWHITERLMAX: return (a_szValue);
+                case TWEI.DESHADEWHITERLMIN: return (a_szValue);
+                case TWEI.DESHADEWIDTH: return (a_szValue);
+                case TWEI.DESKEWSTATUS: return (CvtCapValueToEnumHelper<TWDSK>(a_szValue));
+                case TWEI.DOCUMENTNUMBER: return (a_szValue);
+                case TWEI.ENDORSEDTEXT: return (a_szValue);
+                case TWEI.FILESYSTEMSOURCE: return (a_szValue);
+                case TWEI.FORMCONFIDENCE: return (a_szValue);
+                case TWEI.FORMHORZDOCOFFSET: return (a_szValue);
+                case TWEI.FORMTEMPLATEMATCH: return (a_szValue);
+                case TWEI.FORMTEMPLATEPAGEMATCH: return (a_szValue);
+                case TWEI.FORMVERTDOCOFFSET: return (a_szValue);
+                case TWEI.FRAME: return (a_szValue);
+                case TWEI.FRAMENUMBER: return (a_szValue);
+                case TWEI.HORZLINECOUNT: return (a_szValue);
+                case TWEI.HORZLINELENGTH: return (a_szValue);
+                case TWEI.HORZLINETHICKNESS: return (a_szValue);
+                case TWEI.HORZLINEXCOORD: return (a_szValue);
+                case TWEI.HORZLINEYCOORD: return (a_szValue);
+                case TWEI.IAFIELDA_VALUE: return (a_szValue);
+                case TWEI.IAFIELDB_VALUE: return (a_szValue);
+                case TWEI.IAFIELDC_VALUE: return (a_szValue);
+                case TWEI.IAFIELDD_VALUE: return (a_szValue);
+                case TWEI.IAFIELDE_VALUE: return (a_szValue);
+                case TWEI.IALEVEL: return (CvtCapValueToEnumHelper<TWIA>(a_szValue));
+                case TWEI.ICCPROFILE: return (a_szValue);
+                case TWEI.IMAGEMERGED: return (CvtCapValueToEnumHelper<bool>(a_szValue));
+                case TWEI.LASTSEGMENT: return (CvtCapValueToEnumHelper<bool>(a_szValue));
+                case TWEI.MAGDATA: return (a_szValue);
+                case TWEI.MAGDATALENGTH: return (a_szValue);
+                case TWEI.MAGTYPE: return (CvtCapValueToEnumHelper<TWMD>(a_szValue));
+                case TWEI.PAGENUMBER: return (a_szValue);
+                case TWEI.PAGESIDE: return (a_szValue);
+                case TWEI.PAPERCOUNT: return (a_szValue);
+                case TWEI.PATCHCODE: return (CvtCapValueToEnumHelper<TWPCH>(a_szValue));
+                case TWEI.PIXELFLAVOR: return (CvtCapValueToEnumHelper<TWPF>(a_szValue));
+                case TWEI.PRINTER: return (CvtCapValueToEnumHelper<TWPR>(a_szValue));
+                case TWEI.PRINTERTEXT: return (a_szValue);
+                case TWEI.SEGMENTNUMBER: return (a_szValue);
+                case TWEI.SKEWCONFIDENCE: return (a_szValue);
+                case TWEI.SKEWFINALANGLE: return (a_szValue);
+                case TWEI.SKEWORIGINALANGLE: return (a_szValue);
+                case TWEI.SKEWWINDOWX1: return (a_szValue);
+                case TWEI.SKEWWINDOWX2: return (a_szValue);
+                case TWEI.SKEWWINDOWX3: return (a_szValue);
+                case TWEI.SKEWWINDOWX4: return (a_szValue);
+                case TWEI.SKEWWINDOWY1: return (a_szValue);
+                case TWEI.SKEWWINDOWY2: return (a_szValue);
+                case TWEI.SKEWWINDOWY3: return (a_szValue);
+                case TWEI.SKEWWINDOWY4: return (a_szValue);
+                case TWEI.SPECKLESREMOVED: return (a_szValue);
+                case TWEI.TWAINDIRECTMETADATA: return (a_szValue);
+                case TWEI.VERTLINECOUNT: return (a_szValue);
+                case TWEI.VERTLINELENGTH: return (a_szValue);
+                case TWEI.VERTLINETHICKNESS: return (a_szValue);
+                case TWEI.VERTLINEXCOORD: return (a_szValue);
+                case TWEI.VERTLINEYCOORD: return (a_szValue);
+                case TWEI.WHITESPECKLESREMOVED: return (a_szValue);
             }
         }
 
