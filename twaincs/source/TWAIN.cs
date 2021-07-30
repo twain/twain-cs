@@ -801,9 +801,10 @@ namespace TWAINWorkingGroup
         /// automatic resync if it detects a sequence error...
         /// </summary>
         /// <param name="a_stateTarget">The TWAIN state that we want to end up at</param>
+        /// <param name="a_blUseThread">Use the thread (most cases)</param>
         static int s_iCloseDsmDelay = 0;
         [SecurityPermissionAttribute(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
-        public TWAIN.STATE Rollback(STATE a_stateTarget)
+        public TWAIN.STATE Rollback(STATE a_stateTarget, bool a_blUseThread = true)
         {
             int iRetry;
             STS sts;
@@ -816,61 +817,64 @@ namespace TWAINWorkingGroup
             }
 
             // Submit the work to the TWAIN thread...
-            if (m_runinuithreaddelegate != null)
+            if (a_blUseThread)
             {
-                lock (m_lockTwain)
+                if (m_runinuithreaddelegate != null)
                 {
-                    // No point in continuing...
-                    if (m_twaincommand == null)
+                    lock (m_lockTwain)
                     {
-                        return (m_state);
+                        // No point in continuing...
+                        if (m_twaincommand == null)
+                        {
+                            return (m_state);
+                        }
+
+                        // Set the command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.blExitThread = true;
+                        long lIndex = m_twaincommand.Submit(threaddata);
+
+                        // Submit the command and wait for the reply, the delay
+                        // is needed because Mac OS X doesn't gracefully handle
+                        // the loss of a mutex...
+                        s_iCloseDsmDelay = 0;
+                        CallerToThreadSet();
+                        ThreadToRollbackWaitOne();
+                        Thread.Sleep(s_iCloseDsmDelay);
+
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
                     }
-
-                    // Set the command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.blExitThread = true;
-                    long lIndex = m_twaincommand.Submit(threaddata);
-
-                    // Submit the command and wait for the reply, the delay
-                    // is needed because Mac OS X doesn't gracefully handle
-                    // the loss of a mutex...
-                    s_iCloseDsmDelay = 0;
-                    CallerToThreadSet();
-                    ThreadToRollbackWaitOne();
-                    Thread.Sleep(s_iCloseDsmDelay);
-
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
                 }
-            }
-            else if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
-            {
-                lock (m_lockTwain)
+                else if ((m_threadTwain != null) && (m_threadTwain.ManagedThreadId != Thread.CurrentThread.ManagedThreadId))
                 {
-                    // No point in continuing...
-                    if (m_twaincommand == null)
+                    lock (m_lockTwain)
                     {
-                        return (m_state);
+                        // No point in continuing...
+                        if (m_twaincommand == null)
+                        {
+                            return (m_state);
+                        }
+
+                        // Set the command variables...
+                        ThreadData threaddata = default(ThreadData);
+                        threaddata.stateRollback = a_stateTarget;
+                        threaddata.blRollback = true;
+                        long lIndex = m_twaincommand.Submit(threaddata);
+
+                        // Submit the command and wait for the reply, the delay
+                        // is needed because Mac OS X doesn't gracefully handle
+                        // the loss of a mutex...
+                        s_iCloseDsmDelay = 0;
+                        CallerToThreadSet();
+                        ThreadToRollbackWaitOne();
+                        Thread.Sleep(s_iCloseDsmDelay);
+
+                        // Clear the command variables...
+                        m_twaincommand.Delete(lIndex);
                     }
-
-                    // Set the command variables...
-                    ThreadData threaddata = default(ThreadData);
-                    threaddata.stateRollback = a_stateTarget;
-                    threaddata.blRollback = true;
-                    long lIndex = m_twaincommand.Submit(threaddata);
-
-                    // Submit the command and wait for the reply, the delay
-                    // is needed because Mac OS X doesn't gracefully handle
-                    // the loss of a mutex...
-                    s_iCloseDsmDelay = 0;
-                    CallerToThreadSet();
-                    ThreadToRollbackWaitOne();
-                    Thread.Sleep(s_iCloseDsmDelay);
-
-                    // Clear the command variables...
-                    m_twaincommand.Delete(lIndex);
+                    return (m_state);
                 }
-                return (m_state);
             }
 
             // If we get a sequence error, then we'll repeat the loop from

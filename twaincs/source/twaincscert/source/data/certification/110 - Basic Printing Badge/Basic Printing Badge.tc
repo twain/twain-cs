@@ -143,6 +143,23 @@ setlocal certifyresult 'fail'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_XFERMECH: get the xfermech so we know which tests to run
+;
+setlocal name 'ICAP_XFERMECH MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_XFERMECH.FAIL
+echo.passfail '${get:name}' 'pass'
+setglobal g_xfermech '${ret:}
+goto MAIN.ICAP_XFERMECH.DONE
+;
+:MAIN.ICAP_XFERMECH.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+:MAIN.ICAP_XFERMECH.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; All done...
 ;
 :MAIN.DONE

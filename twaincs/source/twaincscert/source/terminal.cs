@@ -154,6 +154,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdPause,            new string[] { "pause" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReport,           new string[] { "report" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReturn,           new string[] { "return" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRollback,         new string[] { "rollback" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRun,              new string[] { "run" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdRunv,             new string[] { "runv" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdSaveImage,        new string[] { "saveimage" }));
@@ -2055,6 +2056,7 @@ namespace twaincscert
                 Display("pwd.............................................report the current working directory");
                 Display("report {initialize {driver}|save {folder}}......self certification report");
                 Display("return [status].................................return from call function");
+                Display("rollbacl [state#]...............................roll back to the desired state");
                 Display("run [script]....................................run a script");
                 Display("runv [script]...................................run a script verbosely");
                 Display("setglobal [key [value]].........................show, set, or delete global keys");
@@ -2573,6 +2575,18 @@ namespace twaincscert
                 DisplayYellow("RETURN [DATA]");
                 Display("Return data from a call function or a script invoked with RUN or");
                 Display("RUNV.  The caller examines this value with the '${ret:}' symbol.");
+                return (false);
+            }
+
+            // Rollback
+            if ((szCommand == "rollback"))
+            {
+                DisplayYellow("ROLLBACK [SCRIPT#]");
+                Display("With no argument it displays the current state.  With an argument");
+                Display("it rolls back both the application and the driver to the desired");
+                Display("state.  This should only be used when handling errors, to get back");
+                Display("to a known state.  Otherwise it's better to use the normal TWAIN");
+                Display("calls to change state.");
                 return (false);
             }
 
@@ -4170,6 +4184,54 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// With no arguments, show the current state.  With an argument
+        /// rollback to that state.  This should only be used after an
+        /// error condition to make it easier to get a script into a known
+        /// state...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdRollback(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            string szState;
+            string[] aszState;
+
+            // No argument, show the current state...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[1] == null))
+            {
+                Display("Currently at: " + ((m_twain == null) ? "state0" : m_twain.GetState().ToString().Replace("S", "state")));
+                return (false);
+            }
+
+            // If we don't have m_twain, just scoot...
+            if (m_twain == null)
+            {
+                return (false);
+            }
+
+            // Reduce whatever we got to just the state number, we'll take the
+            // number, the enumeration, or state#...
+            aszState = a_functionarguments.aszCmd[1].Split(new char[] { '.' });
+            szState = aszState[aszState.Length - 1]; // grab the last element
+            szState = szState.ToLower().Replace("state", "").Replace("s", "");
+
+            // Rollback to the desired state...
+            switch (szState)
+            {
+                default: break;
+                case "1": m_twain.Rollback(TWAIN.STATE.S1, false); break;
+                case "2": m_twain.Rollback(TWAIN.STATE.S2, false); break;
+                case "3": m_twain.Rollback(TWAIN.STATE.S3, false); break;
+                case "4": m_twain.Rollback(TWAIN.STATE.S4, false); break;
+                case "5": m_twain.Rollback(TWAIN.STATE.S5, false); break;
+                case "6": m_twain.Rollback(TWAIN.STATE.S6, false); break;
+            }
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
         /// With no arguments, list the scripts.  With an argument,
         /// run the specified script.  This one runs silent.
         /// </summary>
@@ -4213,7 +4275,7 @@ namespace twaincscert
             bool blVerboseRestore = m_blVerbose;
 
             // Be noisy...
-            if (a_functionarguments.aszCmd[0].ToLowerInvariant() == "runv")
+            if ((a_functionarguments.aszCmd != null) && (a_functionarguments.aszCmd[0].ToLowerInvariant() == "runv"))
             {
                 m_blVerbose = true;
             }

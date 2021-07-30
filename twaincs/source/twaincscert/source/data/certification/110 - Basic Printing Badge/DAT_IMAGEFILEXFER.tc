@@ -27,22 +27,15 @@
 ;   arg:4 - test name for the image folder
 ;   arg:5 - expected value for TWEI_PRINTER
 ;
+; Globals
+;   g_capprinter - value of CAP_PRINTER, used to check TWEI_PRINTER
+;
 ; Locals
 ;   name - current test being done
 ;   indent - indent the passfail text
 ;   twimageinfo.compression - compression for current image
-;   showui - value of showui
-;
 ;   image.count - count of images from 1
 ;   image.folder - folder to put the images in
-;
-;   feederenabled.list - scanner's feederenabled values
-;   feederenabled.index - index of feederenabled values
-;   feederenabled.value - current feederenabled value
-;
-;   pixeltype.list - scanner's pixeltype values for this feederenabled
-;   pixeltype.index - index of pixeltype values
-;   pixeltype.value - current pixeltype value
 ;
 ; Returns
 ;   pass or fail
@@ -62,7 +55,7 @@ return 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGEFILEXFER v1.0 28-Jun-2021'
+echo.titletest 'DAT_IMAGEFILEXFER v1.0 30-Jul-2021'
 ;
 setlocal indent ''
 setlocal image.count '0'
@@ -70,27 +63,7 @@ setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEFILEXFER'
 setlocal image.showname ''
 setlocal showui '${arg:3}'
 ;
-setglobal g_barcodemaxsearchpriorities.max '0'
-setglobal g_barcodecount.none '0'
-setglobal g_barcodecount.one '0'
-setglobal g_barcodecount.many '0'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Clean the image folder for this test...
-;
-image cleanfolderandmeta '${get:image.folder}'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; SetCapabilities
-; This resets the driver and sets all the capabilities we need for the test.
-; If its return code is not 'pass', end with an error
-;
-run SetCapabilities 'TWSX_FILE' '${get:indent}'
-if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+setglobal g_capprinter ''
 
 
 
@@ -111,9 +84,38 @@ echo.prompt
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Clean the image folder for this test...
+;
+image cleanfolderandmeta '${get:image.folder}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; SetCapabilities
+; This resets the driver and sets all the capabilities we need for the test.
+; If its return code is not 'pass', end with an error
+;
+run SetCapabilities 'TWSX_FILE' '${get:indent}' g_capprinter
+if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check for paper in the feeder, prompt the user if we don't find any...
+;
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_FEEDERLOADED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.FEEDERLOADED.DONE
+if '${ret:${get:TW_ONEVALUE.Item}}' ~~ 'TRUE' goto MAIN.FEEDERLOADED.DONE
+echo.prompt
+echo.prompt "Place paper in the scanner's feeder."
+pause '(press the ENTER key when ready to continue)'
+:MAIN.FEEDERLOADED.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Start scanning...
 ;
-:MAIN.USERINTERFACE
 setlocal name 'dg_control/dat_userinterface/msg_enableds'
 wait reset
 dsmentry src null dg_control dat_userinterface msg_enableds '${get:showui},0'
@@ -178,9 +180,9 @@ echo.passfail '${get:indent}image <${get:image.showname}>' 'pass'
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; DAT_EXTIMAGEINFO
-; Check the barcode metadata...
+; Check the printer metadata...
 ;
-run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}' '${get:g_printer}'
+run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}' ${get:g_capprinter}
 if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
 
 
@@ -207,36 +209,6 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Check to see if we passed.  We need one sheet of paper with no barcodes.  Two or more sheets
-; with one barcode, and no sheets with multiple barecodes if the maximum value of
-; ICAP_BARCODEMAXSEARCHPRIORITIES is 1.  And one or more sheets with one barcode, and one or
-; more sheets with multiple barcodes of ICAP_BARCODEMAXSEARCHPRIORITIES is greater than 1.
-;
-setlocal name 'Final Check: detected a sheet with 0 barcodes
-if '${get:g_barcodecount.none}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-;
-if '${get:g_barcodemaxsearchpriorities.max}' >= '2' goto MAIN.FINALCHECK.MANYBARCODES
-setlocal name 'Final Check: detected multiple sheets with 1 barcode'
-if '${get:g_barcodecount.one}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal name 'Final Check: detected 0 sheets with many barcodes (not supported)'
-if '${get:g_barcodecount.many}' > '0' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-goto MAIN.FINALCHECK.DONE
-;
-:MAIN.FINALCHECK.MANYBARCODES
-setlocal name 'Final Check: detected a sheet with 1 barcode'
-if '${get:g_barcodecount.one}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal name 'Final Check: detected a sheet with many barcodes'
-if '${get:g_barcodecount.many}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-:MAIN.FINALCHECK.DONE
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
 ; Did we pass? (do an extra check)
@@ -248,9 +220,11 @@ return 'pass'
 :MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
 echo.passfail 'SUMMARY' 'fail'
+rollback state4
 return 'fail'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.FAIL
 echo.passfail 'SUMMARY' 'fail'
+rollback state4
 return 'fail'

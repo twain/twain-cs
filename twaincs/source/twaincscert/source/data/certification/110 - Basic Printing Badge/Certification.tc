@@ -28,7 +28,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff, load tables if not already done for us...
 ;
-echo.titlesuite 'Basic Printing Badge v1.0 13-Jul-2021'
+echo.titlesuite 'Basic Printing Badge v1.0 30-Jul-2021'
 echo.yellow '*************************************************************************************'
 echo.yellow '*** This test is for the Basic Printing Badge.  Failing means the driver does not ***'
 echo.yellow '*** support this functionality.  It does not prevent it from being certified.     ***'

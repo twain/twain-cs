@@ -138,7 +138,7 @@ goto MAIN.ERROR.ECHOPASSFAIL
 ; Save the value so we can set it later...
 :MAIN.PRINTER.PASS
 setglobal ${arg:3} ${ret:${get:TW_ONEVALUE.Item}}
-echo.passfail '${get:indent}${get:name}' 'pass'
+echo.passfail '${get:indent}${get:name}' 'pass (${get:${arg:3}})'
 
 
 

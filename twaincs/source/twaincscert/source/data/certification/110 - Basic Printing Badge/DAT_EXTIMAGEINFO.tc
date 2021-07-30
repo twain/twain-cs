@@ -124,13 +124,12 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; The printer text is behind a handle...
 setlocal handle ${getindex:printerdata:${get:twinfo.item.index}}
 setlocal printertext '${gethandle:${get:handle}:TWTY_STR255:0}'
-echo 'mlm>>> <${get:printertext}>'
 ;
-setlocal name 'TW_INFO[1].Item contains "TWAIN"'
+setlocal name 'TW_INFO[1].Item contains "TWAIN" (${get:printertext})'
 if '${get:printertext}' !contains 'TWAIN' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'TW_INFO[1].Item contains "TEST"'
+setlocal name 'TW_INFO[1].Item contains "TEST" (${get:printertext})'
 if '${get:printertext}' !contains 'TEST' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
