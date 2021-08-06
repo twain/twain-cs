@@ -1,0 +1,207 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_IMAGENATIVEXFER
+;   This test scans one sheet of paper for the default pixeltype.  An ADF
+;   is required to pass this test, but that was already been tested before
+;   we got to this function.
+;
+;   Here's the basic flow:
+;       SetCapabilities
+;       start scanning
+;       while images
+;           transfer image
+;           DAT_EXTIMAGEINFO
+;           end image
+;       end
+;       end scanning
+;       verify the results
+;
+;   The test passes if:
+;       - all of the capabilities can be set
+;       - TWEI_PRINTER matches CAP_PRINTER
+;       - TWEI_PRINTERSTRING starts with 'TWAIN' and ends with 'TEST'
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global for us to update on failure
+;   arg:3 - value of ShowUI (TRUE or FALSE)
+;   arg:4 - test name for the image folder
+;   arg:5 - expected value for TWEI_PRINTER
+;
+; Globals
+;   g_capprinter - value of CAP_PRINTER, used to check TWEI_PRINTER
+;
+; Locals
+;   name - current test being done
+;   indent - indent the passfail text
+;   image.handle - native handle
+;   image.count - count of images from 1
+;   image.folder - folder to put the images in
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+echo.titletest 'DAT_IMAGENATIVEXFER v1.0 30-Jul-2021'
+;
+setlocal indent ''
+setlocal image.handle '0'
+setlocal image.count '1'
+setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGENATIVEXFER'
+setlocal showui '${arg:3}'
+;
+setglobal g_capprinter ''
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Prompt the user...
+;
+echo.prompt
+echo.prompt "Scanning will take place during this test.  There will be no"
+echo.prompt "need to press any button on the TWAIN user interface to start"
+echo.prompt "the scanner.  A progress indicator may appear during scanning."
+echo.prompt
+echo.prompt "Place 1 sheet in the scanner's feeder.  The scanner will print"
+echo.prompt "text on this sheet."
+echo.prompt
+pause '(press the ENTER key when ready to continue)'
+echo.prompt
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Clean the image folder for this test...
+;
+image cleanfolderandmeta '${get:image.folder}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; SetCapabilities
+; This resets the driver and sets all the capabilities we need for the test.
+; If its return code is not 'pass', end with an error
+;
+run SetCapabilities 'TWSX_NATIVE' '${get:indent}' g_capprinter
+if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check for paper in the feeder, prompt the user if we don't find any...
+;
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_FEEDERLOADED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.FEEDERLOADED.DONE
+if '${ret:${get:TW_ONEVALUE.Item}}' ~~ 'TRUE' goto MAIN.FEEDERLOADED.DONE
+echo.prompt
+echo.prompt "Place paper in the scanner's feeder."
+pause '(press the ENTER key when ready to continue)'
+:MAIN.FEEDERLOADED.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Start scanning...
+;
+setlocal indent '    '
+setlocal name 'dg_control/dat_userinterface/msg_enableds'
+wait reset
+dsmentry src null dg_control dat_userinterface msg_enableds '${get:showui},0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Wait for MSG_XFERREADY, if we don't see it then scoot...
+;
+setlocal name 'wait ${get:sys_waittimeout} seconds for MSG_XFERREADY'
+wait '${get:sys_waittimeout}000'
+if '${ret:}' !~contains 'msg_xferready' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Do a native transfer...
+;
+:MAIN.IMAGENATIVEXFER.NEXT
+setlocal indent '    '
+setlocal name 'dg_control/dat_imagenativexfer/msg_get'
+dsmentry src ds dg_image dat_imagenativexfer msg_get '0'
+setlocal image.handle '${ret:}'
+if '${sts:}' != 'XFERDONE' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Save the image...
+;
+image save image.handle native '${get:image.folder}/adf${format:D6|${get:image.count}}'
+echo.passfail '${get:indent}image <${ret:}>' 'pass'
+free handle image.handle
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_EXTIMAGEINFO
+; Check the printer metadata...
+;
+run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}' ${get:g_capprinter}
+if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; End the transfer, see if we're done.  If not, go back
+; to MAIN.IMAGENATIVEXFER.NEXT for another image...
+;
+setlocal name 'dg_control/dat_pendingxfers/msg_endxfer'
+dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+increment image.count '${get:image.count}' 1 ; count the image
+if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGENATIVEXFER.NEXT
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We're out of images, so disable...
+;
+setlocal name 'dg_control/dat_userinterface/msg_disableds'
+dsmentry src ds dg_control dat_userinterface msg_disableds '0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass? (do an extra check)
+:MAIN.PASS
+free handle image.handle
+echo.passfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+free handle image.handle
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
+echo.passfail 'SUMMARY' 'fail'
+setglobal '${arg:2}' 'fail'
+rollback state4
+return 'fail'
+;
+; Ruh-roh...
+:MAIN.ERROR.FAIL
+free handle image.handle
+echo.passfail 'SUMMARY' 'fail'
+setglobal '${arg:2}' 'fail'
+rollback state4
+return 'fail'

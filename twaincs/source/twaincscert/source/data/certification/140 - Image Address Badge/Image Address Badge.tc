@@ -1,0 +1,290 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Image Address Badge
+;   These tests establish the minimum requirements for a TWAIN driver to claim that it has image
+;   addressing support.  The viewpoint is from an application that wants to collect barcode data
+;   on the documents being scanned.  This is not a quality test.  It does not confirm image address
+;   values.
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   g_supportedcaps - return from MSG_GET CAP_SUPPORTEDCAPS
+;
+; Locals
+;   certifyresult - track if we fail
+;
+; Returns
+;   pass/fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+setlocal certifyresult 'pass' ; assume we'll pass
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Reset to a known state...
+;
+setlocal name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.MSGRESETALL.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.MSGRESETALL.DONE
+;
+:MAIN.MSGRESETALL.FAIL
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.MSGRESETALL.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_IMAGEADDRESSENABLED must be supported, and must offer both TRUE
+; and FALSE, and must currently be FALSE, otherwise skip it all
+;
+setlocal name 'CAP_IMAGEADDRESSENABLED is supported'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_IMAGEADDRESSENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_IMAGEADDRESSENABLEDSUPPORTED.SKIP
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.CAP_IMAGEADDRESSENABLEDSUPPORTED.SKIP
+if ',${ret:},' !~contains ',FALSE,' goto MAIN.CAP_IMAGEADDRESSENABLEDSUPPORTED.SKIP
+echo.passfail '${get:name}' 'pass'
+goto MAIN.CAP_IMAGEADDRESSENABLEDSUPPORTED.DONE
+;
+:MAIN.CAP_IMAGEADDRESSENABLEDSUPPORTED.SKIP
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'skip'
+goto MAIN.DONE
+:MAIN.CAP_IMAGEADDRESSENABLEDSUPPORTED.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_SUPPORTEDCAPS: check that all required capabilities are reported
+;
+setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+setglobal g_supportedcaps '${ret:}'
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IMAGEADDRESSENABLED found'
+if '${ret:},' !~contains ',CAP_IMAGEADDRESSENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDA_LASTPAGE found'
+if '${ret:},' !~contains ',CAP_IAFIELDA_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDB_LASTPAGE found'
+if '${ret:},' !~contains ',CAP_IAFIELDB_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDC_LASTPAGE found'
+if '${ret:},' !~contains ',CAP_IAFIELDC_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDD_LASTPAGE found'
+if '${ret:},' !~contains ',CAP_IAFIELDD_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDA_LEVEL found'
+if '${ret:},' !~contains ',CAP_IAFIELDA_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDB_LEVEL found'
+if '${ret:},' !~contains ',CAP_IAFIELDB_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDC_LEVEL found'
+if '${ret:},' !~contains ',CAP_IAFIELDC_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDD_LEVEL found'
+if '${ret:},' !~contains ',CAP_IAFIELDD_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDA_PRINTFORMAT found'
+if '${ret:},' !~contains ',CAP_IAFIELDA_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDB_PRINTFORMAT found'
+if '${ret:},' !~contains ',CAP_IAFIELDB_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDC_PRINTFORMAT found'
+if '${ret:},' !~contains ',CAP_IAFIELDC_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDD_PRINTFORMAT found'
+if '${ret:},' !~contains ',CAP_IAFIELDD_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDA_VALUE found'
+if '${ret:},' !~contains ',CAP_IAFIELDA_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDB_VALUE found'
+if '${ret:},' !~contains ',CAP_IAFIELDB_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDC_VALUE found'
+if '${ret:},' !~contains ',CAP_IAFIELDC_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDD_VALUE found'
+if '${ret:},' !~contains ',CAP_IAFIELDD_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+goto MAIN.CAP_SUPPORTEDCAPS.DONE
+:MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.CAP_SUPPORTEDCAPS.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_SUPPORTEDEXTIMAGEINFO: check that all metadata is supported
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IALEVEL found'
+if '${ret:},' !~contains ',TWEI_IALEVEL,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IAFIELDA_VALUE found'
+if '${ret:},' !~contains ',TWEI_IAFIELDA_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IAFIELDB_VALUE found'
+if '${ret:},' !~contains ',TWEI_IAFIELDB_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IAFIELDC_VALUE found'
+if '${ret:},' !~contains ',TWEI_IAFIELDC_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IAFIELDD_VALUE found'
+if '${ret:},' !~contains ',TWEI_IAFIELDD_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
+;
+:MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+:MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_IMAGEADDRESSENABLED resets to FALSE
+;
+setlocal name 'CAP_IMAGEADDRESSENABLED resets to FALSE'
+dsmentry src ds dg_control dat_capability msg_reset 'CAP_IMAGEADDRESSENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_IMAGEADDRESSENABLEDFALSE.SKIP
+if ',${ret:},' !~contains ',FALSE,' goto MAIN.CAP_IMAGEADDRESSENABLEDFALSE.SKIP
+echo.passfail '${get:name}' 'pass'
+;
+goto MAIN.CAP_IMAGEADDRESSENABLEDFALSE.DONE
+:MAIN.CAP_IMAGEADDRESSENABLEDFALSE.SKIP
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.CAP_IMAGEADDRESSENABLEDFALSE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_IMAGEADDRESSENABLED set to TRUE
+;
+setlocal name 'CAP_IMAGEADDRESSENABLED set to TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IMAGEADDRESSENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_IMAGEADDRESSENABLEDTRUE.FAIL
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_IMAGEADDRESSENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_IMAGEADDRESSENABLEDTRUE.FAIL
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.CAP_IMAGEADDRESSENABLEDTRUE.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+goto MAIN.CAP_IMAGEADDRESSENABLEDTRUE.DONE
+:MAIN.CAP_IMAGEADDRESSENABLEDTRUE.FAIL
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.CAP_IMAGEADDRESSENABLEDTRUE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Test image address level 1 with no fixed field
+;
+setlocal name 'Set IA: 0001'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_LEVEL1,0000,1'
+if '${ret:}' != 'pass' goto MAIN.ERROR
+;
+setlocal name 'Set IA: 1'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_LEVEL1,####,1'
+if '${ret:}' != 'pass' goto MAIN.ERROR
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Test image address level 1 with fixed field
+;
+setlocal name 'Set IA: IA-0001'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1'
+if '${ret:}' != 'pass' goto MAIN.ERROR
+;
+setlocal name 'Set IA: IA-1'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1'
+if '${ret:}' != 'pass' goto MAIN.ERROR
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Test image address level 2 with fixed field
+;
+setlocal name 'Set IA: IA-0020.0001'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
+if '${ret:}' != 'pass' goto MAIN.ERROR
+;
+setlocal name 'Set IA: IA-20.1'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
+if '${ret:}' != 'pass' goto MAIN.ERROR
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Test image address level 3 with fixed field
+;
+setlocal name 'Set IA: IA-0300.0020.0001'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
+if '${ret:}' != 'pass' goto MAIN.ERROR
+;
+setlocal name 'Set IA: IA-300.20.1'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
+if '${ret:}' != 'pass' goto MAIN.ERROR
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Test image address level 4 with fixed field
+;
+setlocal name 'Set IA: IA-4000.0300.0020.0001'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,0000,4000' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
+if '${ret:}' != 'skip' goto MAIN.LEVEL4.SKIP
+if '${ret:}' != 'pass' goto MAIN.ERROR
+;
+setlocal name 'Set IA: IA-4000.300.20.1'
+run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,####,4000' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
+if '${ret:}' != 'skip' goto MAIN.LEVEL4.SKIP
+if '${ret:}' != 'pass' goto MAIN.ERROR
+;
+:MAIN.LEVEL4.SKIP
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; All done...
+;
+:MAIN.DONE
+return '${get:certifyresult}'
+;
+:MAIN.ERROR
+echo.passfail '${get:name}' 'fail'
+return '${get:certifyresult}'

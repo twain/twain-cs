@@ -1,0 +1,91 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Image Address Badge
+;   Check if Image Addressing is supported by the driver.  This is a badge, meaning that failure will not
+;   invalidate scanner certification.  Instead, passage adds Image Address support to the cert.
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   arg:2 - global to set on fail
+;
+; Globals
+;   g_localcertifyresult - global to report to caller on fail
+;
+; Locals
+;   twidentity.productname - product name of scanner to test
+;
+; Returns
+;   (none)
+;
+; History
+;   v1.0 17-May-2021 - first version
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize stuff, load tables if not already done for us...
+;
+echo.titlesuite 'Image Address Badge v1.0 17-May-2021'
+echo.yellow '************************************************************************************'
+echo.yellow '*** This test is for the Image Address Badge.  Failing means the driver does not ***'
+echo.yellow '*** support this functionality.  It does not prevent it from being certified.    ***'
+echo.yellow '************************************************************************************'
+setlocal twidentity.productname '${arg:1}'
+setglobal g_localcertifyresult 'pass' ; assume success
+if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
+run '${folder:certification}/LoadTables'
+:MAIN.LOADTABLES.SKIP
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Run the tests...
+;
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
+if '${get:g_localcertifyresult}' != 'pass' goto MAIN.CLOSEDS
+call CERTIFY 'Image Address Badge'             '${get:twidentity.productname}' g_localcertifyresult
+:MAIN.CLOSEDS
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+if '${get:g_localcertifyresult}' == 'skip' goto MAIN.SKIP
+if '${get:g_localcertifyresult}' != 'pass' goto MAIN.ERROR
+echo.passfail 'SUMMARY' 'pass'
+return 'pass'
+;
+; Unsupported...
+:MAIN.SKIP
+echo.passfail 'SUMMARY' 'skip'
+setglobal '${arg:2}' 'skip'
+return 'skip'
+;
+; Ruh-roh...
+:MAIN.ERROR
+echo.passfail 'SUMMARY' 'fail'
+setglobal '${arg:2}' 'fail'
+return 'fail'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Certify
+; arg:1 - script to run
+; arg:2 - TW_IDENTITY.ProductName of scanner to test
+; arg:3 - global value to update on fail
+; arg:4 - embeded flag for open/close
+; returns: pass/fail
+;
+:CERTIFY
+;
+run '${arg:1}' '${arg:2}' '${arg:4}'
+if '${ret:}' != 'pass' goto CERTIFY.FAIL
+return 'pass'
+;
+:CERTIFY.FAIL
+setglobal '${arg:3}' 'fail'
+return 'fail'
