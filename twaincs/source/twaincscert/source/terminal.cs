@@ -1816,6 +1816,9 @@ namespace twaincscert
         /// <returns>true to quit</returns>
         private bool CmdEchoTitletest(ref Interpreter.FunctionArguments a_functionarguments)
         {
+            int ii;
+            int iBlankLines = 3;
+
             // No data...
             if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 2) || (a_functionarguments.aszCmd[0] == null))
             {
@@ -1823,10 +1826,17 @@ namespace twaincscert
                 return (false);
             }
 
+            // Override the number of blank lines...
+            if (a_functionarguments.aszCmd.Length >= 3)
+            {
+                int.TryParse(a_functionarguments.aszCmd[2], out iBlankLines);
+            }
+
             // Display it...
-            DisplayYellow("", true);
-            DisplayYellow("", true);
-            DisplayYellow("", true);
+            for (ii = 0; ii < iBlankLines; ii++)
+            {
+                DisplayYellow("", true);
+            }
             DisplayYellow(a_functionarguments.aszCmd[1], true);
 
             // All done...
@@ -2043,7 +2053,7 @@ namespace twaincscert
                 Display("echo.progress {title} {result}..................echo progress in a tabular form");
                 Display("echo.prompt [text]..............................echo prior to using the input command");
                 Display("echo.titlesuite {title}.........................echo test suite");
-                Display("echo.titletest {title}..........................echo test title");
+                Display("echo.titletest {title} [blank lines]............echo test title");
                 Display("filewrite {file} {value}........................write data to a file");
                 Display("free {flag} {variable}..........................free memory");
                 Display("goto {label}....................................jump to the :label in the script");

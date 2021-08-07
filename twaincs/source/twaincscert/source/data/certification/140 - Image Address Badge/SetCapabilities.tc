@@ -207,11 +207,25 @@ setlocal fieldc '${arg:4}'
 setlocal fieldd '${arg:5}'
 setlocal fielde '${arg:6}'
 ;
+; Check for TWIA_LEVEL4, which is optional...
+setlocal severity FAIL
+if '${get:fielda}' == 'TWIA_LEVEL4' goto SET_IMAGE_ADDRESSLEVEL.SEVERITY.SKIP
+if '${get:fieldb}' == 'TWIA_LEVEL4' goto SET_IMAGE_ADDRESSLEVEL.SEVERITY.SKIP
+if '${get:fieldc}' == 'TWIA_LEVEL4' goto SET_IMAGE_ADDRESSLEVEL.SEVERITY.SKIP
+if '${get:fieldd}' == 'TWIA_LEVEL4' goto SET_IMAGE_ADDRESSLEVEL.SEVERITY.SKIP
+if '${get:fielde}' == 'TWIA_LEVEL4' goto SET_IMAGE_ADDRESSLEVEL.SEVERITY.SKIP
+goto SET_IMAGE_ADDRESSLEVEL.SEVERITY.DONE
+:SET_IMAGE_ADDRESSLEVEL.SEVERITY.SKIP
+setlocal severity SKIP
+:SET_IMAGE_ADDRESSLEVEL.SEVERITY.DONE
+
+;
 ; Set FIELD A (must have this)
 setlocal name 'Set CAP_IAFIELDA_LEVEL to ${get:fielda}'
 if '${get:fielda}' == '' goto SET_IMAGEADDRESS_LEVEL.FAIL ; have to have this argument
 if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDA_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDA_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fielda}'
+if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
@@ -220,6 +234,7 @@ setlocal name 'Set CAP_IAFIELDB_LEVEL to ${get:fieldb}'
 if '${get:fieldb}' == '' goto SET_IMAGEADDRESS_LEVEL.PASS ; optional argument
 if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDB_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDB_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fieldb}'
+if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
@@ -228,6 +243,7 @@ setlocal name 'Set CAP_IAFIELDC_LEVEL to ${get:fieldc}'
 if '${get:fieldc}' == '' goto SET_IMAGEADDRESS_LEVEL.PASS ; optional argument
 if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDC_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDC_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fieldc}'
+if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
@@ -236,6 +252,7 @@ setlocal name 'Set CAP_IAFIELDD_LEVEL to ${get:fieldd}'
 if '${get:fieldd}' == '' goto SET_IMAGEADDRESS_LEVEL.PASS ; optional argument
 if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDD_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDD_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fieldd}'
+if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
@@ -244,6 +261,7 @@ setlocal name 'Set CAP_IAFIELDE_LEVEL to ${get:fielde}'
 if '${get:fielde}' == '' goto SET_IMAGEADDRESS_LEVEL.PASS ; optional argument
 if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDE_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.SKIP
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDE_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fielde}'
+if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;

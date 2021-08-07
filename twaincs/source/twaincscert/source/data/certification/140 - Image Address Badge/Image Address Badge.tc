@@ -213,11 +213,11 @@ goto MAIN.DONE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 1 with no fixed field
 ;
-setlocal name 'Set IA: 0001'
+echo.titletest 'Set IA: 0001' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_LEVEL1,0000,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-setlocal name 'Set IA: 1'
+echo.titletest 'Set IA: 1' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_LEVEL1,####,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
@@ -226,11 +226,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 1 with fixed field
 ;
-setlocal name 'Set IA: IA-0001'
+echo.titletest 'Set IA: IA-0001' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-setlocal name 'Set IA: IA-1'
+echo.titletest 'Set IA: IA-1' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
@@ -239,11 +239,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 2 with fixed field
 ;
-setlocal name 'Set IA: IA-0020.0001'
+echo.titletest 'Set IA: IA-0020.0001' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-setlocal name 'Set IA: IA-20.1'
+echo.titletest 'Set IA: IA-20.1' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
@@ -252,11 +252,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 3 with fixed field
 ;
-setlocal name 'Set IA: IA-0300.0020.0001'
+echo.titletest 'Set IA: IA-0300.0020.0001' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-setlocal name 'Set IA: IA-300.20.1'
+echo.titletest 'Set IA: IA-300.20.1' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
@@ -265,14 +265,14 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 4 with fixed field
 ;
-setlocal name 'Set IA: IA-4000.0300.0020.0001'
+echo.titletest 'Set IA: IA-4000.0300.0020.0001' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,0000,4000' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
-if '${ret:}' != 'skip' goto MAIN.LEVEL4.SKIP
+if '${ret:}' == 'skip' goto MAIN.LEVEL4.SKIP
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-setlocal name 'Set IA: IA-4000.300.20.1'
+echo.titletest 'Set IA: IA-4000.300.20.1' 1
 run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,####,4000' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
-if '${ret:}' != 'skip' goto MAIN.LEVEL4.SKIP
+if '${ret:}' == 'skip' goto MAIN.LEVEL4.SKIP
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 :MAIN.LEVEL4.SKIP
@@ -283,8 +283,10 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ; All done...
 ;
 :MAIN.DONE
+echo " "
 return '${get:certifyresult}'
 ;
 :MAIN.ERROR
 echo.passfail '${get:name}' 'fail'
+echo " "
 return '${get:certifyresult}'
