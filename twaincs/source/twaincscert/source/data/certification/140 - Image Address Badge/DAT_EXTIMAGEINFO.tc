@@ -1,21 +1,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; DAT_EXTIMAGEINFO
-;   Check the return values from DAT_EXTIMAGEINFO to make sure the printer
+;   Check the return values from DAT_EXTIMAGEINFO to make sure the image address
 ;   metadata is being properly reported.
 ;
 ;   Here's the basic flow:
 ;       DAT_EXTIMAGEINFO
-;       confirm that we have the following TWEI_PRINTER* items
-;           TWEI_PRINTERTEXT
-;           TWEI_PRINTER
+;       confirm that we have the following TWEI_IA* items
+;           TWEI_IAFIELDA_VALUE
+;           TWEI_IAFIELDB_VALUE
+;           TWEI_IAFIELDC_VALUE
+;           TWEI_IAFIELDD_VALUE
+;           TWEI_IAFIELDE_VALUE (optional)
+;           TWEI_IALEVEL
 ;
 ; Arguments
 ;   arg:1 - indent the passfail text
 ;   arg:2 - base filename (no extension)
-;   arg:3 - expected value for TWEI_PRINTER
+;   arg:3 - fixed field value
+;   arg:4 - expected number of fields
 ;
 ; Locals
-;   printerdata - the return value from DAT_EXTIMAGEINFO
+;   imageaddressdata - the return value from DAT_EXTIMAGEINFO
 ;   name - current test being done
 ;   indent - indent the passfail text
 ;   twinfo.infoid.index - index to TW_INFO[n].infoid from the start of barcodedata
@@ -31,26 +36,38 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Get the extended image info, save the data to 'printerdata'.
+; Get the extended image info, save the data to 'imageaddressdata'.
 ;
 setlocal indent '${arg:1}    '
 setlocal name 'dg_image/dat_extimageinfo/msg_get'
-dsmentry src ds dg_image dat_extimageinfo msg_get '2,TWEI_PRINTER,0,0,0,0,TWEI_PRINTERTEXT,0,0,0,0'
+dsmentry src ds dg_image dat_extimageinfo msg_get '6,TWEI_IALEVEL,0,0,0,0,TWEI_IAFIELDA_VALUE,0,0,0,0,TWEI_IAFIELDB_VALUE,0,0,0,0,TWEI_IAFIELDC_VALUE,0,0,0,0,TWEI_IAFIELDD_VALUE,0,0,0,0,TWEI_IAFIELDE_VALUE,0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal printerdata '${ret:}'
-filewrite '${arg:2}_extimageinfo.txt' '${get:printerdata}'
+setlocal imageaddressdata '${ret:}'
+filewrite '${arg:2}_extimageinfo.txt' '${get:imageaddressdata}'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Confirm that we got back all the printer extimageinfo data...
+; Confirm that we got back all the image address extimageinfo data...
 ;
-setlocal name 'Found TWEI_PRINTER'
-if '${get:printerdata}' !contains ',TWEI_PRINTER,' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'Found TWEI_IALEVEL'
+if '${get:imageaddressdata}' !contains ',TWEI_IALEVEL,' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal name 'Found TWEI_PRINTERTEXT'
-if '${get:printerdata}' !contains ',TWEI_PRINTERTEXT,' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'Found TWEI_IAFIELDA_VALUE'
+if '${get:imageaddressdata}' !contains ',TWEI_IAFIELDA_VALUE,' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_IAFIELDB_VALUE'
+if '${get:imageaddressdata}' !contains ',TWEI_IAFIELDB_VALUE,' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_IAFIELDC_VALUE'
+if '${get:imageaddressdata}' !contains ',TWEI_IAFIELDC_VALUE,' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_IAFIELDD_VALUE'
+if '${get:imageaddressdata}' !contains ',TWEI_IAFIELDD_VALUE,' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+setlocal name 'Found TWEI_IAFIELDE_VALUE'
+if '${get:imageaddressdata}' !contains ',TWEI_IAFIELDE_VALUE,' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
 
@@ -67,26 +84,31 @@ setlocal twinfo.item.index '${get:TW_INFO.Item}'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Validate the contents of TWEI_PRINTER, which is in TW_INFO[0]...
+; Validate the contents of TWEI_IALEVEL, which is in TW_INFO[0]...
 ;
-setlocal name 'TW_INFO[0].InfoID is TWEI_PRINTER'
-if '${getindex:printerdata:${get:twinfo.infoid.index}}' != 'TWEI_PRINTER' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_INFO[0].InfoID is TWEI_IALEVEL'
+if '${getindex:imageaddressdata:${get:twinfo.infoid.index}}' != 'TWEI_IALEVEL' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'TW_INFO[0].ItemType is TWTY_UINT16'
-if '${getindex:printerdata:${get:twinfo.itemtype.index}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:imageaddressdata:${get:twinfo.itemtype.index}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'TW_INFO[0].NumItems is 1'
-if '${getindex:printerdata:${get:twinfo.numitems.index}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:imageaddressdata:${get:twinfo.numitems.index}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'TW_INFO[0].ReturnCode is TWRC_SUCCESS'
-if '${getindex:printerdata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'TW_INFO[0].Item is ${arg:3}'
-if '${gettwei:TWEI_PRINTER:${getindex:printerdata:${get:twinfo.item.index}}}' != '${arg:3}' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_INFO[0].Item is one of the TWIA_LEVEL# values'
+if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' ~contains 'TWIA_LEVEL1' goto MAIN.TWEI_LEVEL.DONE
+if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' ~contains 'TWIA_LEVEL2' goto MAIN.TWEI_LEVEL.DONE
+if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' ~contains 'TWIA_LEVEL3' goto MAIN.TWEI_LEVEL.DONE
+if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' ~contains 'TWIA_LEVEL4' goto MAIN.TWEI_LEVEL.DONE
+goto MAIN.ERROR.ECHOPASSFAIL
+:MAIN.TWEI_LEVEL.DONE
 echo.passfail '${get:indent}${get:name}' 'pass'
 
 
@@ -103,27 +125,27 @@ increment twinfo.item.index '${get:twinfo.item.index}' 5 ; skip to the ReturnCod
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Validate the contents of TWEI_PRINTERTEXT, which is in TW_INFO[1]...
+; Validate the contents of TWEI_IAFIELDA_VALUE, which is in TW_INFO[1]...
 ;
-setlocal name 'TW_INFO[1].InfoID is TWEI_PRINTERTEXT'
-if '${getindex:printerdata:${get:twinfo.infoid.index}}' != 'TWEI_PRINTERTEXT' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_INFO[1].InfoID is TWEI_IAFIELDA_VALUE'
+if '${getindex:imageaddressdata:${get:twinfo.infoid.index}}' != 'TWEI_IAFIELDA_VALUE' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'TW_INFO[1].ItemType is TWTY_STR255'
-if '${getindex:printerdata:${get:twinfo.itemtype.index}}' != 'TWTY_STR255' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:imageaddressdata:${get:twinfo.itemtype.index}}' != 'TWTY_STR255' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'TW_INFO[1].NumItems is 1'
-if '${getindex:printerdata:${get:twinfo.numitems.index}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:imageaddressdata:${get:twinfo.numitems.index}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'TW_INFO[1].ReturnCode is TWRC_SUCCESS'
-if '${getindex:printerdata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-; The printer text is behind a handle...
-setlocal handle ${getindex:printerdata:${get:twinfo.item.index}}
-setlocal printertext '${gethandle:${get:handle}:TWTY_STR255:0}'
+; The image address value text is behind a handle...
+setlocal handle ${getindex:imageaddressdata:${get:twinfo.item.index}}
+setlocal fieldavalue '${gethandle:${get:handle}:TWTY_STR255:0}'
 ;
 setlocal name 'TW_INFO[1].Item contains "TWAIN" (${get:printertext})'
 if '${get:printertext}' !contains 'TWAIN' goto MAIN.ERROR.ECHOPASSFAIL

@@ -1,9 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Image Address Badge
-;   These tests establish the minimum requirements for a TWAIN driver to claim that it has image
-;   addressing support.  The viewpoint is from an application that wants to collect barcode data
-;   on the documents being scanned.  This is not a quality test.  It does not confirm image address
-;   values.
+;   These tests establish the minimum requirements for a TWAIN driver to claim it has image
+;   addressing support.
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test

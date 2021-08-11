@@ -2215,7 +2215,7 @@ namespace TWAINWorkingGroup
                             }
 
                             // Set the ItemList...
-                            for (ii = 0; ii < u32NumItems; ii++)
+                            for (ii = 0; (ii < u32NumItems) && ((ii + 4) < asz.Length); ii++)
                             {
                                 szResult = SetIndexedItem(a_twcapability, twty, intptr, ii, asz[ii + 4]);
                                 if (szResult != "")
