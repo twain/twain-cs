@@ -232,6 +232,7 @@ setlocal name 'One barcode: ${getindex:barcodedata:${get:twinfo.infoid.index}}.I
 if '${getindex:barcodedata:${get:twinfo.item.index}}' == '0' MAIN.ERROR.ECHOPASSFAIL
 setlocal item '${gethandle:${getindex:barcodedata:${get:twinfo.item.index}}:TWTY_HANDLE:${get:barcodetextlength}}'
 filewrite '${arg:2}_barcode.txt' '${get:item}'
+free handle item
 if '${get:item}' !~contains 'TWAIN-Barcode-Test' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
@@ -240,7 +241,7 @@ goto MAIN.ONEBARCODE.NEXT
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Validate mamny barcodes, we're looking at the NumItems and the ReturnCodes
+; Validate many barcodes, we're looking at the NumItems and the ReturnCodes
 ; for all of the TWEI_BARCODE* items.  We expect the number of items to be
 ; greater than 1 (matching the value of TWEI_BARCODECOUNT), and we expect the
 ; return code to be TWRC_SUCCESS.  We expect all TWEI_BARCODE* itemtypes to be
@@ -287,6 +288,7 @@ setlocal barcodetextlength '${get:barcodetextlength}${get:comma}${gethandleindex
 setlocal comma ','
 increment barcodetextlength.index ${get:barcodetextlength.index} 1
 if '${get:barcodetextlength.index}' >= '${get:barcodecount}' goto MAIN.MANYBARCODES.NEXT ; out of items
+free handle item
 goto MAIN.MANYBARCODES.BARCODETEXTLENGTH.NEXT ; look into adding another barcodetextlength
 ;
 ; Check ItemType for TWEI_BARCODETEXT2...
@@ -312,6 +314,7 @@ setlocal name 'Many barcodes: ${getindex:barcodedata:${get:twinfo.infoid.index}}
 setlocal barcodetexthandle '${gethandleindex:${getindex:barcodedata:${get:twinfo.item.index}}:${get:barcodetext2.index}:TWTY_HANDLE}' ; gethandleindex:handle:index:TWTY_HANDLE
 setlocal item '${gethandle:${get:barcodetexthandle}:TWTY_HANDLE:${getindex:barcodetextlength:${get:barcodetext2.index}}}' ; gethandle:handle:TWTY_HANDLE:length
 filewrite '${arg:2}_barcode_${get:barcodetext2.index}.txt' '${get:item}'
+free handle item
 ;
 ; The data needs to contain "TWAIN-Barcode-Test" (it can contain more stuff).  If that passes, then
 ; increment our index and go back to MAIN.MANYBARCODES.ITEM.BARCODETEXT2.NEXT to process the next barcode...

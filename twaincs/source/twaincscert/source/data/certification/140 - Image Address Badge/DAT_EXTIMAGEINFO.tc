@@ -16,13 +16,18 @@
 ; Arguments
 ;   arg:1 - indent the passfail text
 ;   arg:2 - base filename (no extension)
-;   arg:3 - fixed field value
-;   arg:4 - expected number of fields
+;   arg:3 - TWEI_IAFIELD*_VALUE (can be empty is none)
+;   arg:4 - fixed field value, if any
+;   arg:5 - expected number of fields
 ;
 ; Locals
 ;   imageaddressdata - the return value from DAT_EXTIMAGEINFO
 ;   name - current test being done
 ;   indent - indent the passfail text
+;   basefilename - used to store the extended image info into a file
+;   fieldfieldname - TWEI_IAFIELD*_VALUE (can be empty is none)
+;   fieldfieldvalue - fixed field value, if any
+;   totalfields - total fields we expect to see, all others must have no data
 ;   twinfo.infoid.index - index to TW_INFO[n].infoid from the start of barcodedata
 ;   twinfo.itemtype.index - index to TW_INFO[n].itemtype from the start of barcodedata
 ;   twinfo.numitems.index - index to TW_INFO[n].numitems from the start of barcodedata
@@ -36,9 +41,19 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Get the extended image info, save the data to 'imageaddressdata'.
+; Squirrel away the arguments...
 ;
 setlocal indent '${arg:1}    '
+setlocal basefilename '${arg:2}'
+setlocal fixedfieldname '${arg:3}'
+setlocal fixedfieldvalue '${arg:4}'
+setlocal totalfields '${arg:5}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get the extended image info, save the data to 'imageaddressdata'.
+;
 setlocal name 'dg_image/dat_extimageinfo/msg_get'
 dsmentry src ds dg_image dat_extimageinfo msg_get '6,TWEI_IALEVEL,0,0,0,0,TWEI_IAFIELDA_VALUE,0,0,0,0,TWEI_IAFIELDB_VALUE,0,0,0,0,TWEI_IAFIELDC_VALUE,0,0,0,0,TWEI_IAFIELDD_VALUE,0,0,0,0,TWEI_IAFIELDE_VALUE,0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
@@ -49,7 +64,8 @@ filewrite '${arg:2}_extimageinfo.txt' '${get:imageaddressdata}'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Confirm that we got back all the image address extimageinfo data...
+; Confirm that we got back all the image address extimageinfo fields,
+; this doesn't mean they all have data, but they all must be present...
 ;
 setlocal name 'Found TWEI_IALEVEL'
 if '${get:imageaddressdata}' !contains ',TWEI_IALEVEL,' goto MAIN.ERROR.ECHOPASSFAIL
@@ -103,10 +119,10 @@ if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCES
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'TW_INFO[0].Item is one of the TWIA_LEVEL# values'
-if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' ~contains 'TWIA_LEVEL1' goto MAIN.TWEI_LEVEL.DONE
-if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' ~contains 'TWIA_LEVEL2' goto MAIN.TWEI_LEVEL.DONE
-if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' ~contains 'TWIA_LEVEL3' goto MAIN.TWEI_LEVEL.DONE
-if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' ~contains 'TWIA_LEVEL4' goto MAIN.TWEI_LEVEL.DONE
+if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' == 'TWIA_LEVEL1' goto MAIN.TWEI_LEVEL.DONE
+if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' == 'TWIA_LEVEL2' goto MAIN.TWEI_LEVEL.DONE
+if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' == 'TWIA_LEVEL3' goto MAIN.TWEI_LEVEL.DONE
+if '${gettwei:TWEI_IALEVEL:${getindex:imageaddressdata:${get:twinfo.item.index}}}' == 'TWIA_LEVEL4' goto MAIN.TWEI_LEVEL.DONE
 goto MAIN.ERROR.ECHOPASSFAIL
 :MAIN.TWEI_LEVEL.DONE
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -114,47 +130,68 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Increment our TWINFO indecies for TW_INFO[1]...
+; Initialize for the loop that'll go through the values...
 ;
+setlocal iafieldindex 0
+setlocal iafieldvalue 'PLACEHOLDER,TWEI_IAFIELDA_VALUE,TWEI_IAFIELDB_VALUE,TWEI_IAFIELDC_VALUE,TWEI_IAFIELDD_VALUE,TWEI_IAFIELDE_VALUE'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Increment our TWINFO indecies for TW_INFO[n]...
+;
+:MAIN.TWINFO.NEXT
+increment iafieldindex '${get:iafieldindex}' 1
 increment twinfo.infoid.index '${get:twinfo.infoid.index}' 5 ; skip to the InfoID in the next TW_INFO
 increment twinfo.itemtype.index '${get:twinfo.itemtype.index}' 5 ; skip to the InfoID in the next TW_INFO
 increment twinfo.numitems.index '${get:twinfo.numitems.index}' 5 ; skip to the NumItems in the next TW_INFO
 increment twinfo.returncode.index '${get:twinfo.returncode.index}' 5 ; skip to the ReturnCode in the next TW_INFO
 increment twinfo.item.index '${get:twinfo.item.index}' 5 ; skip to the ReturnCode in the next TW_INFO
+if '${getindex:iafieldvalue:${get:iafieldindex}}' == '' goto MAIN.TWINFO.DONE
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Validate the contents of TWEI_IAFIELDA_VALUE, which is in TW_INFO[1]...
+; Validate the contents of TWEI_IAFIELD*_VALUE, which is in TW_INFO[n]...
+; Anything less than or equal to the total number of fields must report
+; TWRC_SUCCESS, all others must report TWRC_DATANOTAVAILABLE...
 ;
-setlocal name 'TW_INFO[1].InfoID is TWEI_IAFIELDA_VALUE'
-if '${getindex:imageaddressdata:${get:twinfo.infoid.index}}' != 'TWEI_IAFIELDA_VALUE' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_INFO[${get:iafieldindex}].InfoID is ${getindex:iafieldvalue:${get:iafieldindex}}'
+if '${getindex:imageaddressdata:${get:twinfo.infoid.index}}' != '${getindex:iafieldvalue:${get:iafieldindex}}' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'TW_INFO[1].ItemType is TWTY_STR255'
-if '${getindex:imageaddressdata:${get:twinfo.itemtype.index}}' != 'TWTY_STR255' goto MAIN.ERROR.ECHOPASSFAIL
+if '${get:iafieldindex}' <= '${get:totalfields}' goto MAIN.TWINFO.FIELDHASDATA
+setlocal name 'TW_INFO[${get:iafieldindex}].ReturnCode is TWRC_DATANOTAVAILABLE'
+if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' != 'TWRC_DATANOTAVAILABLE' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.TWINFO.DONE
 ;
-setlocal name 'TW_INFO[1].NumItems is 1'
-if '${getindex:imageaddressdata:${get:twinfo.numitems.index}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-;
-setlocal name 'TW_INFO[1].ReturnCode is TWRC_SUCCESS'
+:MAIN.TWINFO.FIELDHASDATA
+setlocal name 'TW_INFO[${get:iafieldindex}].ReturnCode is TWRC_SUCCESS'
 if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'TW_INFO[${get:iafieldindex}].ItemType is TWTY_STR32'
+if '${getindex:imageaddressdata:${get:twinfo.itemtype.index}}' != 'TWTY_STR32' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'TW_INFO[${get:iafieldindex}].NumItems is 1'
+if '${getindex:imageaddressdata:${get:twinfo.numitems.index}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; The image address value text is behind a handle...
 setlocal handle ${getindex:imageaddressdata:${get:twinfo.item.index}}
-setlocal fieldavalue '${gethandle:${get:handle}:TWTY_STR255:0}'
+setlocal fieldavalue '${gethandle:${get:handle}:TWTY_STR32:0}'
 ;
-setlocal name 'TW_INFO[1].Item contains "TWAIN" (${get:printertext})'
-if '${get:printertext}' !contains 'TWAIN' goto MAIN.ERROR.ECHOPASSFAIL
+; Only do this test if the field we're working on matches fixedfieldname...
+if '${getindex:imageaddressdata:${get:twinfo.itemtype.index}}' != '${get:fixedfieldname}' goto MAIN.TWINFO.NEXT
+setlocal name 'TW_INFO[${get:iafieldindex}].Item contains "${get:fixedfieldvalue}" (${get:printertext})'
+if '${get:printertext}' !contains '${get:fixedfieldvalue}' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'TW_INFO[1].Item contains "TEST" (${get:printertext})'
-if '${get:printertext}' !contains 'TEST' goto MAIN.ERROR.ECHOPASSFAIL
-echo.passfail '${get:indent}${get:name}' 'pass'
-
+free handle handle
+goto MAIN.TWINFO.NEXT
+:MAIN.TWINFO.DONE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

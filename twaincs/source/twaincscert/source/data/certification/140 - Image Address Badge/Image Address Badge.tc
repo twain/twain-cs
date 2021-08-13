@@ -212,11 +212,11 @@ goto MAIN.DONE
 ; Test image address level 1 with no fixed field
 ;
 echo.titletest 'Set IA: 0001' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_LEVEL1,0000,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: 1' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_LEVEL1,####,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -225,11 +225,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ; Test image address level 1 with fixed field
 ;
 echo.titletest 'Set IA: IA-0001' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-1' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1' '' '' ''
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -288,3 +288,30 @@ return '${get:certifyresult}'
 echo.passfail '${get:name}' 'fail'
 echo " "
 return '${get:certifyresult}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Function: Certify
+; arg:1  - script to run
+; arg:2  - TW_IDENTITY.ProductName of scanner to test
+; arg:3  - global value to update on fail
+; arg:4  - showui value
+; arg:5  - name of test
+; arg:6  - TWEI_IAFIELD*_VALUE containing the fixed field (can be empty if none)
+; arg:7  - fielda settings
+; arg:8  - fieldb settings
+; arg:9  - fieldc settings
+; arg:10 - fieldd settings
+; arg:11 - fielde settings
+; returns: (none)
+;
+:CERTIFY
+;
+run '${arg:1}' '${arg:2}' '${arg:3}' '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}' '${arg:8}' '${arg:9}' '${arg:10}' '${arg:11}'
+if '${ret:}' != 'pass' goto CERTIFY.FAIL
+return 'pass'
+;
+:CERTIFY.FAIL
+setglobal '${arg:3}' 'fail'
+return 'fail'

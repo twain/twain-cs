@@ -146,6 +146,7 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 call SET_IMAGEADDRESS_VALUE '${get:indent}' '${getindex:fielda:2}' '${getindex:fieldb:2}' '${getindex:fieldc:2}' '${getindex:fieldd:2}' '${getindex:fielde:2}'
 if '${ret:}' == 'skip' goto MAIN.SKIP
 if '${ret:}' != 'pass' goto MAIN.ERROR
+dsmentry src ds dg_control dat_capability msg_get 0x8015
 
 
 
@@ -221,45 +222,45 @@ setlocal severity SKIP
 
 ;
 ; Set FIELD A (must have this)
-setlocal name 'Set CAP_IAFIELDA_LEVEL to ${get:fielda}'
+setlocal name 'Set CAP_IAFIELDA_LEVEL to <${get:fielda}>'
 if '${get:fielda}' == '' goto SET_IMAGEADDRESS_LEVEL.FAIL ; have to have this argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDA_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDA_LEVEL,' goto SET_IMAGEADDRESS_LEVEL.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDA_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fielda}'
 if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD B (must have this)
-setlocal name 'Set CAP_IAFIELDB_LEVEL to ${get:fieldb}'
+setlocal name 'Set CAP_IAFIELDB_LEVEL to <${get:fieldb}>'
 if '${get:fieldb}' == '' goto SET_IMAGEADDRESS_LEVEL.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDB_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDB_LEVEL,' goto SET_IMAGEADDRESS_LEVEL.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDB_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fieldb}'
 if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD C (must have this)
-setlocal name 'Set CAP_IAFIELDC_LEVEL to ${get:fieldc}'
+setlocal name 'Set CAP_IAFIELDC_LEVEL to <${get:fieldc}>'
 if '${get:fieldc}' == '' goto SET_IMAGEADDRESS_LEVEL.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDC_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDC_LEVEL,' goto SET_IMAGEADDRESS_LEVEL.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDC_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fieldc}'
 if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD D (must have this)
-setlocal name 'Set CAP_IAFIELDD_LEVEL to ${get:fieldd}'
+setlocal name 'Set CAP_IAFIELDD_LEVEL to <${get:fieldd}>'
 if '${get:fieldd}' == '' goto SET_IMAGEADDRESS_LEVEL.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDD_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDD_LEVEL,' goto SET_IMAGEADDRESS_LEVEL.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDD_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fieldd}'
 if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD E (optional)
-setlocal name 'Set CAP_IAFIELDE_LEVEL to ${get:fielde}'
+setlocal name 'Set CAP_IAFIELDE_LEVEL to <${get:fielde}>'
 if '${get:fielde}' == '' goto SET_IMAGEADDRESS_LEVEL.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDE_LEVEL,' goto :SET_IMAGEADDRESS_LEVEL.SKIP
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDE_LEVEL,' goto SET_IMAGEADDRESS_LEVEL.SKIP
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDE_LEVEL,TWON_ONEVALUE,TWTY_UINT16,${get:fielde}'
 if '${sts:}' == 'BADVALUE' goto SET_IMAGEADDRESS_LEVEL.${get:severity}
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_LEVEL.FAIL
@@ -276,7 +277,7 @@ return 'fail'
 :SET_IMAGEADDRESS_LEVEL.SKIP
 setglobal '${arg:3}' 'skip'
 echo.passfail '${get:indent}${get:name}' 'skip'
-return 'skip'
+return 'pass'
 
 
 
@@ -320,41 +321,41 @@ setlocal fieldd '${arg:5}'
 setlocal fielde '${arg:6}'
 ;
 ; Set FIELD A (must have this)
-setlocal name 'Set CAP_IAFIELDA_PRINTFORMAT to ${get:fielda}'
+setlocal name 'Set CAP_IAFIELDA_PRINTFORMAT to <${get:fielda}>'
 if '${get:fielda}' == '' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL ; have to have this argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDA_PRINTFORMAT,' goto :SET_IMAGEADDRESS_PRINTFORMAT.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDA_PRINTFORMAT,' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDA_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,${get:fielda}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD B (must have this)
-setlocal name 'Set CAP_IAFIELDB_PRINTFORMAT to ${get:fieldb}'
+setlocal name 'Set CAP_IAFIELDB_PRINTFORMAT to <${get:fieldb}>'
 if '${get:fieldb}' == '' goto SET_IMAGEADDRESS_PRINTFORMAT.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDB_PRINTFORMAT,' goto :SET_IMAGEADDRESS_PRINTFORMAT.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDB_PRINTFORMAT,' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDB_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,${get:fieldb}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD C (must have this)
-setlocal name 'Set CAP_IAFIELDC_PRINTFORMAT to ${get:fieldc}'
+setlocal name 'Set CAP_IAFIELDC_PRINTFORMAT to <${get:fieldc}>'
 if '${get:fieldc}' == '' goto SET_IMAGEADDRESS_PRINTFORMAT.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDC_PRINTFORMAT,' goto :SET_IMAGEADDRESS_PRINTFORMAT.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDC_PRINTFORMAT,' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDC_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,${get:fieldc}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD D (must have this)
-setlocal name 'Set CAP_IAFIELDD_PRINTFORMAT to ${get:fieldd}'
+setlocal name 'Set CAP_IAFIELDD_PRINTFORMAT to <${get:fieldd}>'
 if '${get:fieldd}' == '' goto SET_IMAGEADDRESS_PRINTFORMAT.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDD_PRINTFORMAT,' goto :SET_IMAGEADDRESS_PRINTFORMAT.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDD_PRINTFORMAT,' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDD_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,${get:fieldd}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD E (optional)
-setlocal name 'Set CAP_IAFIELDE_PRINTFORMAT to ${get:fielde}'
+setlocal name 'Set CAP_IAFIELDE_PRINTFORMAT to <${get:fielde}>'
 if '${get:fielde}' == '' goto SET_IMAGEADDRESS_PRINTFORMAT.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDE_PRINTFORMAT,' goto :SET_IMAGEADDRESS_PRINTFORMAT.SKIP
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDE_PRINTFORMAT,' goto SET_IMAGEADDRESS_PRINTFORMAT.SKIP
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDE_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,${get:fielde}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_PRINTFORMAT.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -370,7 +371,7 @@ return 'fail'
 :SET_IMAGEADDRESS_PRINTFORMAT.SKIP
 setglobal '${arg:3}' 'skip'
 echo.passfail '${get:indent}${get:name}' 'skip'
-return 'skip'
+return 'pass'
 
 
 
@@ -414,41 +415,41 @@ setlocal fieldd '${arg:5}'
 setlocal fielde '${arg:6}'
 ;
 ; Set FIELD A (must have this)
-setlocal name 'Set CAP_IAFIELDA_VALUE to ${get:fielda}'
+setlocal name 'Set CAP_IAFIELDA_VALUE to <${get:fielda}>'
 if '${get:fielda}' == '' goto SET_IMAGEADDRESS_VALUE.FAIL ; have to have this argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDA_VALUE,' goto :SET_IMAGEADDRESS_VALUE.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDA_VALUE,' goto SET_IMAGEADDRESS_VALUE.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDA_VALUE,TWON_ONEVALUE,TWTY_STR32,${get:fielda}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_VALUE.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD B (must have this)
-setlocal name 'Set CAP_IAFIELDB_VALUE to ${get:fieldb}'
+setlocal name 'Set CAP_IAFIELDB_VALUE to <${get:fieldb}>'
 if '${get:fieldb}' == '' goto SET_IMAGEADDRESS_VALUE.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDB_VALUE,' goto :SET_IMAGEADDRESS_VALUE.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDB_VALUE,' goto SET_IMAGEADDRESS_VALUE.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDB_VALUE,TWON_ONEVALUE,TWTY_STR32,${get:fieldb}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_VALUE.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD C (must have this)
-setlocal name 'Set CAP_IAFIELDC_VALUE to ${get:fieldc}'
+setlocal name 'Set CAP_IAFIELDC_VALUE to <${get:fieldc}>'
 if '${get:fieldc}' == '' goto SET_IMAGEADDRESS_VALUE.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDC_VALUE,' goto :SET_IMAGEADDRESS_VALUE.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDC_VALUE,' goto SET_IMAGEADDRESS_VALUE.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDC_VALUE,TWON_ONEVALUE,TWTY_STR32,${get:fieldc}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_VALUE.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD D (must have this)
-setlocal name 'Set CAP_IAFIELDD_VALUE to ${get:fieldd}'
+setlocal name 'Set CAP_IAFIELDD_VALUE to <${get:fieldd}>'
 if '${get:fieldd}' == '' goto SET_IMAGEADDRESS_VALUE.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDD_VALUE,' goto :SET_IMAGEADDRESS_VALUE.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDD_VALUE,' goto SET_IMAGEADDRESS_VALUE.FAIL
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDD_VALUE,TWON_ONEVALUE,TWTY_STR32,${get:fieldd}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_VALUE.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 ; Set FIELD E (optional)
-setlocal name 'Set CAP_IAFIELDE_VALUE to ${get:fielde}'
+setlocal name 'Set CAP_IAFIELDE_VALUE to <${get:fielde}>'
 if '${get:fielde}' == '' goto SET_IMAGEADDRESS_VALUE.PASS ; optional argument
-if '${get:g_supportedcaps}' !~contains ',CAP_IAFIELDE_VALUE,' goto :SET_IMAGEADDRESS_VALUE.SKIP
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDE_VALUE,' goto SET_IMAGEADDRESS_VALUE.SKIP
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDE_VALUE,TWON_ONEVALUE,TWTY_UINT16,${get:fielde}'
 if '${sts:}' != 'SUCCESS' goto SET_IMAGEADDRESS_VALUE.FAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -464,4 +465,4 @@ return 'fail'
 :SET_IMAGEADDRESS_VALUE.SKIP
 setglobal '${arg:3}' 'skip'
 echo.passfail '${get:indent}${get:name}' 'skip'
-return 'skip'
+return 'pass'

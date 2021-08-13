@@ -28,7 +28,7 @@
 ;   arg:5 - expected value for TWEI_PRINTER
 ;
 ; Globals
-;   g_capprinter - value of CAP_PRINTER, used to check TWEI_PRINTER
+;   (none)
 ;
 ; Locals
 ;   name - current test being done
@@ -62,8 +62,6 @@ setlocal image.count '0'
 setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEFILEXFER'
 setlocal image.showname ''
 setlocal showui '${arg:3}'
-;
-setglobal g_capprinter ''
 
 
 

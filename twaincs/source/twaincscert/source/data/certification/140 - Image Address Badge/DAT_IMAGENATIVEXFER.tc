@@ -21,14 +21,19 @@
 ;       - TWEI_PRINTERSTRING starts with 'TWAIN' and ends with 'TEST'
 ;
 ; Arguments
-;   arg:1 - TW_IDENTITY.ProductName of scanner to test
-;   arg:2 - global for us to update on failure
-;   arg:3 - value of ShowUI (TRUE or FALSE)
-;   arg:4 - test name for the image folder
-;   arg:5 - expected value for TWEI_PRINTER
+;   arg:1  - TW_IDENTITY.ProductName of scanner to test
+;   arg:2  - global for us to update on failure
+;   arg:3  - value of ShowUI (TRUE or FALSE)
+;   arg:4  - test name for the image folder
+;   arg:5  - TWEI_IAFIELD*_VALUE containing fixed field (can be empty if none)
+;   arg:6  - fielda image address settings 'twia,printformat,value'
+;   arg:7  - fieldb image address settings 'twia,printformat,value'
+;   arg:8  - fieldc image address settings 'twia,printformat,value'
+;   arg:9  - fieldd image address settings 'twia,printformat,value'
+;   arg:10 - fielde image address settings 'twia,printformat,value'
 ;
 ; Globals
-;   g_capprinter - value of CAP_PRINTER, used to check TWEI_PRINTER
+;   (none)
 ;
 ; Locals
 ;   name - current test being done
@@ -46,31 +51,52 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGENATIVEXFER v1.0 30-Jul-2021'
+;echo.titletest 'DAT_IMAGENATIVEXFER v1.0 30-Jul-2021'
+;
+setlocal updateonfailure  '${arg:2}'
+setlocal showui           '${arg:3}'
+setlocal fixedfieldname   '${arg:5}'
+setlocal fielda           '${arg:6}'
+setlocal fieldb           '${arg:7}'
+setlocal fieldc           '${arg:8}'
+setlocal fieldd           '${arg:9}'
+setlocal fielde           '${arg:10}'
 ;
 setlocal indent ''
 setlocal image.handle '0'
 setlocal image.count '1'
 setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGENATIVEXFER'
-setlocal showui '${arg:3}'
 ;
-setglobal g_capprinter ''
+; Figure out how many iafields have data, and get the fixed field value, if any...
+setlocal totalfields 0      ; assume no fields
+setlocal argindex 5         ; first ia field argument - 1
+setlocal fixedfieldvalue '' ; assume we don't have a value
+:MAIN.PARSE.NEXT
+increment argindex ${get:argindex} 1
+if '${arg:${get:argindex}}' == '' goto MAIN.PARSE.DONE ; ran out of arguments
+if '${arg:${get:argindex}}' ~contains 'TWIA_UNUSED' goto MAIN.PARSE.NEXT ; skip unused fields
+if '${getindex:TWEI_IAFIELDA_VALUE,TWEI_IAFIELDB_VALUE,TWEI_IAFIELDC_VALUE,TWEI_IAFIELDD_VALUE,TWEI_IAFIELDE_VALUE:${get:argindex}}' != '${get:fixedfieldname}' goto MAIN.PARSE.NOTFIXED
+setlocal fixedfieldvalue '${getindex:${arg:${get:argindex}}:2}'
+:MAIN.PARSE.NOTFIXED
+increment totalfields ${get:totalfields} 1
+goto MAIN.PARSE.NEXT
+:MAIN.PARSE.DONE
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Prompt the user...
 ;
-echo.prompt
-echo.prompt "Scanning will take place during this test.  There will be no"
-echo.prompt "need to press any button on the TWAIN user interface to start"
-echo.prompt "the scanner.  A progress indicator may appear during scanning."
-echo.prompt
-echo.prompt "Place 1 sheet in the scanner's feeder.  The scanner will print"
-echo.prompt "text on this sheet."
-echo.prompt
-pause '(press the ENTER key when ready to continue)'
-echo.prompt
+;echo.prompt
+;echo.prompt "Scanning will take place during this test.  There will be no"
+;echo.prompt "need to press any button on the TWAIN user interface to start"
+;echo.prompt "the scanner.  A progress indicator may appear during scanning."
+;echo.prompt
+;echo.prompt "Place 1 sheet in the scanner's feeder.  The scanner will print"
+;echo.prompt "text on this sheet."
+;echo.prompt
+;pause '(press the ENTER key when ready to continue)'
+;echo.prompt
 
 
 
@@ -86,7 +112,7 @@ image cleanfolderandmeta '${get:image.folder}'
 ; This resets the driver and sets all the capabilities we need for the test.
 ; If its return code is not 'pass', end with an error
 ;
-run SetCapabilities 'TWSX_NATIVE' '${get:indent}' g_capprinter
+run SetCapabilities 'TWSX_NATIVE' '${get:indent}' '${get:fielda}' '${get:fieldb}' '${get:fieldc}' '${get:fieldd}' '${get:fielde}'
 if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
 
 
@@ -152,7 +178,7 @@ free handle image.handle
 ; DAT_EXTIMAGEINFO
 ; Check the printer metadata...
 ;
-run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}' ${get:g_capprinter}
+run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}' '${get:fixedfieldname}' '${get:fixedfieldvalue}' '${get:totalfields}'
 if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
 
 
@@ -194,7 +220,7 @@ return 'pass'
 free handle image.handle
 echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
 echo.passfail 'SUMMARY' 'fail'
-setglobal '${arg:2}' 'fail'
+setglobal '${get:updateonfailure}' 'fail'
 rollback state4
 return 'fail'
 ;
@@ -202,6 +228,6 @@ return 'fail'
 :MAIN.ERROR.FAIL
 free handle image.handle
 echo.passfail 'SUMMARY' 'fail'
-setglobal '${arg:2}' 'fail'
+setglobal '${get:updateonfailure}' 'fail'
 rollback state4
 return 'fail'

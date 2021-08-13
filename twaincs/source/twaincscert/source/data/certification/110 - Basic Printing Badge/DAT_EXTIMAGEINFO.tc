@@ -132,6 +132,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'TW_INFO[1].Item contains "TEST" (${get:printertext})'
 if '${get:printertext}' !contains 'TEST' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+;
+free handle item
 
 
 
