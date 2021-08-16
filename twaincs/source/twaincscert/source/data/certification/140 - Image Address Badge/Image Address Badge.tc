@@ -141,24 +141,25 @@ goto MAIN.DONE
 ;
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO,0,0,0'
+setlocal icapsupportedextimageinfo '${ret:}'
 if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IALEVEL found'
-if '${ret:},' !~contains ',TWEI_IALEVEL,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+if ',${get:icapsupportedextimageinfo},' !~contains ',TWEI_IALEVEL,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IAFIELDA_VALUE found'
-if '${ret:},' !~contains ',TWEI_IAFIELDA_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+if ',${get:icapsupportedextimageinfo},' !~contains ',TWEI_IAFIELDA_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IAFIELDB_VALUE found'
-if '${ret:},' !~contains ',TWEI_IAFIELDB_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+if ',${get:icapsupportedextimageinfo},' !~contains ',TWEI_IAFIELDB_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IAFIELDC_VALUE found'
-if '${ret:},' !~contains ',TWEI_IAFIELDC_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+if ',${get:icapsupportedextimageinfo},' !~contains ',TWEI_IAFIELDC_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_IAFIELDD_VALUE found'
-if '${ret:},' !~contains ',TWEI_IAFIELDD_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+if ',${get:icapsupportedextimageinfo},' !~contains ',TWEI_IAFIELDD_VALUE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
 ;
@@ -229,7 +230,7 @@ call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certif
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1' '' '' ''
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -238,11 +239,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ; Test image address level 2 with fixed field
 ;
 echo.titletest 'Set IA: IA-0020.0001' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-20.1' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -251,28 +252,26 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ; Test image address level 3 with fixed field
 ;
 echo.titletest 'Set IA: IA-0300.0020.0001' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-300.20.1' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Test image address level 4 with fixed field
+; Test image address level 4 with fixed field (skip allowed if TWIA_LEVEL4 is not supported)
 ;
+if ',${get:icapsupportedextimageinfo},' !~contains 'TWIA_LEVEL4' goto MAIN.LEVEL4.SKIP
 echo.titletest 'Set IA: IA-4000.0300.0020.0001' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,0000,4000' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
-if '${ret:}' == 'skip' goto MAIN.LEVEL4.SKIP
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,0000,4000' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-4000.300.20.1' 1
-run SetCapabilities TWSX_NATIVE '${get:indent}' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,####,4000' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
-if '${ret:}' == 'skip' goto MAIN.LEVEL4.SKIP
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,####,4000' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
-;
 :MAIN.LEVEL4.SKIP
 
 

@@ -161,8 +161,11 @@ if '${getindex:imageaddressdata:${get:twinfo.infoid.index}}' != '${getindex:iafi
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 if '${get:iafieldindex}' <= '${get:totalfields}' goto MAIN.TWINFO.FIELDHASDATA
-setlocal name 'TW_INFO[${get:iafieldindex}].ReturnCode is TWRC_DATANOTAVAILABLE'
-if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' != 'TWRC_DATANOTAVAILABLE' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_INFO[${get:iafieldindex}].ReturnCode is TWRC_DATANOTAVAILABLE or TWRC_INFONOTSUPPORTED'
+if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' == 'TWRC_DATANOTAVAILABLE' goto MAIN.TWINFO.FIELDHASNODATA
+if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' == 'TWRC_INFONOTSUPPORTED' goto MAIN.TWINFO.FIELDHASNODATA
+goto MAIN.ERROR.ECHOPASSFAIL
+:MAIN.TWINFO.FIELDHASNODATA
 echo.passfail '${get:indent}${get:name}' 'pass'
 goto MAIN.TWINFO.DONE
 ;

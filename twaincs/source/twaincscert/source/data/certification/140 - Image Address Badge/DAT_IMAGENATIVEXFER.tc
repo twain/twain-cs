@@ -112,8 +112,15 @@ image cleanfolderandmeta '${get:image.folder}'
 ; This resets the driver and sets all the capabilities we need for the test.
 ; If its return code is not 'pass', end with an error
 ;
-run SetCapabilities 'TWSX_NATIVE' '${get:indent}' '${get:fielda}' '${get:fieldb}' '${get:fieldc}' '${get:fieldd}' '${get:fielde}'
-if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+run SetCapabilities 'TWSX_NATIVE' '${get:indent}' '${get:totalfields}' '${get:fielda}' '${get:fieldb}' '${get:fieldc}' '${get:fieldd}' '${get:fielde}'
+setlocal returnvalue ${ret:}
+if '${ret:}' != 'skip' goto MAIN.SETCAPABILITES.CHECKPASS
+if '${get:totalfields}' == '5' goto MAIN.SKIP
+goto MAIN.SETCAPABILITES.DONE
+;
+:MAIN.SETCAPABILITES.CHECKPASS
+if '${get:returnvalue}' != 'pass' goto MAIN.ERROR.FAIL
+:MAIN.SETCAPABILITES.DONE
 
 
 
@@ -214,6 +221,12 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 free handle image.handle
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'
+;
+; Skip is allowed for CAP_IAFIELDE_*...
+:MAIN.SKIP
+free handle image.handle
+echo.passfail 'SUMMARY' 'skip'
+return 'skip'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
