@@ -1,7 +1,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Image Address Badge
-;   Check if Image Addressing is supported by the driver.  This is a badge, meaning that failure will not
+;   Check if Image Addressing is supported by the driver.  This is a badge, failure does not
 ;   invalidate scanner certification.  Instead, passage adds Image Address support to the cert.
+;
+;   The following are required:
+;     CAP_IAFIELDA_LEVEL, CAP_IAFIELDB_LEVEL, CAP_IAFIELDC_LEVEL, CAP_IAFIELDD_LEVEL
+;     CAP_IAFIELDA_PRINTFORMAT, CAP_IAFIELDB_PRINTFORMAT, CAP_IAFIELDC_PRINTFORMAT, CAP_IAFIELDD_PRINTFORMAT
+;     CAP_IAFIELDA_VALUE, CAP_IAFIELDB_VALUE, CAP_IAFIELDC_VALUE, CAP_IAFIELDD_VALUE
+;     TWEI_IALEVEL (values TWIA_FIXED, TWIA_LEVEL1, TWIA_LEVEL2, TWIA_LEVEL3)
+;     TWEI_IAFIELDA_VALUE, TWEI_IAFIELDA_VALUE, TWEI_IAFIELDA_VALUE, TWEI_IAFIELDA_VALUE
+;
+;   If the scanner supports printing, the following are required:
+;     CAP_PRINTERMODE (value TWPM_IMAGEADDRESSSTRING)
+;     TWEI_PRINTERTEXT
+;
+;   The following are optional, and only tested if present in the driver:
+;     CAP_IAFIELDE_LEVEL
+;     CAP_IAFIELDE_PRINTFORMAT
+;     CAP_IAFIELDE_VALUE
+;     TWEI_IALEVEL (value TWIA_LEVEL4)
+;     TWEI_IAFIELDE_VALUE
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
@@ -25,10 +43,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff, load tables if not already done for us...
 ;
-echo.titlesuite 'Image Address Badge v1.0 17-May-2021'
+echo.titlesuite 'Image Address Badge v1.0 16-Aug-2021'
 echo.yellow '************************************************************************************'
 echo.yellow '*** This test is for the Image Address Badge.  Failing means the driver does not ***'
-echo.yellow '*** support this functionality.  It does not prevent it from being certified.    ***'
+echo.yellow '*** support this functionality.  It does not prevent certification.              ***'
 echo.yellow '************************************************************************************'
 setlocal twidentity.productname '${arg:1}'
 setglobal g_localcertifyresult 'pass' ; assume success
@@ -39,7 +57,7 @@ run '${folder:certification}/LoadTables'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Run the tests...
+; Open the scanner driver, run the tests, close the scanner driver...
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
 if '${get:g_localcertifyresult}' != 'pass' goto MAIN.CLOSEDS

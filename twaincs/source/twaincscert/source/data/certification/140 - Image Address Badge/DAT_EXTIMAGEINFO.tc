@@ -130,7 +130,9 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialize for the loop that'll go through the values...
+; Initialize for the loop that'll go through the values.
+; iafieldindex is the index into iafieldvalue
+; iafieldvalue is the array of fields we'll be checking
 ;
 setlocal iafieldindex 0
 setlocal iafieldvalue 'PLACEHOLDER,TWEI_IAFIELDA_VALUE,TWEI_IAFIELDB_VALUE,TWEI_IAFIELDC_VALUE,TWEI_IAFIELDD_VALUE,TWEI_IAFIELDE_VALUE'
@@ -160,7 +162,22 @@ setlocal name 'TW_INFO[${get:iafieldindex}].InfoID is ${getindex:iafieldvalue:${
 if '${getindex:imageaddressdata:${get:twinfo.infoid.index}}' != '${getindex:iafieldvalue:${get:iafieldindex}}' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
+; totalfields indicates the number of iafields we negotiated with a level
+; other than TWIA_UNUSED, so we require a status of success from them.
 if '${get:iafieldindex}' <= '${get:totalfields}' goto MAIN.TWINFO.FIELDHASDATA
+;
+; TWEI_IAFIELDE_VALUE is a special case, jump there when we detect it.
+; For the other fields we require a status return of TWRC_DATANOTAVAILABLE
+; if the field is currently disabled.
+if '${getindex:iafieldvalue:${get:iafieldindex}}' == 'TWEI_IAFIELDE_VALUE' goto MAIN.TWINFO.TWEI_IAFIELDE_VALUE
+setlocal name 'TW_INFO[${get:iafieldindex}].ReturnCode is TWRC_DATANOTAVAILABLE'
+if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' != 'TWRC_DATANOTAVAILABLE' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.TWINFO.DONE
+;
+; Support for TWEI_IAFIELDE_VALUE is optional, so it's okay for it to
+; return a value of either TWRC_DATANOTAVAILABLE or TWRC_INFONOTSUPPORTED.
+:MAIN.TWINFO.TWEI_IAFIELDE_VALUE
 setlocal name 'TW_INFO[${get:iafieldindex}].ReturnCode is TWRC_DATANOTAVAILABLE or TWRC_INFONOTSUPPORTED'
 if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' == 'TWRC_DATANOTAVAILABLE' goto MAIN.TWINFO.FIELDHASNODATA
 if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' == 'TWRC_INFONOTSUPPORTED' goto MAIN.TWINFO.FIELDHASNODATA
@@ -169,6 +186,7 @@ goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 goto MAIN.TWINFO.DONE
 ;
+; If we got here we expect valid data, check each of the TW_INFO fields...
 :MAIN.TWINFO.FIELDHASDATA
 setlocal name 'TW_INFO[${get:iafieldindex}].ReturnCode is TWRC_SUCCESS'
 if '${getindex:imageaddressdata:${get:twinfo.returncode.index}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
@@ -186,7 +204,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal handle ${getindex:imageaddressdata:${get:twinfo.item.index}}
 setlocal fieldavalue '${gethandle:${get:handle}:TWTY_STR32:0}'
 ;
-; Only do this test if the field we're working on matches fixedfieldname...
+; Do this test if the field we're working on matches fixedfieldname,
+; we want to make sure the string we set it to comes back to us...
 if '${getindex:imageaddressdata:${get:twinfo.itemtype.index}}' != '${get:fixedfieldname}' goto MAIN.TWINFO.NEXT
 setlocal name 'TW_INFO[${get:iafieldindex}].Item contains "${get:fixedfieldvalue}" (${get:printertext})'
 if '${get:printertext}' !contains '${get:fixedfieldvalue}' goto MAIN.ERROR.ECHOPASSFAIL

@@ -1,8 +1,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; DAT_IMAGENATIVEXFER
-;   This test scans one sheet of paper for the default pixeltype.  An ADF
-;   is required to pass this test, but that was already been tested before
-;   we got to this function.
+;   This test scans one sheet of paper for the default pixeltype.  An ADF is required to pass this test,
+;   but that was already been confirmed before we got to this function.  We're going to set the driver,
+;   scan a sheet of paper, and check the TWEI_* values.
 ;
 ;   Here's the basic flow:
 ;       SetCapabilities
@@ -13,12 +13,13 @@
 ;           end image
 ;       end
 ;       end scanning
-;       verify the results
 ;
 ;   The test passes if:
-;       - all of the capabilities can be set
-;       - TWEI_PRINTER matches CAP_PRINTER
-;       - TWEI_PRINTERSTRING starts with 'TWAIN' and ends with 'TEST'
+;       - all of the CAP_IAFIELD*_* capabilities can be set
+;       - scanning is successful
+;       - the TWEI_IALEVEL and TWEI_IAFIELD*_VALUE field are correctly set
+;       - if printing is supported, CAP_PRINTERMODE can be set and
+;         CAP_PRINTERTEXT contains the correct value
 ;
 ; Arguments
 ;   arg:1  - TW_IDENTITY.ProductName of scanner to test
@@ -51,7 +52,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-;echo.titletest 'DAT_IMAGENATIVEXFER v1.0 30-Jul-2021'
+;echo.titletest 'DAT_IMAGENATIVEXFER v1.0 16-Aug-2021'
 ;
 setlocal updateonfailure  '${arg:2}'
 setlocal showui           '${arg:3}'
@@ -67,7 +68,8 @@ setlocal image.handle '0'
 setlocal image.count '1'
 setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGENATIVEXFER'
 ;
-; Figure out how many iafields have data, and get the fixed field value, if any...
+; Figure out how many iafields have data, and get the fixed field value,
+; if any.  We're use them to check the TWEI_* values...
 setlocal totalfields 0      ; assume no fields
 setlocal argindex 5         ; first ia field argument - 1
 setlocal fixedfieldvalue '' ; assume we don't have a value
@@ -81,22 +83,6 @@ setlocal fixedfieldvalue '${getindex:${arg:${get:argindex}}:2}'
 increment totalfields ${get:totalfields} 1
 goto MAIN.PARSE.NEXT
 :MAIN.PARSE.DONE
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Prompt the user...
-;
-;echo.prompt
-;echo.prompt "Scanning will take place during this test.  There will be no"
-;echo.prompt "need to press any button on the TWAIN user interface to start"
-;echo.prompt "the scanner.  A progress indicator may appear during scanning."
-;echo.prompt
-;echo.prompt "Place 1 sheet in the scanner's feeder.  The scanner will print"
-;echo.prompt "text on this sheet."
-;echo.prompt
-;pause '(press the ENTER key when ready to continue)'
-;echo.prompt
 
 
 
@@ -115,7 +101,6 @@ image cleanfolderandmeta '${get:image.folder}'
 run SetCapabilities 'TWSX_NATIVE' '${get:indent}' '${get:totalfields}' '${get:fielda}' '${get:fieldb}' '${get:fieldc}' '${get:fieldd}' '${get:fielde}'
 setlocal returnvalue ${ret:}
 if '${ret:}' != 'skip' goto MAIN.SETCAPABILITES.CHECKPASS
-if '${get:totalfields}' == '5' goto MAIN.SKIP
 goto MAIN.SETCAPABILITES.DONE
 ;
 :MAIN.SETCAPABILITES.CHECKPASS

@@ -1,7 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Image Address Badge
-;   These tests establish the minimum requirements for a TWAIN driver to claim it has image
-;   addressing support.
+;   This script tests the minimum requirements for a TWAIN driver to support image addressing.
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
@@ -63,7 +62,8 @@ goto MAIN.DONE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; CAP_SUPPORTEDCAPS: check that all required capabilities are reported
+; CAP_SUPPORTEDCAPS: check that all required capabilities are reported, we're
+; not looking for CAP_IAFIELDE_* capabilities, since they're not required...
 ;
 setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
@@ -72,59 +72,59 @@ setglobal g_supportedcaps '${ret:}'
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IMAGEADDRESSENABLED found'
-if '${ret:},' !~contains ',CAP_IMAGEADDRESSENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IMAGEADDRESSENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDA_LASTPAGE found'
-if '${ret:},' !~contains ',CAP_IAFIELDA_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDA_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDB_LASTPAGE found'
-if '${ret:},' !~contains ',CAP_IAFIELDB_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDB_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDC_LASTPAGE found'
-if '${ret:},' !~contains ',CAP_IAFIELDC_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDC_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDD_LASTPAGE found'
-if '${ret:},' !~contains ',CAP_IAFIELDD_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDD_LASTPAGE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDA_LEVEL found'
-if '${ret:},' !~contains ',CAP_IAFIELDA_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDA_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDB_LEVEL found'
-if '${ret:},' !~contains ',CAP_IAFIELDB_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDB_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDC_LEVEL found'
-if '${ret:},' !~contains ',CAP_IAFIELDC_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDC_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDD_LEVEL found'
-if '${ret:},' !~contains ',CAP_IAFIELDD_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDD_LEVEL,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDA_PRINTFORMAT found'
-if '${ret:},' !~contains ',CAP_IAFIELDA_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDA_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDB_PRINTFORMAT found'
-if '${ret:},' !~contains ',CAP_IAFIELDB_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDB_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDC_PRINTFORMAT found'
-if '${ret:},' !~contains ',CAP_IAFIELDC_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDC_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDD_PRINTFORMAT found'
-if '${ret:},' !~contains ',CAP_IAFIELDD_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDD_PRINTFORMAT,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDA_VALUE found'
-if '${ret:},' !~contains ',CAP_IAFIELDA_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDA_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDB_VALUE found'
-if '${ret:},' !~contains ',CAP_IAFIELDB_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDB_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDC_VALUE found'
-if '${ret:},' !~contains ',CAP_IAFIELDC_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDC_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 setlocal name 'CAP_SUPPORTEDCAPS CAP_IAFIELDD_VALUE found'
-if '${ret:},' !~contains ',CAP_IAFIELDD_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDD_VALUE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 goto MAIN.CAP_SUPPORTEDCAPS.DONE
@@ -137,7 +137,8 @@ goto MAIN.DONE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; ICAP_SUPPORTEDEXTIMAGEINFO: check that all metadata is supported
+; ICAP_SUPPORTEDEXTIMAGEINFO: check that all metadata is supported.  We're not
+; checking for TWEI_IAFIELDE_VALUE, since it's not required...
 ;
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO,0,0,0'
@@ -172,7 +173,7 @@ setlocal certifyresult 'fail'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; CAP_IMAGEADDRESSENABLED resets to FALSE
+; CAP_IMAGEADDRESSENABLED resets to FALSE...
 ;
 setlocal name 'CAP_IMAGEADDRESSENABLED resets to FALSE'
 dsmentry src ds dg_control dat_capability msg_reset 'CAP_IMAGEADDRESSENABLED,0,0,0'
@@ -190,7 +191,7 @@ goto MAIN.DONE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; CAP_IMAGEADDRESSENABLED set to TRUE
+; CAP_IMAGEADDRESSENABLED set to TRUE...
 ;
 setlocal name 'CAP_IMAGEADDRESSENABLED set to TRUE'
 dsmentry src ds dg_control dat_capability msg_set 'CAP_IMAGEADDRESSENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
@@ -210,7 +211,34 @@ goto MAIN.DONE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Test image address level 1 with no fixed field
+; We need at least 8 sheets of paper, 10 if the driver supports CAP_IAFIELDE_LEVEL...
+;
+setlocal sheets 8
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDE_LEVEL,' goto MAIN.8SHEETSONLY
+increment sheets ${get:sheets} 2
+:MAIN.8SHEETSONLY
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Prompt the user...
+;
+echo.prompt
+echo.prompt "Scanning will take place now.  A progress indicator may appear, but
+echo.prompt "no other interaction should be needed."
+echo.prompt
+echo.prompt "Place ${get:sheets} sheets in the scanner's feeder.  The scanner may print text"
+echo.prompt "on them.  If the feeder cannot accept ${get:sheets} sheets, put in as many as"
+echo.prompt "it can handle.  The script will prompt for more if needed."
+echo.prompt
+pause '(press the ENTER key when ready to continue)'
+echo.prompt
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Test image address level 1 with no fixed field, confirm support for 0 and no padding...
+; See the CERTIFY script down below for a description of the arguments.
 ;
 echo.titletest 'Set IA: 0001' 1
 call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
@@ -223,7 +251,7 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Test image address level 1 with fixed field
+; Test image address level 1 with fixed field, confirm support for 0 and no padding...
 ;
 echo.titletest 'Set IA: IA-0001' 1
 call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
@@ -236,7 +264,7 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Test image address level 2 with fixed field
+; Test image address level 2 with fixed field, confirm support for 0 and no padding...
 ;
 echo.titletest 'Set IA: IA-0020.0001' 1
 call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
@@ -249,7 +277,7 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Test image address level 3 with fixed field
+; Test image address level 3 with fixed field, confirm support for 0 and no padding...
 ;
 echo.titletest 'Set IA: IA-0300.0020.0001' 1
 call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,'
@@ -262,7 +290,8 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Test image address level 4 with fixed field (skip allowed if TWIA_LEVEL4 is not supported)
+; Test image address level 4 with fixed field (skip if TWIA_LEVEL4 is not supported),
+; confirm support for 0 and no padding...
 ;
 if ',${get:icapsupportedextimageinfo},' !~contains 'TWIA_LEVEL4' goto MAIN.LEVEL4.SKIP
 echo.titletest 'Set IA: IA-4000.0300.0020.0001' 1
@@ -292,18 +321,22 @@ return '${get:certifyresult}'
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Function: Certify
-; arg:1  - script to run
-; arg:2  - TW_IDENTITY.ProductName of scanner to test
-; arg:3  - global value to update on fail
-; arg:4  - showui value
-; arg:5  - name of test
-; arg:6  - TWEI_IAFIELD*_VALUE containing the fixed field (can be empty if none)
-; arg:7  - fielda settings
-; arg:8  - fieldb settings
-; arg:9  - fieldc settings
-; arg:10 - fieldd settings
-; arg:11 - fielde settings
-; returns: (none)
+;
+; Arguments
+;   arg:1  - name of the script to run
+;   arg:2  - TW_IDENTITY.ProductName of scanner to test (not used)
+;   arg:3  - global value to update on fail
+;   arg:4  - showui value (currently FALSE)
+;   arg:5  - name of test (used for files)
+;   arg:6  - TWEI_IAFIELD*_VALUE containing the fixed field (can be empty if none)
+;   arg:7  - fielda settings (level,printformat,value)
+;   arg:8  - fieldb settings (level,printformat,value)
+;   arg:9  - fieldc settings (level,printformat,value)
+;   arg:10 - fieldd settings (level,printformat,value)
+;   arg:11 - fielde settings (level,printformat,value)
+;
+; Returns
+;   pass/fail
 ;
 :CERTIFY
 ;

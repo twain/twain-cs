@@ -11,13 +11,15 @@
 ;   set CAP_XFERCOUNT.....................1
 ;   set ICAP_EXTIMAGEINFO.................TRUE
 ;   set CAP_IMAGEADDRESSENABLED...........TRUE
-;   set CAP_PRINTER.......................TWPR_IMPRINTERTOPBEFORE, TWPR_IMPRINTERTOPAFTER,
-;                                         TWPR_IMPRINTERBOTTOMBEFORE,or TWPR_IMPRINTERBOTTOMAFTER
-;   set CAP_PRINTERMODE...................TWPM_COMPOUNDSTRING
-;   set CAP_PRINTERSTRING.................TWAIN
-;   set CAP_PRINTERINDEX..................TWAIN
-;   set CAP_PRINTERSUFFIX.................TWAIN
-;   set CAP_PRINTERVERTICALOFFSET.........set to its max value
+;   set CAP_IAFIELD*_LEVEL................TWIA_*
+;   set CAP_IAFIELD*_PRINTFORMAT..........0's or #'s
+;   set CAP_IAFIELD*_VALUE................'IA-' for fixed field or numbers
+;   if CAP_PRINTERENABLED is supported
+;      set CAP_PRINTERENABLED.............TRUE
+;      set CAP_PRINTERMODE................TWPM_IMAGEADDRESSSTRING
+;      set CAP_PRINTERSTRING..............'PRINT'
+;      set CAP_PRINTERSUFFIX..............'TEST'
+;   end
 ;
 ;   The test passes if all operations return TWRC_SUCCESS.
 ;
@@ -25,7 +27,7 @@
 ;   arg:1 - TWSX_* value for ICAP_XFERMECH
 ;   arg:2 - value of caller's indent
 ;   arg:3 - total fields in use (detects if field e is active)
-;   arg:4 - field A level,printformat,value (ex: 'twia_fixed,###,IA:')
+;   arg:4 - field A level,printformat,value (ex: 'twia_fixed,###,IA-')
 ;   arg:5 - field B level,printformat,value (ex: 'twia_level4,000,1')
 ;   arg:6 - field C level,printformat,value (ex: 'twia_level3,000,1')
 ;   arg:7 - field D level,printformat,value (ex: 'twia_level2,000,1')
@@ -149,6 +151,35 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 call SET_IMAGEADDRESS_VALUE '${get:indent}' '${getindex:fielda:2}' '${getindex:fieldb:2}' '${getindex:fieldc:2}' '${getindex:fieldd:2}' '${getindex:fielde:2}'
 if '${ret:}' == 'skip' goto MAIN.SKIP
 if '${ret:}' != 'pass' goto MAIN.ERROR
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set the printer capabilites, if supported...
+;
+if ',${get:g_supportedcaps},' !~contains ',CAP_PRINTERENABLED,' goto MAIN.CAP_PRINTERENABLED.SKIP
+;
+setlocal name 'CAP_PRINTERENABLED MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'CAP_PRINTERMODE MSG_SET TWPM_IMAGEADDRESSSTRING'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERMODE,TWON_ONEVALUE,TWTY_UINT16,TWPM_IMAGEADDRESSSTRING'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'CAP_PRINTERSTRING MSG_SET "PRINT"'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERSTRING,TWON_ONEVALUE,TWTY_STR255,PRINT'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+setlocal name 'CAP_PRINTERSUFFIX MSG_SET "TEST"'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERSUFFIX,TWON_ONEVALUE,TWTY_STR255,TEST'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+;
+:MAIN.CAP_PRINTERENABLED.SKIP
 
 
 
