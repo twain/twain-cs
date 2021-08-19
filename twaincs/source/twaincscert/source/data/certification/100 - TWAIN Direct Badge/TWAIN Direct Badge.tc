@@ -41,7 +41,7 @@ setlocal certifyresult 'pass' ; assume we'll pass
 setlocal name 'CAP_DEVICEONLINE is TRUE'
 dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_DEVICEONLINE,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.DEVICEONLINE.FAIL
-if '${ret:},' !~contains ',TRUE,' goto MAIN.DEVICEONLINE.FAIL
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.DEVICEONLINE.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.DEVICEONLINE.DONE
 ;
@@ -58,7 +58,7 @@ setlocal certifyresult 'fail'
 setlocal name 'CAP_UICONTROLLABLE is TRUE'
 dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_UICONTROLLABLE,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.UICONTROLLABLE.FAIL
-if '${ret:},' !~contains ',TRUE,' goto MAIN.UICONTROLLABLE.FAIL
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.UICONTROLLABLE.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.UICONTROLLABLE.DONE
 ;
@@ -75,7 +75,7 @@ setlocal certifyresult 'fail'
 setlocal name 'DAT_EXTIMAGEINFO supported'
 dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDDATS,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.EXTIMAGEINFO.FAIL
-if '${ret:},' !~contains ',DG_IMAGE|DAT_EXTIMAGEINFO,' goto MAIN.EXTIMAGEINFO.FAIL
+if ',${ret:},' !~contains ',DG_IMAGE|DAT_EXTIMAGEINFO,' goto MAIN.EXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.EXTIMAGEINFO.DONE
 ;
@@ -92,7 +92,7 @@ setlocal certifyresult 'fail'
 setlocal name 'TWEI_TWAINDIRECTMETADATA supported'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.TWAINDIRECTMETADATA.FAIL
-if '${ret:},' !~contains ',TWEI_TWAINDIRECTMETADATA,' goto MAIN.TWAINDIRECTMETADATA.FAIL
+if ',${ret:},' !~contains ',TWEI_TWAINDIRECTMETADATA,' goto MAIN.TWAINDIRECTMETADATA.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.TWAINDIRECTMETADATA.DONE
 ;
@@ -109,7 +109,7 @@ setlocal certifyresult 'fail'
 setlocal name 'TWSX_MEMFILE supported'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.MEMFILE.FAIL
-if '${ret:},' !~contains ',TWSX_MEMFILE,' goto MAIN.MEMFILE.FAIL
+if ',${ret:},' !~contains ',TWSX_MEMFILE,' goto MAIN.MEMFILE.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.MEMFILE.DONE
 ;
@@ -126,7 +126,7 @@ setlocal certifyresult 'fail'
 setlocal name 'TWFF_PDFRASTER supported'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_IMAGEFILEFORMAT,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.PDFRASTER.FAIL
-if '${ret:},' !~contains ',TWFF_PDFRASTER,' goto MAIN.PDFRASTER.FAIL
+if ',${ret:},' !~contains ',TWFF_PDFRASTER,' goto MAIN.PDFRASTER.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.PDFRASTER.DONE
 ;
@@ -159,7 +159,7 @@ setlocal certifyresult 'fail'
 setlocal name 'ADF check'
 dsmentry src ds dg_control dat_capability msg_get 'CAP_FEEDERENABLED,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ADFCHECK.FAIL
-if '${ret:},' !~contains ',TRUE,' goto MAIN.ADFCHECK.SKIP
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.ADFCHECK.SKIP
 ;
 dsmentry src ds dg_control dat_capability msg_set 'CAP_FEEDERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
 if '${sts:}' != 'SUCCESS' goto MAIN.ADFCHECK.FAIL
@@ -200,7 +200,7 @@ setlocal certifyresult 'fail'
 setlocal name 'CAP_PAPERDETECTABLE is TRUE'
 dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PAPERDETECTABLE,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.PAPERDETECTABLE.FAIL
-if '${ret:},' !~contains ',TRUE,' goto MAIN.PAPERDETECTABLE.FAIL
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.PAPERDETECTABLE.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.PAPERDETECTABLE.DONE
 ;

@@ -60,8 +60,8 @@ goto MAIN.DONE
 setlocal name 'CAP_PRINTERENBLED is supported'
 dsmentry src ds dg_control dat_capability msg_get 'CAP_PRINTERENABLED,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
-if '${ret:},' !~contains ',TRUE,' goto MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
-if '${ret:},' !~contains ',FALSE,' goto MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
+if ',${ret:},' !~contains ',FALSE,' goto MAIN.CAP_PRINTERENABLEDSUPPORTED.SKIP
 echo.passfail '${get:name}' 'pass'
 goto MAIN.CAP_PRINTERENABLEDSUPPORTED.DONE
 ;
@@ -82,31 +82,31 @@ if '${sts:}' != 'SUCCESS' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERENABLED found'
-if '${ret:},' !~contains ',CAP_PRINTERENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${ret:},' !~contains ',CAP_PRINTERENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTER found'
-if '${ret:},' !~contains ',CAP_PRINTER,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${ret:},' !~contains ',CAP_PRINTER,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERMODE found'
-if '${ret:},' !~contains ',CAP_PRINTERMODE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${ret:},' !~contains ',CAP_PRINTERMODE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERSTRING found'
-if '${ret:},' !~contains ',CAP_PRINTERSTRING,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${ret:},' !~contains ',CAP_PRINTERSTRING,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERINDEX found'
-if '${ret:},' !~contains ',CAP_PRINTERINDEX,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${ret:},' !~contains ',CAP_PRINTERINDEX,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERSUFFIX found'
-if '${ret:},' !~contains ',CAP_PRINTERSUFFIX,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${ret:},' !~contains ',CAP_PRINTERSUFFIX,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS CAP_PRINTERVERTICALOFFSET found'
-if '${ret:},' !~contains ',CAP_PRINTERVERTICALOFFSET,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${ret:},' !~contains ',CAP_PRINTERVERTICALOFFSET,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.CAP_SUPPORTEDCAPS.DONE
 ;
@@ -127,11 +127,11 @@ if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_PRINTERTEXT found'
-if '${ret:},' !~contains ',TWEI_PRINTERTEXT,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+if ',${ret:},' !~contains ',TWEI_PRINTERTEXT,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_PRINTER found'
-if '${ret:},' !~contains ',TWEI_PRINTER,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+if ',${ret:},' !~contains ',TWEI_PRINTER,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
 echo.passfail '${get:name}' 'pass'
 goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
 ;

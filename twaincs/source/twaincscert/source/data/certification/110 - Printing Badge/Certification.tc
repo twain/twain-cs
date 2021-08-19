@@ -1,9 +1,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Basic Printing Badge
-;   Check if Basic Printing is supported by the driver.  This is a badge, failure does invalidate
-;   scanner certification.  Passage adds Basic Printing support to the cert.
+; Printing Badge
+;   Check if Printing is supported by the driver.  This is a badge, failure does invalidate
+;   scanner certification.  Passage adds Printing support to the cert.
 ;
-;   Printing is complex.  This badge checks that a driver allows the basic ability to print something
+;   Printing is complex.  This badge checks that a driver allows the basic ability to print
 ;   on a document.  It does not require all the possible printing features described by TWAIN.
 ;
 ; Arguments
@@ -28,9 +28,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff, load tables if not already done for us...
 ;
-echo.titlesuite 'Basic Printing Badge v1.0 30-Jul-2021'
+echo.titlesuite 'Printing Badge v1.0 30-Jul-2021'
 echo.yellow '*************************************************************************************'
-echo.yellow '*** This test is for the Basic Printing Badge.  Failing means the driver does not ***'
+echo.yellow '*** This test is for the Printing Badge.  Failing means the driver does not       ***'
 echo.yellow '*** support this functionality.  It does not prevent it from being certified.     ***'
 echo.yellow '*************************************************************************************'
 setlocal twidentity.productname '${arg:1}'
@@ -46,7 +46,7 @@ run '${folder:certification}/LoadTables'
 ;
 call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
 if '${get:g_localcertifyresult}' == 'fail' goto MAIN.CLOSEDS
-call CERTIFY 'Basic Printing Badge'            '${get:twidentity.productname}' g_localcertifyresult
+call CERTIFY 'Printing Badge'                  '${get:twidentity.productname}' g_localcertifyresult
 call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
 call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
 call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'

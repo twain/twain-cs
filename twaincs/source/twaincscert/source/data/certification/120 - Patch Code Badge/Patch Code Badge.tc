@@ -1,0 +1,185 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Barcode Badge
+;   These tests establish the minimum requirements for a TWAIN driver to claim that it has patch code
+;   support.  It focuses on the ability to turn patch code detection on and off, identifying which
+;   patch codes are supported, and making sure patch code metadata is reported.
+;
+; Arguments
+;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;
+; Globals
+;   (none)
+;
+; Locals
+;   certifyresult - track if we fail
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+setlocal certifyresult 'pass' ; assume we'll pass
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Reset to a known state...
+;
+setlocal name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.MSG_RESETALL.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.MSG_RESETALL.DONE
+;
+:MAIN.MSG_RESETALL.FAIL
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.MSG_RESETALL.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_PATCHCODEDETECTIONENABLED must be supported, and must offer both TRUE
+; and FALSE, and must currently be FALSE, otherwise skip it all
+;
+setlocal name 'ICAP_PATCHCODEDETECTIONENABLED is supported'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_PATCHCODEDETECTIONENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDSUPPORTED.SKIP
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDSUPPORTED.SKIP
+if ',${ret:},' !~contains ',FALSE,' goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDSUPPORTED.SKIP
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDSUPPORTED.DONE
+;
+:MAIN.ICAP_PATCHCODEDETECTIONENABLEDSUPPORTED.SKIP
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'skip'
+goto MAIN.DONE
+:MAIN.ICAP_PATCHCODEDETECTIONENABLEDSUPPORTED.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CAP_SUPPORTEDCAPS: check that all required capabilities are reported
+; We're not requiring the presence of ICAP_PATCHCODEMAXRETRIES or
+; ICAP_PATCHCODETIMEOUT.  If present it's assumed the driver will default
+; these to meaningful values that support the best chance of detecting
+; a patch code.
+;
+setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_PATCHCODEDETECTIONENABLED found'
+if ',${ret:},' !~contains ',ICAP_PATCHCODEDETECTIONENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_PATCHCODEMAXSEARCHPRIORITIES found'
+if ',${ret:},' !~contains ',ICAP_PATCHCODEMAXSEARCHPRIORITIES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_PATCHCODESEARCHMODE found'
+if ',${ret:},' !~contains ',ICAP_PATCHCODESEARCHMODE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_PATCHCODESEARCHPRIORITIES found'
+if ',${ret:},' !~contains ',ICAP_PATCHCODESEARCHPRIORITIES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'CAP_SUPPORTEDCAPS ICAP_SUPPORTEDPATCHCODETYPES found'
+if ',${ret:},' !~contains ',ICAP_SUPPORTEDPATCHCODETYPES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+goto MAIN.CAP_SUPPORTEDCAPS.DONE
+:MAIN.CAP_SUPPORTEDCAPS.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.CAP_SUPPORTEDCAPS.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_SUPPORTEDEXTIMAGEINFO: check that all metadata is reported
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDEXTIMAGEINFO,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+setlocal name 'ICAP_SUPPORTEDEXTIMAGEINFO TWEI_PATCHCODE found'
+if ',${ret:},' !~contains ',TWEI_PATCHCODE,' goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'pass'
+;
+goto MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
+:MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+:MAIN.ICAP_SUPPORTEDEXTIMAGEINFO.DONE
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_PATCHCODEDETECTIONENABLED must currently be FALSE
+;
+setlocal name 'ICAP_PATCHCODEDETECTIONENABLED resets to FALSE'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'ICAP_PATCHCODEDETECTIONENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDFALSE.FAIL
+if ',${ret:},' !~contains ',FALSE,' goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDFALSE.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDFALSE.DONE
+;
+:MAIN.ICAP_PATCHCODEDETECTIONENABLEDFALSE.FAIL
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.ICAP_PATCHCODEDETECTIONENABLEDFALSE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ICAP_PATCHCODEDETECTIONENABLED set to TRUE
+;
+setlocal name 'ICAP_PATCHCODEDETECTIONENABLED set to TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDTRUE.FAIL
+dsmentry src ds dg_control dat_capability msg_getcurrent 'ICAP_PATCHCODEDETECTIONENABLED,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDTRUE.FAIL
+if ',${ret:},' !~contains ',TRUE,' goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDTRUE.FAIL
+echo.passfail '${get:name}' 'pass'
+goto MAIN.ICAP_PATCHCODEDETECTIONENABLEDTRUE.DONE
+;
+:MAIN.ICAP_PATCHCODEDETECTIONENABLEDTRUE.FAIL
+echo.passfail '${get:name}' 'skip - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+:MAIN.ICAP_PATCHCODEDETECTIONENABLEDTRUE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get ICAP_XFERMECH...
+;
+setlocal name 'ICAP_XFERMECH MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+if '${sts:}' == 'SUCCESS' goto MAIN.ICAP_XFERMECH.DONE
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+;
+:MAIN.ICAP_XFERMECH.DONE
+setglobal g_xfermech '${ret:}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; All done...
+;
+:MAIN.DONE
+return '${get:certifyresult}'

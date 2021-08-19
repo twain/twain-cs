@@ -1,0 +1,223 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; SetCapabilities
+;   Reset the driver's capabilites, and then set capabilities for this test.  Note that one can only
+;   get this badge for the ADF.  This is a production mode feature, so we're not testing the flatbed.
+;
+;   We follow the capability ordering:
+;   MSG_RESETALL
+;   set ICAP_XFERMECH.......................${arg:1}
+;   set CAP_FEEDERENABLED...................TRUE
+;   set CAP_XFERCOUNT.......................-1
+;   set ICAP_EXTIMAGEINFO...................TRUE
+;   set ICAP_PATCHCODETECTIONENABLED........TRUE
+;   set ICAP_PATCHCODESEARCHMODE............TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT
+;   set ICAP_PATCHCODEMAXSEARCHPRIORITIES...set to its max value
+;   get ICAP_SUPPORTEDPATCHCODETYPES
+;   set ICAP_PATCHCODESEARCHPRIORITIES......set to first ICAP_PATCHCODEMAXSEARCHPRIORITIES of ICAP_SUPPORTEDPATCHCODETYPES
+;
+;   The test passes if all operations return TWRC_SUCCESS.
+;
+;   We are not testing ICAP_PATCHCODEMAXRETRIES or ICAP_PATCHCODETIMEOUT.  We're going to assume that the driver's
+;   default values offer the best user experience.  ICAP_PATCHCODETIMEOUT is especially problematic, since the
+;   spec doesn't tell use the units.
+;
+; Arguments
+;   arg:1 - TWSX_* value for ICAP_XFERMECH
+;   arg:2 - value of caller's indent
+;
+; Globals
+;   g_patchcodemaxsearchpriorities.max - maximum patchcodes we can get (max of ICAP_PATCHCODEMAXSEARCHPRIORITIES)
+;
+; Locals
+;   patchcodesearchpriorities.itemlist - first ICAP_PATCHCODEMAXSEARCHPRIORITIES of ICAP_SUPPORTEDPATCHCODETYPES
+;   comma - used to construct the value for ICAP_PATCHCODESEARCHPRIORITIES
+;   indent - indent the passfail text
+;   name - name of the current test
+;   supportedpatchcodetypes.itemlist - return value from MSG_GET of ICAP_SUPPORTEDPATCHCODETYPES
+;   supportedpatchcodetypes.index - index counter for ICAP_SUPPORTEDPATCHCODETYPES
+;   supportedpatchcodetypes.lastindex - index of ICAP_PATCHCODEMAXSEARCHPRIORITIES item in ICAP_SUPPORTEDPATCHCODETYPES
+;   twsx - TWSX_* value for ICAP_XFERMECH
+;
+; Returns
+;   pass or fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialize...
+;
+setlocal twsx '${arg:1}'
+setlocal indent '${arg:2}'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; MSG_RESETALL
+; If return code is not TWRC_SUCCESS, end with an error
+;
+setlocal name 'MSG_RESETALL'
+dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_XFERMECH...
+;
+setlocal name 'ICAP_XFERMECH MSG_SET ${get:twsx}'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_XFERMECH,TWON_ONEVALUE,TWTY_UINT16,${get:twsx}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_FEEDERENABLED to TRUE
+;
+setlocal name 'CAP_FEEDERENABLED MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_FEEDERENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set CAP_XFERCOUNT to -1
+;
+setlocal name 'CAP_XFERCOUNT MSG_SET -1'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,-1'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_EXTIMAGEINFO to TRUE
+;
+setlocal name 'ICAP_EXTIMAGEINFO MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_EXTIMAGEINFO,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_PATCHCODEDETECTIONENABLED to TRUE
+;
+setlocal name 'ICAP_PATCHCODEDETECTIONENABLED MSG_SET TRUE'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEDETECTIONENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Try to set ICAP_PATCHCODESEARCHMODE to TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT
+;
+setlocal name 'ICAP_PATCHCODESEARCHMODE MSG_SET TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_PATCHCODESEARCHMODE'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+;
+if '${ret:}' contains 'TWBD_HORZVERT' goto MAIN.ICAP_PATCHCODESEARCHMODE.TWBD_HORZVERT
+if '${ret:}' contains 'TWBD_VERTHORZ' goto MAIN.ICAP_PATCHCODESEARCHMODE.TWBD_VERTHORZ
+if '${ret:}' contains 'TWBD_VERT' goto MAIN.ICAP_PATCHCODESEARCHMODE.TWBD_VERT
+;
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODESEARCHMODE,TWON_ONEVALUE,TWTY_UINT16,TWBD_HORZ'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.ICAP_PATCHCODESEARCHMODE.DONE
+;
+:MAIN.ICAP_PATCHCODESEARCHMODE.TWBD_HORZVERT
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODESEARCHMODE,TWON_ONEVALUE,TWTY_UINT16,TWBD_HORZVERT'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.ICAP_PATCHCODESEARCHMODE.DONE
+;
+:MAIN.ICAP_PATCHCODESEARCHMODE.TWBD_VERTHORZ
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODESEARCHMODE,TWON_ONEVALUE,TWTY_UINT16,TWBD_VERTHORZ'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.ICAP_PATCHCODESEARCHMODE.DONE
+;
+:MAIN.ICAP_PATCHCODESEARCHMODE.TWBD_VERT
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODESEARCHMODE,TWON_ONEVALUE,TWTY_UINT16,TWBD_VERT'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+goto MAIN.ICAP_PATCHCODESEARCHMODE.DONE
+;
+:MAIN.ICAP_PATCHCODESEARCHMODE.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Try to set ICAP_PATCHCODEMAXSEARCHPRIORITIES to its maximum value...
+;
+setlocal name 'ICAP_PATCHCODEMAXSEARCHPRIORITIES MSG_SET max value'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_PATCHCODEMAXSEARCHPRIORITIES'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+setglobal g_patchcodemaxsearchpriorities.max '${ret:${get:TW_RANGE.MaxValue}}'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODEMAXSEARCHPRIORITIES,TWON_ONEVALUE,TWTY_UINT32,${get:g_patchcodemaxsearchpriorities.max}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Get the ICAP_SUPPORTEDPATCHCODETYPES...
+;
+setlocal name 'ICAP_SUPPORTEDPATCHCODETYPES MSG_GET'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_SUPPORTEDPATCHCODETYPES'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal supportedpatchcodetypes.itemlist '${ret:}'
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Pare the ICAP_SUPPORTEDPATCHCODETYPES list down to the first ICAP_PATCHCODEMAXSEARCHPRIORITIES items
+;
+setlocal comma ''
+setlocal name 'Get the first ${get:g_patchcodemaxsearchpriorities.max} from ICAP_SUPPORTEDPATCHCODETYPES'
+setlocal patchcodesearchpriorities.itemlist ''
+;
+setlocal supportedpatchcodetypes.index '${get:TW_ARRAY.NumItems}' ; TW_ARRAY.ItemList - 1
+increment supportedpatchcodetypes.lastindex '${get:supportedpatchcodetypes.index}' 1                                             ; first index
+increment supportedpatchcodetypes.lastindex '${get:supportedpatchcodetypes.lastindex}' ${get:g_patchcodemaxsearchpriorities.max} ; + g_patchcodemaxsearchpriorities.max
+;
+:MAIN.PATCHCODESEARCHPRIORITIES.NEXT
+increment supportedpatchcodetypes.index '${get:supportedpatchcodetypes.index}' 1
+if '${get:supportedpatchcodetypes.index}' > '${get:supportedpatchcodetypes.lastindex}' goto MAIN.PATCHCODESEARCHPRIORITIES.DONE
+setlocal patchcodesearchpriorities.value '${getindex:supportedpatchcodetypes.itemlist:${get:supportedpatchcodetypes.index}}'
+if '${get:patchcodesearchpriorities.value}' == '' goto MAIN.PATCHCODESEARCHPRIORITIES.DONE
+setlocal patchcodesearchpriorities.itemlist '${get:patchcodesearchpriorities.itemlist}${get:comma}${get:patchcodesearchpriorities.value}'
+setlocal comma ','
+goto MAIN.PATCHCODESEARCHPRIORITIES.NEXT
+;
+:MAIN.PATCHCODESEARCHPRIORITIES.DONE
+echo.passfail '${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Set ICAP_PATCHCODESEARCHPRIORITIES to first g_patchcodemaxsearchpriorities.max of ICAP_SUPPORTEDPATCHCODETYPES...
+;
+setlocal name 'ICAP_PATCHCODESEARCHPRIORITIES MSG_SET first ${get:g_patchcodemaxsearchpriorities.max} of ICAP_SUPPORTEDPATCHCODETYPES'
+dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODESEARCHPRIORITIES,TWON_ARRAY,TWTY_UINT16,${get:g_patchcodemaxsearchpriorities.max},${get:patchcodesearchpriorities.itemlist}'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Summary and cleanup...
+;
+; Did we pass?
+:MAIN.PASS
+return 'pass'
+;
+; Ruh-roh...
+:MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
+return 'fail'
