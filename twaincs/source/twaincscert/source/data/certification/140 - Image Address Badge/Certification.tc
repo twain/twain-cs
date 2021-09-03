@@ -108,15 +108,22 @@ return 'fail'
 ; If a failure has occurred on a previous test, skip the rest of the tests,
 ; except for closing, that would be bad...
 if '${arg:1}' ~contains 'Closeds' goto CERTIFY.RUN
+if '${get:${arg:3}}' == 'skip' goto CERTIFY.SKIP
 if '${get:${arg:3}}' == 'fail' goto CERTIFY.FAIL
 ;
 ; Run the test...
 :CERTIFY.RUN
 run '${arg:1}' '${arg:2}' '${arg:4}'
+if '${ret:}' == 'skip' goto CERTIFY.SKIP
 if '${ret:}' != 'pass' goto CERTIFY.FAIL
 return 'pass'
 ;
-; Handle failure, set the global so we have a record of the failure...
+; Handle skipping, set the global so we have a record...
+:CERTIFY.SKIP
+setglobal '${arg:3}' 'skip'
+return 'skip'
+;
+; Handle failure, set the global so we have a record...
 :CERTIFY.FAIL
 setglobal '${arg:3}' 'fail'
 return 'fail'

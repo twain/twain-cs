@@ -314,7 +314,6 @@ setlocal name 'Many barcodes: ${getindex:barcodedata:${get:twinfo.infoid.index}}
 setlocal barcodetexthandle '${gethandleindex:${getindex:barcodedata:${get:twinfo.item.index}}:${get:barcodetext2.index}:TWTY_HANDLE}' ; gethandleindex:handle:index:TWTY_HANDLE
 setlocal item '${gethandle:${get:barcodetexthandle}:TWTY_HANDLE:${getindex:barcodetextlength:${get:barcodetext2.index}}}' ; gethandle:handle:TWTY_HANDLE:length
 filewrite '${arg:2}_barcode_${get:barcodetext2.index}.txt' '${get:item}'
-free handle item
 ;
 ; The data needs to contain "TWAIN-Barcode-Test" (it can contain more stuff).  If that passes, then
 ; increment our index and go back to MAIN.MANYBARCODES.ITEM.BARCODETEXT2.NEXT to process the next barcode...
