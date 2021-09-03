@@ -241,11 +241,11 @@ echo.prompt
 ; See the CERTIFY script down below for a description of the arguments.
 ;
 echo.titletest 'Set IA: 0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' '' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: 1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' '' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' '' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -254,11 +254,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ; Test image address level 1 with fixed field, confirm support for 0 and no padding...
 ;
 echo.titletest 'Set IA: IA-0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -267,11 +267,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ; Test image address level 2 with fixed field, confirm support for 0 and no padding...
 ;
 echo.titletest 'Set IA: IA-0020.0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-20.1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -280,11 +280,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ; Test image address level 3 with fixed field, confirm support for 0 and no padding...
 ;
 echo.titletest 'Set IA: IA-0300.0020.0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-300.20.1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -295,11 +295,11 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 if ',${get:icapsupportedextimageinfo},' !~contains 'TWIA_LEVEL4' goto MAIN.LEVEL4.SKIP
 echo.titletest 'Set IA: IA-4000.0300.0020.0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,0000,4000' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,0000,4000' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
 echo.titletest 'Set IA: IA-4000.300.20.1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,####,4000' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
+call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,####,4000' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 :MAIN.LEVEL4.SKIP
 
@@ -323,27 +323,24 @@ return '${get:certifyresult}'
 ; Function: Certify
 ;
 ; Arguments
-;   arg:1  - name of the script to run
-;   arg:2  - TW_IDENTITY.ProductName of scanner to test (not used)
-;   arg:3  - global value to update on fail
-;   arg:4  - showui value (currently FALSE)
-;   arg:5  - name of test (used for files)
-;   arg:6  - TWEI_IAFIELD*_VALUE containing the fixed field (can be empty if none)
-;   arg:7  - fielda settings (level,printformat,value)
-;   arg:8  - fieldb settings (level,printformat,value)
-;   arg:9  - fieldc settings (level,printformat,value)
-;   arg:10 - fieldd settings (level,printformat,value)
-;   arg:11 - fielde settings (level,printformat,value)
+;   arg:1 - name of the script to run
+;   arg:2 - name of test (used for files)
+;   arg:3 - TWEI_IAFIELD*_VALUE containing the fixed field (can be empty if none)
+;   arg:4 - fielda settings (level,printformat,value)
+;   arg:5 - fieldb settings (level,printformat,value)
+;   arg:6 - fieldc settings (level,printformat,value)
+;   arg:7 - fieldd settings (level,printformat,value)
+;   arg:8 - fielde settings (level,printformat,value)
 ;
 ; Returns
 ;   pass/fail
 ;
 :CERTIFY
 ;
-run '${arg:1}' '${arg:2}' '${arg:3}' '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}' '${arg:8}' '${arg:9}' '${arg:10}' '${arg:11}'
+run '${arg:1}' '${arg:2}' '${arg:3}' '${arg:4}' '${arg:5}' '${arg:6}' '${arg:7}' '${arg:8}'
 if '${ret:}' != 'pass' goto CERTIFY.FAIL
 return 'pass'
 ;
 :CERTIFY.FAIL
-setglobal '${arg:3}' 'fail'
+setlocal certifyresult 'fail'
 return 'fail'

@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Patch Code Badge
-;   Check if Patch Code is supported by the driver.  This is a badge, meaning that failure will not
-;   invalidate scanner certification.  Instead, passage will add Pach Code support to the cert.
+;   Check if Patch Code is supported by the driver.  This is a badge, failure does not
+;   invalidate scanner certification.  Passage adds Patch Code support to the cert.
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
@@ -9,15 +9,14 @@
 ;
 ; Globals
 ;   g_localcertifyresult - global to report to caller on fail
+;   g_xfermech - transfer mechanism currently in use
 ;
 ; Locals
 ;   twidentity.productname - product name of scanner to test
+;   globaltosetonfail - name says it all
 ;
 ; Returns
 ;   (none)
-;
-; History
-;   v1.0 17-May-2021 - first version
 ;
 
 
@@ -25,14 +24,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff, load tables if not already done for us...
 ;
-echo.titlesuite 'Patch Code Badge v1.0 19-Aug-2021'
+echo.titlesuite 'Patch Code Badge v1.0 01-Sep-2021'
 echo.yellow '***********************************************************************************'
 echo.yellow '*** This test is for the Patch Code Badge.  Failing means the driver does not   ***'
-echo.yellow '*** support this functionality.  It does not prevent it from being certified.   ***'
+echo.yellow '*** support this functionality.  It does not prevent certification.             ***'
 echo.yellow '***********************************************************************************'
+;
 setlocal twidentity.productname '${arg:1}'
+setlocal globaltosetonfail '${arg:2}'
 setglobal g_localcertifyresult 'pass' ; assume success
-setglobal g_xfermech ''
+setglobal g_xfermech '' ; this will be set later
+;
 if '${get:TW_ARRAY.ItemType}' != '' goto MAIN.LOADTABLES.SKIP
 run '${folder:certification}/LoadTables'
 :MAIN.LOADTABLES.SKIP
@@ -42,15 +44,17 @@ run '${folder:certification}/LoadTables'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Run the tests...
 ;
-call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' 'g_localcertifyresult' 'embedded'
 if '${get:g_localcertifyresult}' == 'fail' goto MAIN.CLOSEDS
-call CERTIFY 'Patch Code Badge'                '${get:twidentity.productname}' g_localcertifyresult
-call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
-call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
-call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
-call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' '${get:certifyresult}' 'FALSE' '${folder:parent}'
+;
+call CERTIFY 'Patch Code Badge'                '${get:twidentity.productname}' 'g_localcertifyresult'
+call CERTIFY 'DAT_IMAGENATIVEXFER'             '${get:twidentity.productname}' 'g_localcertifyresult' '${folder:parent}'
+call CERTIFY 'DAT_IMAGEMEMXFER'                '${get:twidentity.productname}' 'g_localcertifyresult' '${folder:parent}'
+call CERTIFY 'DAT_IMAGEFILEXFER'               '${get:twidentity.productname}' 'g_localcertifyresult' '${folder:parent}'
+call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' 'g_localcertifyresult' '${folder:parent}'
+;
 :MAIN.CLOSEDS
-call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g_localcertifyresult embedded
+call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' 'g_localcertifyresult' 'embedded'
 
 
 
@@ -59,13 +63,15 @@ call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' g
 ;
 ; Did we pass?
 if '${get:g_localcertifyresult}' != 'pass' goto MAIN.ERROR
-echo.passfail 'SUMMARY' 'pass'
+echo ''
+echo.passfail 'BADGE SUMMARY' 'pass'
 return 'pass'
 ;
 ; Ruh-roh...
 :MAIN.ERROR
-echo.passfail 'SUMMARY' 'fail'
-setglobal '${arg:2}' 'fail'
+echo ''
+echo.passfail 'BADGE SUMMARY' 'fail'
+setglobal '${get:globaltosetonfail}' 'fail'
 return 'fail'
 
 
@@ -75,15 +81,23 @@ return 'fail'
 ; arg:1 - script to run
 ; arg:2 - TW_IDENTITY.ProductName of scanner to test
 ; arg:3 - global value to update on fail
-; arg:4 - embeded flag for open/close
+; arg:4 - embeded flag for open/close, or folder for DAT_IMAGE*XFER calls
 ; returns: (none)
 ;
 :CERTIFY
 ;
+; If a failure has occurred on a previous test, skip the rest of the tests,
+; except for closing, that would be bad...
+if '${arg:1}' ~contains 'Closeds' goto CERTIFY.RUN
+if '${get:${arg:3}}' == 'fail' goto CERTIFY.FAIL
+;
+; Run the test...
+:CERTIFY.RUN
 run '${arg:1}' '${arg:2}' '${arg:4}'
 if '${ret:}' != 'pass' goto CERTIFY.FAIL
 return 'pass'
 ;
+; Handle failure, set the global so we have a record of the failure...
 :CERTIFY.FAIL
 setglobal '${arg:3}' 'fail'
 return 'fail'

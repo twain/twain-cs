@@ -22,16 +22,13 @@
 ;         CAP_PRINTERTEXT contains the correct value
 ;
 ; Arguments
-;   arg:1  - TW_IDENTITY.ProductName of scanner to test
-;   arg:2  - global for us to update on failure
-;   arg:3  - value of ShowUI (TRUE or FALSE)
-;   arg:4  - test name for the image folder
-;   arg:5  - TWEI_IAFIELD*_VALUE containing fixed field (can be empty if none)
-;   arg:6  - fielda image address settings 'twia,printformat,value'
-;   arg:7  - fieldb image address settings 'twia,printformat,value'
-;   arg:8  - fieldc image address settings 'twia,printformat,value'
-;   arg:9  - fieldd image address settings 'twia,printformat,value'
-;   arg:10 - fielde image address settings 'twia,printformat,value'
+;   arg:1 - test name for the image folder
+;   arg:2 - TWEI_IAFIELD*_VALUE containing fixed field (can be empty if none)
+;   arg:3 - fielda image address settings 'twia,printformat,value'
+;   arg:4 - fieldb image address settings 'twia,printformat,value'
+;   arg:5 - fieldc image address settings 'twia,printformat,value'
+;   arg:6 - fieldd image address settings 'twia,printformat,value'
+;   arg:7 - fielde image address settings 'twia,printformat,value'
 ;
 ; Globals
 ;   (none)
@@ -42,6 +39,7 @@
 ;   image.handle - native handle
 ;   image.count - count of images from 1
 ;   image.folder - folder to put the images in
+;   totalfields - total value image address fields
 ;
 ; Returns
 ;   pass or fail
@@ -52,26 +50,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-;echo.titletest 'DAT_IMAGENATIVEXFER v1.0 16-Aug-2021'
+;echo.titletest 'DAT_IMAGENATIVEXFER'
 ;
-setlocal updateonfailure  '${arg:2}'
-setlocal showui           '${arg:3}'
-setlocal fixedfieldname   '${arg:5}'
-setlocal fielda           '${arg:6}'
-setlocal fieldb           '${arg:7}'
-setlocal fieldc           '${arg:8}'
-setlocal fieldd           '${arg:9}'
-setlocal fielde           '${arg:10}'
+setlocal fixedfieldname   '${arg:2}'
+setlocal fielda           '${arg:3}' ; check argindex down below
+setlocal fieldb           '${arg:4}'
+setlocal fieldc           '${arg:5}'
+setlocal fieldd           '${arg:6}'
+setlocal fielde           '${arg:7}'
 ;
 setlocal indent ''
 setlocal image.handle '0'
 setlocal image.count '1'
-setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGENATIVEXFER'
+setlocal image.folder '${folder:certimages}/${arg:1}/DAT_IMAGENATIVEXFER'
 ;
 ; Figure out how many iafields have data, and get the fixed field value,
 ; if any.  We're use them to check the TWEI_* values...
 setlocal totalfields 0      ; assume no fields
-setlocal argindex 5         ; first ia field argument - 1
+setlocal argindex 2         ; first ia field argument - 1
 setlocal fixedfieldvalue '' ; assume we don't have a value
 :MAIN.PARSE.NEXT
 increment argindex ${get:argindex} 1
@@ -218,7 +214,6 @@ return 'skip'
 free handle image.handle
 echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
 echo.passfail 'SUMMARY' 'fail'
-setglobal '${get:updateonfailure}' 'fail'
 rollback state4
 return 'fail'
 ;
@@ -226,6 +221,5 @@ return 'fail'
 :MAIN.ERROR.FAIL
 free handle image.handle
 echo.passfail 'SUMMARY' 'fail'
-setglobal '${get:updateonfailure}' 'fail'
 rollback state4
 return 'fail'

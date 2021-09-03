@@ -14,7 +14,7 @@
 ;   certifyresult - track if we fail
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 

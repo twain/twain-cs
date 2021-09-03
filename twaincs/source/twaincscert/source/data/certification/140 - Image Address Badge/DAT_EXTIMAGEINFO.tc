@@ -35,7 +35,7 @@
 ;   twinfo.item.index - index to TW_INFO[n].item from the start of barcodedata
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 

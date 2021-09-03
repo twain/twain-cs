@@ -1,20 +1,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Barcode Badge
-;   These tests establish the minimum requirements for a TWAIN driver to claim that it has patch code
-;   support.  It focuses on the ability to turn patch code detection on and off, identifying which
+;   These tests establish the minimum requirements for a TWAIN driver to claim it supports patch
+;   codes.  It focuses on the ability to turn patch code detection on and off, identifying which
 ;   patch codes are supported, and making sure patch code metadata is reported.
 ;
 ; Arguments
-;   arg:1 - TW_IDENTITY.ProductName of scanner to test
-;
-; Globals
 ;   (none)
 ;
+; Globals
+;  g_xfermech - transfer mechanism currently in use
+;
 ; Locals
-;   certifyresult - track if we fail
+;   name - name of a test
+;   certifyresult - status we're going to return
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 
@@ -22,12 +23,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-setlocal certifyresult 'pass' ; assume we'll pass
+setlocal certifyresult 'pass' ; assume we'll pass, this is our return value
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Reset to a known state...
+; Reset the driver's capabilities, this is mandatory...
 ;
 setlocal name 'MSG_RESETALL'
 dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
@@ -45,7 +46,8 @@ goto MAIN.DONE
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; ICAP_PATCHCODEDETECTIONENABLED must be supported, and must offer both TRUE
-; and FALSE, and must currently be FALSE, otherwise skip it all
+; and FALSE, and must currently be FALSE (as a result of MSG_RESETALL, otherwise
+; skip it all...
 ;
 setlocal name 'ICAP_PATCHCODEDETECTIONENABLED is supported'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_PATCHCODEDETECTIONENABLED,0,0,0'

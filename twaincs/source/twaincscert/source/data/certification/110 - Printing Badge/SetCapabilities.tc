@@ -29,6 +29,7 @@
 ;   arg:3 - global variable to store the CAP_PRINTER value
 ;
 ; Locals
+;   capprintervariable - global variable to store the CAP_PRINTER value
 ;   indent - indent the passfail text
 ;   name - name of the current test
 ;   twsx - TWSX_* value for ICAP_XFERMECH
@@ -44,6 +45,7 @@
 ;
 setlocal twsx '${arg:1}'
 setlocal indent '${arg:2}'
+setlocal capprintervariable '${arg:3}'
 
 
 
@@ -124,7 +126,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; CAP_PRINTER must be supported with at least one of the printer values,
-; squirrel away the value in the global argument stored in ${arg:3}
+; squirrel away the value in the global argument stored in capprintervariable
 ;
 setlocal name 'CAP_PRINTER is supported'
 dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PRINTER,0,0,0'
@@ -137,8 +139,8 @@ goto MAIN.ERROR.ECHOPASSFAIL
 ;
 ; Save the value so we can set it later...
 :MAIN.PRINTER.PASS
-setglobal ${arg:3} ${ret:${get:TW_ONEVALUE.Item}}
-echo.passfail '${get:indent}${get:name}' 'pass (${get:${arg:3}})'
+setglobal ${get:capprintervariable} ${ret:${get:TW_ONEVALUE.Item}}
+echo.passfail '${get:indent}${get:name}' 'pass (${get:${get:capprintervariable}})'
 
 
 

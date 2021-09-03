@@ -40,7 +40,7 @@
 ;   twsx - TWSX_* value for ICAP_XFERMECH
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 

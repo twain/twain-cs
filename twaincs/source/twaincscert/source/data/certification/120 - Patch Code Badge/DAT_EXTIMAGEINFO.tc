@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; DAT_EXTIMAGEINFO
 ;   Check the return values from DAT_EXTIMAGEINFO to make sure the patch code
-;   metadata is being properly reported.
+;   metadata is properly reported.
 ;
 ;   Here's the basic flow:
 ;       DAT_EXTIMAGEINFO
@@ -38,7 +38,7 @@
 ;   twinfo.item.index - index to TW_INFO[n].item from the start of patchcodedata
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 

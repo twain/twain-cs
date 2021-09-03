@@ -22,10 +22,7 @@
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
-;   arg:2 - global for us to update on failure
-;   arg:3 - value of ShowUI (TRUE or FALSE)
-;   arg:4 - test name for the image folder
-;   arg:5 - expected value for TWEI_PRINTER
+;   arg:2 - test name for the image folder
 ;
 ; Globals
 ;   g_capprinter - value of CAP_PRINTER, used to check TWEI_PRINTER
@@ -39,7 +36,7 @@
 ;   image.folder - folder to put the images in
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 
@@ -56,13 +53,12 @@ return 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGEMEMFILEXFER v1.0 30-Jul-2021'
+echo.titletest 'DAT_IMAGEMEMFILEXFER'
 ;
 setlocal indent ''
 setlocal image.pointer '0'
 setlocal image.count '0'
-setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEMEMFILEXFER'
-setlocal showui '${arg:3}'
+setlocal image.folder '${folder:certimages}/${arg:2}/DAT_IMAGEMEMFILEXFER'
 ;
 setglobal g_capprinter ''
 
@@ -152,7 +148,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'dg_control/dat_userinterface/msg_enableds'
 wait reset
-dsmentry src null dg_control dat_userinterface msg_enableds '${get:showui},0'
+dsmentry src null dg_control dat_userinterface msg_enableds '0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 

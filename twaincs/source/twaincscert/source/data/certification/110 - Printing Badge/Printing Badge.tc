@@ -15,16 +15,17 @@
 ;      TWEI_PRINTER
 ;
 ; Arguments
-;   arg:1 - TW_IDENTITY.ProductName of scanner to test
+;   (none)
 ;
 ; Globals
 ;   (none)
 ;
 ; Locals
+;   name - name of a test
 ;   certifyresult - track if we fail
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 
@@ -32,12 +33,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-setlocal certifyresult 'pass' ; assume we'll pass
+setlocal certifyresult 'pass' ; assume we'll pass, this is our return value
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Reset to a known state...
+; Reset to a known state, this is mandatory...
 ;
 setlocal name 'MSG_RESETALL'
 dsmentry src ds dg_control dat_capability msg_resetall '0,0,0,0'
@@ -55,7 +56,8 @@ goto MAIN.DONE
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; CAP_PRINTERENABLED must be supported, and must offer both TRUE
-; and FALSE, and must currently be FALSE, otherwise skip it all
+; and FALSE, and must currently be FALSE (as a result of MSG_RESETALL,
+; otherwise skip it all...
 ;
 setlocal name 'CAP_PRINTERENBLED is supported'
 dsmentry src ds dg_control dat_capability msg_get 'CAP_PRINTERENABLED,0,0,0'

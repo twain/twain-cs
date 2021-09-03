@@ -26,10 +26,8 @@
 ;         and (g_patchcodecount.one >= 1)
 ;
 ; Arguments
-;   arg:1 - TW_IDENTITY.ProductName of scanner to test
-;   arg:2 - global for us to update on failure
-;   arg:3 - value of ShowUI (TRUE or FALSE)
-;   arg:4 - test name for the image folder
+;   arg:1 - ignore
+;   arg:2 - test name for the image folder
 ;
 ; Globals
 ;   g_patchcodecount.none - increment if no patch codes are found
@@ -39,13 +37,12 @@
 ;   name - current test being done
 ;   indent - indent the passfail text
 ;   twimageinfo.compression - compression for current image
-;   showui - value of showui
 ;
 ;   image.count - count of images from 1
 ;   image.folder - folder to put the images in
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 
@@ -62,13 +59,12 @@ return 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGEFILEXFER v1.0 19-Aug-2021'
+echo.titletest 'DAT_IMAGEFILEXFER'
 ;
 setlocal indent ''
 setlocal image.count '0'
-setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEFILEXFER'
+setlocal image.folder '${folder:certimages}/${arg:2}/DAT_IMAGEFILEXFER'
 setlocal image.showname ''
-setlocal showui '${arg:3}'
 ;
 setglobal g_patchcodecount.none '0'
 setglobal g_patchcodecount.one '0'
@@ -100,9 +96,9 @@ echo.prompt "Scanning will take place during this test.  There will be no"
 echo.prompt "need to press any button on the TWAIN user interface to start"
 echo.prompt "the scanner.  A progress indicator may appear during scanning."
 echo.prompt
-echo.prompt "Place 2 sheets in the scanner's feeder in no particular order:"
-echo.prompt "one sheet has no patch codes, and one has a single patch code"
-echo.prompt "that the scanner is known to recognize."
+echo.prompt "Place at least 2 sheets in the scanner's feeder in no particular
+echo.prompt "order: at least one sheet has no patch codes, and one has a"
+echo.prompt "single patch code that the scanner is known to recognize."
 echo.prompt
 pause '(press the ENTER key when ready to continue)'
 echo.prompt
@@ -115,7 +111,7 @@ echo.prompt
 :MAIN.USERINTERFACE
 setlocal name 'dg_control/dat_userinterface/msg_enableds'
 wait reset
-dsmentry src null dg_control dat_userinterface msg_enableds '${get:showui},0'
+dsmentry src null dg_control dat_userinterface msg_enableds '0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
@@ -231,9 +227,11 @@ return 'pass'
 :MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
 echo.passfail 'SUMMARY' 'fail'
+rollback state4
 return 'fail'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.FAIL
 echo.passfail 'SUMMARY' 'fail'
+rollback state4
 return 'fail'

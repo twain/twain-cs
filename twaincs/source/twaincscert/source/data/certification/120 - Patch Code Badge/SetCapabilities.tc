@@ -19,7 +19,7 @@
 ;
 ;   We are not testing ICAP_PATCHCODEMAXRETRIES or ICAP_PATCHCODETIMEOUT.  We're going to assume that the driver's
 ;   default values offer the best user experience.  ICAP_PATCHCODETIMEOUT is especially problematic, since the
-;   spec doesn't tell use the units.
+;   spec doesn't tell us the units.
 ;
 ; Arguments
 ;   arg:1 - TWSX_* value for ICAP_XFERMECH
@@ -39,7 +39,7 @@
 ;   twsx - TWSX_* value for ICAP_XFERMECH
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 
@@ -84,10 +84,12 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Set CAP_XFERCOUNT to -1
+; Set CAP_SHEETCOUNT to 7, this is enough to test all standard patch codes and
+; one sheet with no patch code.  The user can feed fewer sheets, as one as there
+; is one with a patch code and one without a patch code...
 ;
-setlocal name 'CAP_XFERCOUNT MSG_SET -1'
-dsmentry src ds dg_control dat_capability msg_set 'CAP_XFERCOUNT,TWON_ONEVALUE,TWTY_INT16,-1'
+setlocal name 'CAP_SHEETCOUNT MSG_SET 7'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_SHEETCOUNT,TWON_ONEVALUE,TWTY_INT16,7'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
@@ -114,7 +116,9 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Try to set ICAP_PATCHCODESEARCHMODE to TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT
+; Try to set ICAP_PATCHCODESEARCHMODE to TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT.
+; Patch code sheets can have bars on all sides, so we're not requiring that any particular mode
+; has to be supported.  We just need one.
 ;
 setlocal name 'ICAP_PATCHCODESEARCHMODE MSG_SET TWBD_HORZVERT, TWBD_VERTHORZ, TWBD_HORZ, or TWBD_VERT'
 dsmentry src ds dg_control dat_capability msg_get 'ICAP_PATCHCODESEARCHMODE'
@@ -176,7 +180,8 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Pare the ICAP_SUPPORTEDPATCHCODETYPES list down to the first ICAP_PATCHCODEMAXSEARCHPRIORITIES items
+; Pare the ICAP_SUPPORTEDPATCHCODETYPES list down to the first ICAP_PATCHCODEMAXSEARCHPRIORITIES items,
+; all of the standard patch codes should be supported, but we're not going to require that. 
 ;
 setlocal comma ''
 setlocal name 'Get the first ${get:g_patchcodemaxsearchpriorities.max} from ICAP_SUPPORTEDPATCHCODETYPES'
@@ -201,7 +206,8 @@ echo.passfail '${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Set ICAP_PATCHCODESEARCHPRIORITIES to first g_patchcodemaxsearchpriorities.max of ICAP_SUPPORTEDPATCHCODETYPES...
+; Set ICAP_PATCHCODESEARCHPRIORITIES to first g_patchcodemaxsearchpriorities.max
+; of ICAP_SUPPORTEDPATCHCODETYPES...
 ;
 setlocal name 'ICAP_PATCHCODESEARCHPRIORITIES MSG_SET first ${get:g_patchcodemaxsearchpriorities.max} of ICAP_SUPPORTEDPATCHCODETYPES'
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_PATCHCODESEARCHPRIORITIES,TWON_ARRAY,TWTY_UINT16,${get:g_patchcodemaxsearchpriorities.max},${get:patchcodesearchpriorities.itemlist}'

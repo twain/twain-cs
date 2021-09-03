@@ -4,14 +4,18 @@
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
-;   arg:2 - comma separated list of: all, twaindirect, barcode, printing, or imageaddress
+;   arg:2 - comma separated list of: all, barcode, imageaddress, patcode, or imagsaddress
 ;
 ; Globals
 ;   g_certifyresult - pass/fail result of all standard tests
 ;   g_certifytwaindirect - pass/fail result of twain direct badge
+;   g_certifyprinting - pass/fail result of printing badge
+;   g_certifypatchcode - pass/fail result of patch code badge
+;   g_certifybarcode - pass/fail result of barcode badge
+;   g_certifyimageaddress - pass/fail result of image address badge
 ;
 ; Locals
-;   bagdge - badges to check
+;   badges - badges to check
 ;   title - script info
 ;   twidentity.productname - product name of scanner to test
 ;
@@ -24,11 +28,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff...
 ;
-setlocal title 'TWAIN Certification Script v1.0 21-Feb-2020'
+setlocal title 'TWAIN Certification Script v1.1 02-Sep-2021'
 setlocal twidentity.productname '${arg:1}'
 setlocal badges '${arg:2}'
 setglobal g_certifyresult 'pass'
-setglobal g_certifytwaindirect 'pass'
+setglobal g_certifytwaindirect ''
+setglobal g_certifyprinting ''
+setglobal g_certifypatchcode ''
+setglobal g_certifybarcode ''
+setglobal g_certifyimageaddress ''
 
 
 
@@ -69,6 +77,7 @@ call RUNCERTIFICATION '090 - Verify Values for MSG_OPENDS, MSG_RESET, and MSG_RE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Do the badges...
 ;
+; TWAIN Direct...
 if ',${get:badges},' ~contains ',all,' goto MAIN.BADGE.TWAINDIRECT
 if ',${get:badges},' ~contains ',twaindirect,' goto MAIN.BADGE.TWAINDIRECT
 goto MAIN.BADGE.TWAINDIRECT.SKIP
@@ -76,12 +85,37 @@ goto MAIN.BADGE.TWAINDIRECT.SKIP
 call RUNCERTIFICATION '100 - TWAIN Direct Badge'               '${get:twidentity.productname}' g_certifytwaindirect
 :MAIN.BADGE.TWAINDIRECT.SKIP
 ;
+; Printing...
+if ',${get:badges},' ~contains ',all,' goto MAIN.BADGE.PRINTING
+if ',${get:badges},' ~contains ',printing,' goto MAIN.BADGE.PRINTING
+goto MAIN.BADGE.PRINTING.SKIP
+:MAIN.BADGE.PRINTING
+call RUNCERTIFICATION '110 - Printing Badge'                   '${get:twidentity.productname}' g_certifyprinting
+:MAIN.BADGE.PRINTING.SKIP
+;
+; Patch Code...
+if ',${get:badges},' ~contains ',all,' goto MAIN.BADGE.PATCHCODE
+if ',${get:badges},' ~contains ',patchcode,' goto MAIN.BADGE.PATCHCODE
+goto MAIN.BADGE.PATCHCODE.SKIP
+:MAIN.BADGE.PATCHCODE
+call RUNCERTIFICATION '120 - Patch Code Badge'                 '${get:twidentity.productname}' g_certifypatchcode
+:MAIN.BADGE.PATCHCODE.SKIP
+;
+; Barcode...
 if ',${get:badges},' ~contains ',all,' goto MAIN.BADGE.BARCODE
 if ',${get:badges},' ~contains ',barcode,' goto MAIN.BADGE.BARCODE
 goto MAIN.BADGE.BARCODE.SKIP
 :MAIN.BADGE.BARCODE
-call RUNCERTIFICATION '130 - Barcode Badge'                   '${get:twidentity.productname}' g_certifytwaindirect
+call RUNCERTIFICATION '130 - Barcode Badge'                   '${get:twidentity.productname}' g_certifybarcode
 :MAIN.BADGE.BARCODE.SKIP
+;
+; Image Address...
+if ',${get:badges},' ~contains ',all,' goto MAIN.BADGE.IMAGEADDRESS
+if ',${get:badges},' ~contains ',imageaddress,' goto MAIN.BADGE.IMAGEADDRESS
+goto MAIN.BADGE.IMAGEADDRESS.SKIP
+:MAIN.BADGE.IMAGEADDRESS
+call RUNCERTIFICATION '140 - Image Address Badge'             '${get:twidentity.productname}' g_certifyimageaddress
+:MAIN.BADGE.IMAGEADDRESS.SKIP
 
 
 
@@ -95,9 +129,27 @@ call ECHOANDLOG info
 call ECHOANDLOG info 'ended at ${localtime:yyyy-MM-dd/hh:mm:ss}'
 call ECHOANDLOG info '**************************************'
 call ECHOANDLOG info 'The scanner passed TWAIN Certification'
-if '${get:g_certifytwaindirect}' != 'pass' goto MAIN.TWAINDIRECT.SKIP
+;
+if '${get:g_certifytwaindirect}' != 'pass' goto MAIN.TWAINDIRECT.CERTIFY.SKIP
 call ECHOANDLOG info 'Badge: TWAIN Direct'
-:MAIN.TWAINDIRECT.SKIP
+:MAIN.TWAINDIRECT.CERTIFY.SKIP
+;
+if '${get:g_certifyprinting}' != 'pass' goto MAIN.PRINTING.CERTIFY.SKIP
+call ECHOANDLOG info 'Badge: Printing'
+:MAIN.PRINTING.CERTIFY.SKIP
+;
+if '${get:g_certifypatchcode}' != 'pass' goto MAIN.PATCHCODE.CERTIFY.SKIP
+call ECHOANDLOG info 'Badge: Patch Code'
+:MAIN.PATCHCODE.CERTIFY.SKIP
+;
+if '${get:g_certifybarcode}' != 'pass' goto MAIN.BARCODE.CERTIFY.SKIP
+call ECHOANDLOG info 'Badge: Barcode'
+:MAIN.BARCODE.CERTIFY.SKIP
+;
+if '${get:g_certifyimageaddress}' != 'pass' goto MAIN.IMAGEADDRESS.CERTIFY.SKIP
+call ECHOANDLOG info 'Badge: Image Address'
+:MAIN.IMAGEADDRESS.CERTIFY.SKIP
+;
 call ECHOANDLOG info '**************************************'
 report save
 echo 'report saved to ${report:}'
@@ -126,6 +178,7 @@ return 'fail'
 ;
 :RUNCERTIFICATION
 ;
+setglobal ${arg:3} 'pass' ; assume pass
 cd '${folder:certification}/${arg:1}'
 run Certification '${arg:2}' '${arg:3}'
 cd '${folder:certification}'
