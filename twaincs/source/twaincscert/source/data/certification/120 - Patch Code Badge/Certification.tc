@@ -25,10 +25,10 @@
 ; Initialize stuff, load tables if not already done for us...
 ;
 echo.titlesuite 'Patch Code Badge v1.0 01-Sep-2021'
-echo.yellow '***********************************************************************************'
-echo.yellow '*** This test is for the Patch Code Badge.  Failing means the driver does not   ***'
-echo.yellow '*** support this functionality.  It does not prevent certification.             ***'
-echo.yellow '***********************************************************************************'
+echo.yellow '*************************************************************************************'
+echo.yellow '*** This tests the Patch Code Badge.  Skipping or failing means the driver does   ***'
+echo.yellow '*** not support this functionality.  It does not prevent certification.           ***'
+echo.yellow '*************************************************************************************'
 ;
 setlocal twidentity.productname '${arg:1}'
 setlocal globaltosetonfail '${arg:2}'

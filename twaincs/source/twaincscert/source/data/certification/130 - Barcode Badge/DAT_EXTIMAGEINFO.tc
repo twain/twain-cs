@@ -288,7 +288,6 @@ setlocal barcodetextlength '${get:barcodetextlength}${get:comma}${gethandleindex
 setlocal comma ','
 increment barcodetextlength.index ${get:barcodetextlength.index} 1
 if '${get:barcodetextlength.index}' >= '${get:barcodecount}' goto MAIN.MANYBARCODES.NEXT ; out of items
-free handle item
 goto MAIN.MANYBARCODES.BARCODETEXTLENGTH.NEXT ; look into adding another barcodetextlength
 ;
 ; Check ItemType for TWEI_BARCODETEXT2...

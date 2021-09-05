@@ -29,8 +29,8 @@
 ;
 echo.titlesuite 'Printing Badge v1.0 01-Sep-2021'
 echo.yellow '*************************************************************************************'
-echo.yellow '*** This test is for the Printing Badge.  Failing means the driver does not       ***'
-echo.yellow '*** support this functionality.  It does not prevent certification.               ***'
+echo.yellow '*** This tests the Printing Badge.  Skipping or failing means the driver does     ***'
+echo.yellow '*** not support this functionality.  It does not prevent certification.           ***'
 echo.yellow '*************************************************************************************'
 ;
 setlocal twidentity.productname '${arg:1}'

@@ -23,7 +23,7 @@
 ;   certifyresult - track if we fail
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 
@@ -32,6 +32,30 @@
 ; Initialize...
 ;
 setlocal certifyresult 'pass' ; assume we'll pass
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check if this driver claims support for TWAIN Direct...
+;
+setlocal name 'DAT_TWAINDIRECT found in CAP_SUPPORTEDDATS'
+dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_SUPPORTEDDATS,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.SUPPORTEDDATS.FAIL
+if ',${ret:},' !~contains ',DAT_TWAINDIRECT,' goto MAIN.SUPPORTEDDATS.SKIP
+echo.passfail '${get:name}' 'pass'
+goto MAIN.SUPPORTEDATS.DONE
+;
+:MAIN.SUPPORTEDDATS.SKIP
+echo.passfail '${get:name}' 'skip'
+setlocal certifyresult 'skip'
+goto MAIN.DONE
+;
+:MAIN.SUPPORTEDDATS.FAIL
+echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+setlocal certifyresult 'fail'
+goto MAIN.DONE
+;
+:MAIN.SUPPORTEDATS.DONE
 
 
 

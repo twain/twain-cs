@@ -41,10 +41,10 @@
 ; Initialize stuff, load tables if not already done for us...
 ;
 echo.titlesuite 'Image Address Badge v1.0 01-Sep-2021'
-echo.yellow '************************************************************************************'
-echo.yellow '*** This test is for the Image Address Badge.  Failing means the driver does not ***'
-echo.yellow '*** support this functionality.  It does not prevent certification.              ***'
-echo.yellow '************************************************************************************'
+echo.yellow '*************************************************************************************'
+echo.yellow '*** This tests the Image Address Badge.  Skipping or failing means the driver     ***'
+echo.yellow '*** does not support this functionality.  It does not prevent certification.      ***'
+echo.yellow '*************************************************************************************'
 ;
 setlocal twidentity.productname '${arg:1}'
 setlocal globaltosetonfail '${arg:2}'
