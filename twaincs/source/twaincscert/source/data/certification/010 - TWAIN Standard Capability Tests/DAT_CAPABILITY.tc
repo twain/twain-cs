@@ -343,7 +343,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETCURRENT must be
 ; TWTY_ONEVALUE, if not then end with error
 ; SPECNOTE: we're testing for array, which gives us the same result...
-if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGGETCURRENT.ARRAY
+if '${get:${arg:1}.ConType}' contains 'TWON_ARRAY' goto MSGGETCURRENT.ARRAY
 setlocal name 'Verify ConType contains TWON_ONEVALUE'
 if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGGETCURRENT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -416,7 +416,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; or TWON_RANGE, then the TW_CAPABILITY.ConType for MSG_GETDEFAULT must be
 ; TWTY_ONEVALUE, if not then end with error
 ; SPECNOTE: we're testing for array, which gives us the same result...
-if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGGETDEFAULT.ARRAY
+if '${get:${arg:1}.ConType}' contains 'TWON_ARRAY' goto MSGGETDEFAULT.ARRAY
 setlocal name 'Verify ConType contains TWON_ONEVALUE'
 if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGGETDEFAULT.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -490,7 +490,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; TWTY_ONEVALUE, if not then end with error
 ; SPECNOTE: the test implies that the MSG_GET container should returned, this is wrong...
 ; SPECNOTE: we're testing for array, which gives us the same result...
-if '${get:${arg:1}.ConType}' == 'TWON_ARRAY' goto MSGRESET.ARRAY
+if '${get:${arg:1}.ConType}' contains 'TWON_ARRAY' goto MSGRESET.ARRAY
 setlocal name 'Verify ConType contains TWON_ONEVALUE'
 if '${getindex:capability:${get:TW_CAPABILITY.ConType}}' != 'TWON_ONEVALUE' goto MSGRESET.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'

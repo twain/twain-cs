@@ -4,7 +4,8 @@
 ;
 ; Arguments
 ;   arg:1 - TW_IDENTITY.ProductName of scanner to test
-;   arg:2 - comma separated list of: all, barcode, imageaddress, patcode, or imagsaddress
+;   arg:2 - TW_IDENTITY.Version.Major + '.' + TW_IDENTITY.Version.Minor
+;   arg:3 - comma separated list of: all, barcode, imageaddress, patcode, or imagsaddress
 ;
 ; Globals
 ;   g_certifyresult - pass/fail result of all standard tests
@@ -30,7 +31,8 @@
 ;
 setlocal title 'TWAIN Certification Script v1.1 02-Sep-2021'
 setlocal twidentity.productname '${arg:1}'
-setlocal badges '${arg:2}'
+setlocal twidentity.version '${arg:2}'
+setlocal badges '${arg:3}'
 setglobal g_certifyresult 'pass'
 setglobal g_certifytwaindirect ''
 setglobal g_certifyprinting ''

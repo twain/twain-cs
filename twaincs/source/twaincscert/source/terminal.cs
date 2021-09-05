@@ -2120,22 +2120,24 @@ namespace twaincscert
                 /////////0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
                 DisplayYellow("CERTIFYING A SCANNER");
                 Display("Certification is accomplished using scripts contained in the data/Certification folder.  These");
-                Display("must be run, for both 32-bit and 64-bit systems, on all platforms supported by the driver.");
+                Display("must be run for both 32-bit and 64-bit systems on all platforms supported by the driver.");
                 Display("");
                 Display("The following command runs certification:");
-                Display("  certify [\"driver\"] [verbose] [skipprompts]");
+                Display("  certify [\"driver\"] [verbose] [skipprompts] [badges]");
                 Display("  Where,");
                 Display("      driver - the TW_IDENTITY.ProductName of a TWAIN driver");
                 Display("      verbose - if you want to see under the hood");
                 Display("      skipprompts - diagnostic, best used with simulators");
+                Display("      badges - all, barcode, imageaddress, patchcode, printing, twaindirect");
                 Display("");
-                Display("If no are given, the command shows a list of the installed TWAIN driver and prompts for the one");
-                Display("to use.  Follow the instructions to complete the process.");
+                Display("If no arguments are provided the command shows a list of the installed TWAIN driver and prompts");
+                Display("for which one to use.  Follow the instructions to complete the process.");
                 Display("");
                 Display("If debugging a problem the various scripts can be run separately.  Manually run the Opends");
                 Display("script, and then the script you want to focus on.  Or write a script that includes the items");
                 Display("that need testing.  The output from verbose is included in the output file, so that can also");
-                Display("be a good place to start.");
+                Display("be a good place to start.  Each of the badges comes with a certification script that can be");
+                Display("run standalone when diagnosing problems.");
                 return (false);
             }
 
@@ -2693,14 +2695,16 @@ namespace twaincscert
             bool blRunningScriptRestore = m_blRunningScript;
             bool blVerboseRestore = m_blVerbose;
             bool blTwainSuccess = false;
+            string szBadges = "";
             string szSelection = "";
             Interpreter interpreter = new Interpreter("", m_consolecolorDefault, m_consolecolorGreen);
 
             // Gotta pretend we're in a script...
             m_blRunningScript = true;
 
-            // Make sure skipprompts is off...
+            // Make sure skipprompts is off and badges is empty...
             SetVariable("g_skipprompts", "", 0, VariableScope.Global);
+            SetVariable("g_badges", "", 0, VariableScope.Global);
 
             // If we have arguments, drop them in...
             if ((a_functionarguments.aszCmd != null) && (a_functionarguments.aszCmd.Length > 1) && (a_functionarguments.aszCmd[1] != null))
@@ -2715,10 +2719,53 @@ namespace twaincscert
                     {
                         SetVariable("g_skipprompts", "true", 0, VariableScope.Global);
                     }
+                    else if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "all")
+                    {
+                        szBadges = "all";
+                    }
+                    else if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "barcode")
+                    {
+                        if ((szBadges != "all") && !("," + szBadges + ",").Contains(",barcode,"))
+                        {
+                            szBadges += string.IsNullOrEmpty(szBadges) ? "barcode" : ",barcode";
+                        }
+                    }
+                    else if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "imageaddress")
+                    {
+                        if ((szBadges != "all") && !("," + szBadges + ",").Contains(",imageaddress,"))
+                        {
+                            szBadges += string.IsNullOrEmpty(szBadges) ? "imageaddress" : ",imageaddress";
+                        }
+                    }
+                    else if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "patchcode")
+                    {
+                        if ((szBadges != "all") && !("," + szBadges + ",").Contains(",patchcode,"))
+                        {
+                            szBadges += string.IsNullOrEmpty(szBadges) ? "patchcode" : ",patchcode";
+                        }
+                    }
+                    else if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "printing")
+                    {
+                        if ((szBadges != "all") && !("," + szBadges + ",").Contains(",printing,"))
+                        {
+                            szBadges += string.IsNullOrEmpty(szBadges) ? "printing" : ",printing";
+                        }
+                    }
+                    else if (a_functionarguments.aszCmd[aa].ToLowerInvariant() == "twaindirect")
+                    {
+                        if ((szBadges != "all") && !("," + szBadges + ",").Contains(",twaindirect,"))
+                        {
+                            szBadges += string.IsNullOrEmpty(szBadges) ? "twaindirect" : ",twaindirect";
+                        }
+                    }
                     else
                     {
                         szSelection = a_functionarguments.aszCmd[aa];
                     }
+                }
+                if (!string.IsNullOrEmpty(szBadges))
+                {
+                    SetVariable("g_badges", szBadges, 0, VariableScope.Global);
                 }
             }
 
@@ -2750,12 +2797,12 @@ namespace twaincscert
             Display("  This tool certifies TWAIN drivers.  To complete certification it must be run on.");
             Display("  all platforms supported by the driver:  Windows, Linux, macOS for 32-bit and 64-bit.");
             Display("");
-            Display("  The tool will ask for some information, and begin the test, which only takes a");
-            Display("  few minutes to complete.  On success the tool will provide instructions on how to");
+            Display("  The tool will ask for some information and begin the test, which only takes a");
+            Display("  few minutes to complete.  On success the tool provides instructions on how to");
             Display("  submit information about a TWAIN driver that has passed certification.");
 
-            // Show the available scanners, so the user can pick one...
-            if (string.IsNullOrEmpty(szSelection))
+            // Pick a scanner (putting this in a block to make it easier to read)...
+            bool blNeedSelection = string.IsNullOrEmpty(szSelection);
             {
                 List<string> aszDrivers = new List<string>();
                 Interpreter.FunctionArguments functionarguments;
@@ -2837,23 +2884,32 @@ namespace twaincscert
                 aszDrivers.Sort();
 
                 // What we found...
-                Display("");
-                DisplayYellow("Available TWAIN Drivers:");
-                foreach (string szDriver in aszDrivers)
+                if (blNeedSelection)
                 {
-                    string[] aszDriver = CSV.Parse(szDriver);
-                    Display("  " + aszDriver[0] + " " + aszDriver[1]);
+                    Display("");
+                    DisplayYellow("Available TWAIN Drivers:");
+                    foreach (string szDriver in aszDrivers)
+                    {
+                        string[] aszDriver = CSV.Parse(szDriver);
+                        Display("  " + aszDriver[0] + " " + aszDriver[1]);
+                    }
                 }
 
                 // Ask for a scanner...
                 bool blFound = false;
-                Display("");
-                Display("Please enter the name of a scanner from the list above (or quit to get out):");
-                Display("(partial names are okay, as long as they are unique)");
+                if (blNeedSelection)
+                {
+                    Display("");
+                    Display("Please enter the name of a scanner from the list above (or quit");
+                    Display("to get out). Partial names are okay, as long as they are unique:");
+                }
                 while (true)
                 {
-                    interpreter.SetPrompt("certify driver>>> ");
-                    szSelection = interpreter.Prompt(m_streamreaderConsole, 0);
+                    if (blNeedSelection)
+                    {
+                        interpreter.SetPrompt("certify driver>>> ");
+                        szSelection = interpreter.Prompt(m_streamreaderConsole, 0);
+                    }
                     if (   (szSelection.ToLowerInvariant() == "quit")
                         || (szSelection.ToLowerInvariant() == "q"))
                     {
@@ -2862,7 +2918,7 @@ namespace twaincscert
                         m_blVerbose = blVerboseRestore;
                         return (false);
                     }
-                    if (szSelection.Length > 0)
+                    if (!string.IsNullOrEmpty(szSelection))
                     {
                         // Do ends with first so that we can properly find
                         // stuff like 1000 vs 1000X...
@@ -2876,6 +2932,7 @@ namespace twaincscert
                                 break;
                             }
                         }
+
                         // Otherwise go for contains...
                         if (!blFound)
                         {
@@ -2890,9 +2947,134 @@ namespace twaincscert
                                 }
                             }
                         }
+
                         // If we found something, then scoot...
                         if (blFound)
                         {
+                            break;
+                        }
+
+                        // If the user gave szSelection to us as an argument, then bail...
+                        if (!blNeedSelection)
+                        {
+                            break;
+                        }
+                    }
+
+                    // If the user gave szSelection to us as an argument, then bail...
+                    if (blNeedSelection)
+                    {
+                        DisplayRed("ProductName not found: <" + szSelection + ">");
+                        Display("Running the certify command without arguments shows a list of the available scanners.");
+                        szSelection = "";
+                        m_blRunningScript = blRunningScriptRestore;
+                        m_blVerbose = blVerboseRestore;
+                        return (false);
+                    }
+                }
+            }
+
+            // We're bailing...
+            if (string.IsNullOrEmpty(szSelection))
+            {
+                m_blRunningScript = blRunningScriptRestore;
+                m_blVerbose = blVerboseRestore;
+                return (false);
+            }
+
+            // Show the available badges so the user can pick one, if the user gave
+            // the scanner on the command line, but not the badge, assume they don't
+            // want to test any badges...
+            if (string.IsNullOrEmpty(szBadges) && blNeedSelection)
+            {
+                // What we found...
+                Display("");
+                DisplayYellow("Available TWAIN Badges:");
+                string[] aszBadges = "none,all,barcode,imageaddress,patchcode,printing,twaindirect".Split(new char[] { ',' });
+                foreach (string szBadge in aszBadges)
+                {
+                    Display("  " + szBadge);
+                }
+
+                // Ask for a zero or more badges...
+                Display("");
+                Display("Please enter a comma separated list with one or zero or more ");
+                Display("badges from the list above (or quit to get out). Partial names");
+                Display("are okay as long as they are unique)");
+                while (true)
+                {
+                    interpreter.SetPrompt("badges>>> ");
+                    szBadges = interpreter.Prompt(m_streamreaderConsole, 0);
+                    if (   (szBadges.ToLowerInvariant() == "quit")
+                        || (szBadges.ToLowerInvariant() == "q"))
+                    {
+                        szSelection = ""; // so we know we're quitting...
+                        szBadges = "";
+                        m_blRunningScript = blRunningScriptRestore;
+                        m_blVerbose = blVerboseRestore;
+                        return (false);
+                    }
+                    szBadges = szBadges.Replace(" ", "");
+                    if (szBadges.Length > 0)
+                    {
+                        string szFound = "";
+                        string szResult = "";
+                        // Turn whatever the user gave us into a valid list that we'll
+                        // use to update szBadges...
+                        foreach (string szBadge in szBadges.Split(new char[] { ',' }))
+                        {
+                            int iFound = 0;
+
+                            // Look for a match...
+                            foreach (string sz in aszBadges)
+                            {
+                                if (sz.StartsWith(szBadge))
+                                {
+                                    iFound += 1;
+                                    szFound = sz;
+                                }
+                            }
+
+                            // If found isn't 1 we have a problem...
+                            if (iFound != 1)
+                            {
+                                szResult = "";
+                                Display("Unrecognized or ambiguous badge name.");
+                                break;
+                            }
+
+                            // If it's none, scoot without a badge...
+                            if (szFound == "none")
+                            {
+                                szResult = "none";
+                                break;
+                            }
+
+                            // If it's all, scoot with just all...
+                            if (szFound == "all")
+                            {
+                                szResult = "all";
+                                break;
+                            }
+
+                            // We already have it...
+                            if (!string.IsNullOrEmpty(szResult) && ("," + szResult + ",").Contains("," + szFound + ","))
+                            {
+                                continue;
+                            }
+
+                            // Add it to our list...
+                            szResult = szResult + (string.IsNullOrEmpty(szResult) ? szFound : "," + szFound);
+                        }
+
+                        // Grab the result, this is the badge list we'll go with...
+                        if (!string.IsNullOrEmpty(szResult))
+                        {
+                            szBadges = szResult;
+                            if (szBadges == "none")
+                            {
+                                szBadges = "";
+                            }
                             break;
                         }
                     }
@@ -2916,14 +3098,21 @@ namespace twaincscert
                 if (aszDriver.Length < 2)
                 {
                     DisplayRed("ProductName not found: <" + szSelection + ">");
-                    Display("Running the certify command without arguements shows a list of the available scanners.");
+                    Display("Running the certify command without arguments shows a list of the available scanners.");
                     m_blRunningScript = blRunningScriptRestore;
                     m_blVerbose = blVerboseRestore;
                     return (false);
                 }
 
                 // Prompt the user to see if this is good...
-                interpreter.SetPrompt("Certify '" + aszDriver[0] + " " + aszDriver[1] + "'" + " (yes/no)? ");
+                if (string.IsNullOrEmpty(szBadges))
+                {
+                    interpreter.SetPrompt("Certify '" + aszDriver[0] + " " + aszDriver[1] + "'" + " (yes/no)? ");
+                }
+                else
+                {
+                    interpreter.SetPrompt("Certify '" + aszDriver[0] + " " + aszDriver[1] + "' with badges:" + szBadges + " (yes/no)? ");
+                }
                 string szAnswer = interpreter.Prompt(m_streamreaderConsole, 0);
                 if (szAnswer.ToLowerInvariant().StartsWith("y"))
                 {
@@ -2984,11 +3173,25 @@ namespace twaincscert
                 functionarguments = new Interpreter.FunctionArguments();
                 if (m_blVerbose)
                 {
-                    functionarguments.aszCmd = new string[4] { "runv", "certification", aszDriver[0], aszDriver[1] };
+                    if (string.IsNullOrEmpty(szBadges))
+                    {
+                        functionarguments.aszCmd = new string[4] { "runv", "certification", aszDriver[0], aszDriver[1] };
+                    }
+                    else
+                    {
+                        functionarguments.aszCmd = new string[5] { "runv", "certification", aszDriver[0], aszDriver[1], szBadges };
+                    }
                 }
                 else
                 {
-                    functionarguments.aszCmd = new string[4] { "run", "certification", aszDriver[0], aszDriver[1] };
+                    if (string.IsNullOrEmpty(szBadges))
+                    {
+                        functionarguments.aszCmd = new string[4] { "run", "certification", aszDriver[0], aszDriver[1] };
+                    }
+                    else
+                    {
+                        functionarguments.aszCmd = new string[5] { "run", "certification", aszDriver[0], aszDriver[1], szBadges };
+                    }
                 }
                 CmdRun(ref functionarguments);
                 blTwainSuccess = (functionarguments.szReturnValue == "pass");
