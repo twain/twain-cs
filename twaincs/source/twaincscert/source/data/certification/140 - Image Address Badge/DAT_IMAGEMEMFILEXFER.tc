@@ -52,8 +52,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGEMEMFILEXFER'
-;
 setlocal fixedfieldname   '${arg:2}'
 setlocal fielda           '${arg:3}' ; check argindex down below
 setlocal fieldb           '${arg:4}'
