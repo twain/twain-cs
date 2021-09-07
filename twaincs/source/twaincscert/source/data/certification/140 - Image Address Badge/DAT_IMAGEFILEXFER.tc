@@ -1,8 +1,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; DAT_IMAGEFILEXFER
-;   This test scans one sheet of paper for the default pixeltype.  An ADF
-;   is required to pass this test, but that was already been tested before
-;   we got to this function.
+;   This test scans one sheet of paper for the default pixeltype.  An ADF is required to pass this test,
+;   but that was already been confirmed before we got to this function.  We're going to set the driver,
+;   scan a sheet of paper, and check the TWEI_* values.
 ;
 ;   Here's the basic flow:
 ;       SetCapabilities
@@ -16,16 +16,20 @@
 ;       verify the results
 ;
 ;   The test passes if:
-;       - all of the capabilities can be set
-;       - TWEI_PRINTER matches CAP_PRINTER
-;       - TWEI_PRINTERSTRING starts with 'TWAIN' and ends with 'TEST'
+;       - all of the CAP_IAFIELD*_* capabilities can be set
+;       - scanning is successful
+;       - the TWEI_IALEVEL and TWEI_IAFIELD*_VALUE field are correctly set
+;       - if printing is supported, CAP_PRINTERMODE can be set and
+;         CAP_PRINTERTEXT contains the correct value
 ;
 ; Arguments
-;   arg:1 - TW_IDENTITY.ProductName of scanner to test
-;   arg:2 - global for us to update on failure
-;   arg:3 - value of ShowUI (TRUE or FALSE)
-;   arg:4 - test name for the image folder
-;   arg:5 - expected value for TWEI_PRINTER
+;   arg:1 - test name for the image folder
+;   arg:2 - TWEI_IAFIELD*_VALUE containing fixed field (can be empty if none)
+;   arg:3 - fielda image address settings 'twia,printformat,value'
+;   arg:4 - fieldb image address settings 'twia,printformat,value'
+;   arg:5 - fieldc image address settings 'twia,printformat,value'
+;   arg:6 - fieldd image address settings 'twia,printformat,value'
+;   arg:7 - fielde image address settings 'twia,printformat,value'
 ;
 ; Globals
 ;   (none)
@@ -36,48 +40,46 @@
 ;   twimageinfo.compression - compression for current image
 ;   image.count - count of images from 1
 ;   image.folder - folder to put the images in
+;   totalfields - total value image address fields
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; If not supported, quietly leave...
-;
-if '${get:g_xfermech}' ~contains 'TWSX_FILE' goto MAIN.CONTINUE
-return 'pass'
-:MAIN.CONTINUE
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGEFILEXFER v1.0 30-Jul-2021'
+echo.titletest 'DAT_IMAGEFILEXFER'
+;
+setlocal fixedfieldname   '${arg:2}'
+setlocal fielda           '${arg:3}' ; check argindex down below
+setlocal fieldb           '${arg:4}'
+setlocal fieldc           '${arg:5}'
+setlocal fieldd           '${arg:6}'
+setlocal fielde           '${arg:7}'
 ;
 setlocal indent ''
-setlocal image.count '0'
-setlocal image.folder '${folder:certimages}/${arg:4}/DAT_IMAGEFILEXFER'
+setlocal image.count '1'
+setlocal image.folder '${folder:certimages}/${arg:1}/DAT_IMAGEFILEXFER'
 setlocal image.showname ''
-setlocal showui '${arg:3}'
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Prompt the user...
 ;
-echo.prompt
-echo.prompt "Scanning will take place during this test.  There will be no"
-echo.prompt "need to press any button on the TWAIN user interface to start"
-echo.prompt "the scanner.  A progress indicator may appear during scanning."
-echo.prompt
-echo.prompt "Place 1 sheet in the scanner's feeder.  The scanner will print"
-echo.prompt "text on this sheet."
-echo.prompt
-pause '(press the ENTER key when ready to continue)'
-echo.prompt
+; Figure out how many iafields have data, and get the fixed field value,
+; if any.  We're use them to check the TWEI_* values...
+setlocal totalfields 0      ; assume no fields
+setlocal argindex 2         ; first ia field argument - 1
+setlocal fixedfieldvalue '' ; assume we don't have a value
+:MAIN.PARSE.NEXT
+increment argindex ${get:argindex} 1
+if '${arg:${get:argindex}}' == '' goto MAIN.PARSE.DONE ; ran out of arguments
+if '${arg:${get:argindex}}' ~contains 'TWIA_UNUSED' goto MAIN.PARSE.NEXT ; skip unused fields
+if '${getindex:TWEI_IAFIELDA_VALUE,TWEI_IAFIELDB_VALUE,TWEI_IAFIELDC_VALUE,TWEI_IAFIELDD_VALUE,TWEI_IAFIELDE_VALUE:${get:argindex}}' != '${get:fixedfieldname}' goto MAIN.PARSE.NOTFIXED
+setlocal fixedfieldvalue '${getindex:${arg:${get:argindex}}:2}'
+:MAIN.PARSE.NOTFIXED
+increment totalfields ${get:totalfields} 1
+goto MAIN.PARSE.NEXT
+:MAIN.PARSE.DONE
 
 
 
@@ -93,8 +95,14 @@ image cleanfolderandmeta '${get:image.folder}'
 ; This resets the driver and sets all the capabilities we need for the test.
 ; If its return code is not 'pass', end with an error
 ;
-run SetCapabilities 'TWSX_FILE' '${get:indent}' g_capprinter
-if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+run SetCapabilities 'TWSX_FILE' '${get:indent}' '${get:totalfields}' '${get:fielda}' '${get:fieldb}' '${get:fieldc}' '${get:fieldd}' '${get:fielde}'
+setlocal returnvalue ${ret:}
+if '${ret:}' != 'skip' goto MAIN.SETCAPABILITES.CHECKPASS
+goto MAIN.SETCAPABILITES.DONE
+;
+:MAIN.SETCAPABILITES.CHECKPASS
+if '${get:returnvalue}' != 'pass' goto MAIN.ERROR.FAIL
+:MAIN.SETCAPABILITES.DONE
 
 
 
@@ -116,7 +124,7 @@ pause '(press the ENTER key when ready to continue)'
 ;
 setlocal name 'dg_control/dat_userinterface/msg_enableds'
 wait reset
-dsmentry src null dg_control dat_userinterface msg_enableds '${get:showui},0'
+dsmentry src null dg_control dat_userinterface msg_enableds '0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
@@ -180,18 +188,20 @@ echo.passfail '${get:indent}image <${get:image.showname}>' 'pass'
 ; DAT_EXTIMAGEINFO
 ; Check the printer metadata...
 ;
-run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}' ${get:g_capprinter}
+run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}' '${get:fixedfieldname}' '${get:fixedfieldvalue}' '${get:totalfields}'
 if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; End the transfer, see if we're done...
+; End the transfer, see if we're done.  If not, go back
+; to MAIN.IMAGEINFO.NEXT for another image...
 ;
 setlocal name 'dg_control/dat_pendingxfers/msg_endxfer'
 dsmentry src ds dg_control dat_pendingxfers msg_endxfer '0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
+increment image.count '${get:image.count}' 1 ; count the image
 if '${ret:${get:TW_PENDINGXFERS.Count}}' != '0' goto MAIN.IMAGEINFO.NEXT
 
 
@@ -213,6 +223,11 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 :MAIN.PASS
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'
+;
+; Skip is allowed for CAP_IAFIELDE_*...
+:MAIN.SKIP
+echo.passfail 'SUMMARY' 'skip'
+return 'skip'
 ;
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL

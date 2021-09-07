@@ -211,25 +211,59 @@ goto MAIN.DONE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; We need at least 8 sheets of paper, 10 if the driver supports CAP_IAFIELDE_LEVEL...
+; Figure out which transfers we're checking...
 ;
-setlocal sheets 8
-if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDE_LEVEL,' goto MAIN.8SHEETSONLY
-increment sheets ${get:sheets} 2
-:MAIN.8SHEETSONLY
+setlocal name 'get ICAP_XFERMECH'
+dsmentry src ds dg_control dat_capability msg_get 'ICAP_XFERMECH,0,0,0'
+if '${sts:}' != 'SUCCESS' goto MAIN.ERROR
+echo.passfail '${get:name}' 'pass'
+setlocal xfermech.enum '${ret:}'
+;
+setlocal xfermech.total 0 ; total supported transfers
+;
+; Turn twsx_* values into dat_image*xfer values...
+if ',${get:xfermech.enum},' !~contains ',TWSX_NATIVE,' goto MAIN.ERROR ; mandatory
+setlocal xfermech.list 'DAT_IMAGENATIVEXFER'
+increment xfermech.total ${get:xfermech.total} 1
+;
+if ',${get:xfermech.enum},' !~contains ',TWSX_MEMORY,' goto MAIN.ERROR ; mandatory
+setlocal xfermech.list '${get:xfermech.list},DAT_IMAGEMEMXFER'
+increment xfermech.total ${get:xfermech.total} 1
+;
+if ',${get:xfermech.enum},' !~contains ',TWSX_FILE,' goto MAIN.XFERMECH.SKIPFILE
+setlocal xfermech.list '${get:xfermech.list},DAT_IMAGEFILEXFER'
+increment xfermech.total ${get:xfermech.total} 1
+:MAIN.XFERMECH.SKIPFILE
+;
+if ',${get:xfermech.enum},' !~contains ',TWSX_MEMFILE,' goto MAIN.XFERMECH.SKIPMEMFILE
+setlocal xfermech.list '${get:xfermech.list},DAT_IMAGEMEMFILEXFER'
+increment xfermech.total ${get:xfermech.total} 1
+:MAIN.XFERMECH.SKIPMEMFILE
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We need at least 8 sheets of paper, 10 if the driver supports CAP_IAFIELDE_LEVEL.
+; Multiply that by the number of transfers we'll be doing.
+;
+setlocal sheets.onexfer 8
+if ',${get:g_supportedcaps},' !~contains ',CAP_IAFIELDE_LEVEL,' goto MAIN.8SHEETSONLY
+increment sheets.onexfer ${get:sheets.onexfer} 2
+:MAIN.8SHEETSONLY
+multiply sheets ${get:sheets.onexfer} ${get:xfermech.total}
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Prompt the user...
 ;
 echo.prompt
-echo.prompt "Scanning will take place now.  A progress indicator may appear, but
-echo.prompt "no other interaction should be needed."
+echo.prompt "Scanning will take place now.  A progress indicator may appear, but no other
+echo.prompt "interaction should be needed."
 echo.prompt
 echo.prompt "Place ${get:sheets} sheets in the scanner's feeder.  The scanner may print text"
-echo.prompt "on them.  If the feeder cannot accept ${get:sheets} sheets, put in as many as"
-echo.prompt "it can handle.  The script will prompt for more if needed."
+echo.prompt "on them.  If the feeder cannot accept ${get:sheets} sheets, put in as many"
+echo.prompt "multiples of ${get:sheets.onexfer} sheets that it can handle.  The script will prompt"
+echo.prompt "for more if needed."
 echo.prompt
 pause '(press the ENTER key when ready to continue)'
 echo.prompt
@@ -237,15 +271,26 @@ echo.prompt
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; We'll loop here over each of the transfers...
+;
+setlocal xfermech.index -1 ; one less than the first index for xfermech.list
+:MAIN.XFERMECH.NEXT
+increment xfermech.index ${get:xfermech.index} 1
+setlocal xfermech.value '${getindex:xfermech.list:${get:xfermech.index}}'
+if '${get:xfermech.value}' == '' goto MAIN.XFERMECH.DONE
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 1 with no fixed field, confirm support for 0 and no padding...
 ; See the CERTIFY script down below for a description of the arguments.
 ;
-echo.titletest 'Set IA: 0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' '' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+echo.titletest '${get:xfermech.value} Set IA: 0001' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' '' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-echo.titletest 'Set IA: 1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' '' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+echo.titletest '${get:xfermech.value} Set IA: 1' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' '' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -253,12 +298,12 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 1 with fixed field, confirm support for 0 and no padding...
 ;
-echo.titletest 'Set IA: IA-0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+echo.titletest '${get:xfermech.value} Set IA: IA-0001' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-echo.titletest 'Set IA: IA-1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+echo.titletest '${get:xfermech.value} Set IA: IA-1' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -266,12 +311,12 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 2 with fixed field, confirm support for 0 and no padding...
 ;
-echo.titletest 'Set IA: IA-0020.0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+echo.titletest '${get:xfermech.value} Set IA: IA-0020.0001' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-echo.titletest 'Set IA: IA-20.1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+echo.titletest '${get:xfermech.value} Set IA: IA-20.1' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -279,12 +324,12 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Test image address level 3 with fixed field, confirm support for 0 and no padding...
 ;
-echo.titletest 'Set IA: IA-0300.0020.0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,'
+echo.titletest '${get:xfermech.value} Set IA: IA-0300.0020.0001' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-echo.titletest 'Set IA: IA-300.20.1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,'
+echo.titletest '${get:xfermech.value} Set IA: IA-300.20.1' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
@@ -294,14 +339,22 @@ if '${ret:}' != 'pass' goto MAIN.ERROR
 ; confirm support for 0 and no padding...
 ;
 if ',${get:icapsupportedextimageinfo},' !~contains 'TWIA_LEVEL4' goto MAIN.LEVEL4.SKIP
-echo.titletest 'Set IA: IA-4000.0300.0020.0001' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,0000,4000' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
+echo.titletest '${get:xfermech.value} Set IA: IA-4000.0300.0020.0001' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,0000,4000' 'TWIA_LEVEL3,0000,300' 'TWIA_LEVEL2,0000,20' 'TWIA_LEVEL1,0000,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-echo.titletest 'Set IA: IA-4000.300.20.1' 1
-call CERTIFY 'DAT_IMAGENATIVEXFER' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,####,4000' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
+echo.titletest '${get:xfermech.value} Set IA: IA-4000.300.20.1' 1
+call CERTIFY '${get:xfermech.value}' '${folder:parent}' 'TWEI_IAFIELDA_VALUE' 'TWIA_FIXED,###,IA-' 'TWIA_LEVEL4,####,4000' 'TWIA_LEVEL3,####,300' 'TWIA_LEVEL2,####,20' 'TWIA_LEVEL1,####,1'
 if '${ret:}' != 'pass' goto MAIN.ERROR
 :MAIN.LEVEL4.SKIP
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Next transfer mechanism...
+;
+goto MAIN.XFERMECH.NEXT
+:MAIN.XFERMECH.DONE
 
 
 

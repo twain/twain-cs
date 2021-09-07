@@ -42,7 +42,7 @@
 ;   totalfields - total value image address fields
 ;
 ; Returns
-;   pass or fail
+;   pass/fail
 ;
 
 

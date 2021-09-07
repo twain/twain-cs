@@ -151,6 +151,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdIncrement,        new string[] { "increment" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdInput,            new string[] { "input" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdLog,              new string[] { "log" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdMultiply,         new string[] { "multiply" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdPause,            new string[] { "pause" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReport,           new string[] { "report" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdReturn,           new string[] { "return" }));
@@ -2064,6 +2065,7 @@ namespace twaincscert
                 Display("input [text]....................................display text and wait for user input");
                 Display("json2xml {file|json}............................convert json formatted data to xml");
                 Display("log {info|warn|error,etc} text..................add a line to the log file");
+                Display("multiply {dst} {src} {multiplier}...............multiply src by multiplier and store in dst");
                 Display("pause [text]....................................display text and wait for ENTER key");
                 Display("pwd.............................................report the current working directory");
                 Display("report {initialize {driver}|save {folder}}......self certification report");
@@ -2567,6 +2569,14 @@ namespace twaincscert
                 DisplayYellow("INPUT [TITLE]");
                 Display("Echoes the text and waits for user input, which is complete when the ENTER");
                 Display("key is pressed.  The input can be retrieved from ${ret:}");
+                return (false);
+            }
+
+            // Multiply...
+            if ((szCommand == "multiply"))
+            {
+                DisplayYellow("MULTIPLY {DST} {SRC} {MULTIPLIER}");
+                Display("Multiplies SRC by MUTIPLIER and stores in DST.");
                 return (false);
             }
 
@@ -4014,7 +4024,7 @@ namespace twaincscert
         }
 
         /// <summary>
-        /// Return from the current function...
+        /// Increment a value and store it...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
         /// <returns>true to quit</returns>
@@ -4239,6 +4249,74 @@ namespace twaincscert
                 case "assert":
                     Log.Assert(szMessage);
                     break;
+            }
+
+            // All done...
+            return (false);
+        }
+
+        /// <summary>
+        /// Multiply a value and store it...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdMultiply(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            int iSrc;
+            int iDst;
+            float fMultiplier;
+
+            // Validate...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 4) || (a_functionarguments.aszCmd[1] == null))
+            {
+                DisplayError("badly formed multiplier", a_functionarguments);
+                return (false);
+            }
+
+            // Turn the source into a number...
+            if (!int.TryParse(a_functionarguments.aszCmd[2], out iSrc))
+            {
+                DisplayError("source is not a number", a_functionarguments);
+                return (false);
+            }
+
+            // Turn the multiplier into a number...
+            if (!float.TryParse(a_functionarguments.aszCmd[3], out fMultiplier))
+            {
+                DisplayError("multiplier is not a number", a_functionarguments);
+                return (false);
+            }
+
+            // Multiply the value...
+            iDst = (int)((float)iSrc * fMultiplier);
+
+            // Gotta know if the value is local or global, local wins so we'll search there...
+            bool blGlobal = true;
+            if ((m_lcallstack.Count > 0) && (m_lcallstack[m_lcallstack.Count - 1].lkeyvalue != null))
+            {
+                foreach (KeyValue keyvalue in m_lcallstack[m_lcallstack.Count - 1].lkeyvalue)
+                {
+                    if (keyvalue.szKey == a_functionarguments.aszCmd[1])
+                    {
+                        blGlobal = false;
+                        break;
+                    }
+                }
+            }
+
+            // Store the value...
+            Interpreter.FunctionArguments functionarguments = default(Interpreter.FunctionArguments);
+            functionarguments.aszCmd = new string[3];
+            functionarguments.aszCmd[0] = blGlobal ? "setglobal" : "setlocal";
+            functionarguments.aszCmd[1] = a_functionarguments.aszCmd[1];
+            functionarguments.aszCmd[2] = iDst.ToString();
+            if (blGlobal)
+            {
+                CmdSetGlobal(ref functionarguments);
+            }
+            else
+            {
+                CmdSetLocal(ref functionarguments);
             }
 
             // All done...
@@ -4602,6 +4680,7 @@ namespace twaincscert
                     && (aszCmd[0] != "image")
                     && (aszCmd[0] != "increment")
                     && (aszCmd[0] != "log")
+                    && (aszCmd[0] != "multiply")
                     && (aszCmd[0] != "setglobal")
                     && (aszCmd[0] != "setlocal")
                     && (aszCmd[0] != "sleep"))
