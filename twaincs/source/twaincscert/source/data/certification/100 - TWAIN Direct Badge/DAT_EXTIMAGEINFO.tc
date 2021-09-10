@@ -94,21 +94,19 @@ setlocal name 'TW_INFO[0].NumItems is 1'
 if '${getindex:patchcodedata:${get:TW_INFO.NumItems}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-;
-setlocal tweipatchcode '${gettwei:TWEI_PATCHCODE:${getindex:patchcodedata:${get:TW_INFO.Item}}}'
-setlocal name 'TW_INFO[0].Item is a TWPCH_PATCH1 value'
-if '${get:tweipatchcode}' == 'TWPCH_PATCH1' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_PATCH2 value'
-if '${get:tweipatchcode}' == 'TWPCH_PATCH2' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_PATCH3 value'
-if '${get:tweipatchcode}' == 'TWPCH_PATCH3' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_PATCH4 value'
-if '${get:tweipatchcode}' == 'TWPCH_PATCH4' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_PATCH6 value'
-if '${get:tweipatchcode}' == 'TWPCH_PATCH6' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_PATCHT value'
-if '${get:tweipatchcode}' == 'TWPCH_PATCHT' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is an unrecognized ${getindex:patchcodedata:${get:TW_INFO.Item}} value'
+setlocal name 'TW_INFO[0].Item is a TWPCH_1 value'
+if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_1' goto MAIN.TWINFO.SUCCESS.INCREMENT
+setlocal name 'TW_INFO[0].Item is a TWPCH_2 value'
+if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_2' goto MAIN.TWINFO.SUCCESS.INCREMENT
+setlocal name 'TW_INFO[0].Item is a TWPCH_3 value'
+if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_3' goto MAIN.TWINFO.SUCCESS.INCREMENT
+setlocal name 'TW_INFO[0].Item is a TWPCH_4 value'
+if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_4' goto MAIN.TWINFO.SUCCESS.INCREMENT
+setlocal name 'TW_INFO[0].Item is a TWPCH_6 value'
+if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_6' goto MAIN.TWINFO.SUCCESS.INCREMENT
+setlocal name 'TW_INFO[0].Item is a TWPCH_T value'
+if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_T' goto MAIN.TWINFO.SUCCESS.INCREMENT
+setlocal name 'TW_INFO[0].Item is a TWPCH_* value'
 goto MAIN.ERROR.ECHOPASSFAIL
 ;
 :MAIN.TWINFO.SUCCESS.INCREMENT

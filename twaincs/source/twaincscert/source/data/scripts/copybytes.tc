@@ -1,0 +1,58 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; CopyBytes
+;   Test that copybytes is working...
+;
+; Arguments
+;   (non)
+;
+; Globals
+;   (none)
+;
+; Locals
+;   test.bytes - number of bytes in the handle
+;   test.handle - the allocated handle
+;   test.src - string we start with
+;   test.dst - string we end up with
+;
+; Returns
+;   pass/fail
+;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Allocate two handles, and create a test string...
+;
+setlocal test.bytes 100
+allocate handle test.handle ${get:test.bytes}
+setlocal test.src "this is a bit of text we'll copy in and out of the handle..."
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Copy from the src string into the handle...
+;
+copybytes utf8handle test.src ${get:test.handle} ${get:test.bytes}
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Copy from the handle into the dst string...
+;
+copybytes handleutf8 ${get:test.handle} ${get:test.bytes} test.dst
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Show the result...
+;
+echo 'src=<${get:test.src}>'
+echo 'dst=<${get:test.dst}>'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Bye-bye...
+;
+free handle test.handle
+return pass

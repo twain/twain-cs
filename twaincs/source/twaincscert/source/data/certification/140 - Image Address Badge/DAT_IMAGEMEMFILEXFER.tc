@@ -175,7 +175,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Set up the file transfer...
+; Set up the memory file transfer...
 ;
 increment image.count '${get:image.count}' 1
 if '${get:twimageinfo.compression}' == 'JPEG' goto MAIN.SETUPFILEXFER.JPEG

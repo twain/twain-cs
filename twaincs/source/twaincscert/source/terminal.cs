@@ -131,6 +131,7 @@ namespace twaincscert
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCall,             new string[] { "call" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCd,               new string[] { "cd", "pwd" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdClean,            new string[] { "clean" }));
+            m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdCopyBytes,        new string[] { "copybytes" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdDir,              new string[] { "dir", "ls" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEcho,             new string[] { "echo" }));
             m_ldispatchtable.Add(new Interpreter.DispatchTable(CmdEchoBlue,         new string[] { "echo.blue" }));
@@ -1550,6 +1551,107 @@ namespace twaincscert
         }
 
         /// <summary>
+        /// Copy string bytes in and out of unmanaged memory...
+        /// </summary>
+        /// <param name="a_functionarguments">tokenized command and anything needed</param>
+        /// <returns>true to quit</returns>
+        private bool CmdCopyBytes(ref Interpreter.FunctionArguments a_functionarguments)
+        {
+            bool blGlobal;
+            int iBytes;
+            string szStringVariable;
+            string szStringValue;
+            IntPtr intptrHandle;
+            IntPtr intptrPointer;
+            UInt64 u64Handle;
+
+            // Validate...
+            if ((a_functionarguments.aszCmd == null) || (a_functionarguments.aszCmd.Length < 5) || (a_functionarguments.aszCmd[0] == null))
+            {
+                DisplayError("copybytes needs five arguments", a_functionarguments);
+                return (false);
+            }
+
+            // Figure out what we're copying in and out of...
+            switch (a_functionarguments.aszCmd[1].ToLowerInvariant())
+            {
+                // Eh?
+                default:
+                    DisplayError("bad mode", a_functionarguments);
+                    return (false);
+
+                // Copy from a handle to utf8, and then to a string...
+                case "handleutf8":
+                    // Get the argument values...
+                    if (!UInt64.TryParse(a_functionarguments.aszCmd[2], out u64Handle))
+                    {
+                        DisplayError("bad handle", a_functionarguments);
+                        return (false);
+                    }
+                    if (!int.TryParse(a_functionarguments.aszCmd[3], out iBytes))
+                    {
+                        DisplayError("bad handle size", a_functionarguments);
+                        return (false);
+                    }
+                    intptrHandle = (IntPtr)u64Handle;
+                    szStringVariable = a_functionarguments.aszCmd[4];
+                    // Do the copy...
+                    if ((intptrHandle != IntPtr.Zero) && (iBytes > 0))
+                    {
+                        byte[] abValue = new byte[iBytes];
+                        intptrPointer = m_twain.DsmMemLock(intptrHandle);
+                        if (intptrPointer == IntPtr.Zero)
+                        {
+                            DisplayError("DsmMemLock failed", a_functionarguments);
+                            return (false);
+                        }
+                        Marshal.Copy(intptrPointer, abValue, 0, iBytes);
+                        m_twain.DsmMemUnlock(intptrHandle);
+                        szStringValue = Encoding.UTF8.GetString(abValue);
+                        szStringValue = szStringValue.Replace("\0", "");
+                        SetVariable(szStringVariable, szStringValue, 0);
+                    }
+                    return (false);
+
+                // Copy from a string to utf8, and then to a handle...
+                case "utf8handle":
+                    // Get the argument values...
+                    szStringVariable = a_functionarguments.aszCmd[2];
+                    GetVariable(szStringVariable, -1, out szStringValue, out iBytes, out blGlobal);
+                    if (!UInt64.TryParse(a_functionarguments.aszCmd[3], out u64Handle))
+                    {
+                        DisplayError("bad handle", a_functionarguments);
+                        return (false);
+                    }
+                    if (!int.TryParse(a_functionarguments.aszCmd[4], out iBytes))
+                    {
+                        DisplayError("bad handle size", a_functionarguments);
+                        return (false);
+                    }
+                    intptrHandle = (IntPtr)u64Handle;
+                    // Do the copy...
+                    if ((szStringValue.Length > 0) && (intptrHandle != IntPtr.Zero) && (iBytes > 0))
+                    {
+                        byte[] abValue = Encoding.UTF8.GetBytes(szStringValue);
+                        if (abValue.Length > iBytes)
+                        {
+                            DisplayError("handle is too small", a_functionarguments);
+                            return (false);
+                        }
+                        intptrPointer = m_twain.DsmMemLock(intptrHandle);
+                        if (intptrPointer == IntPtr.Zero)
+                        {
+                            DisplayError("DsmMemLock failed", a_functionarguments);
+                            return (false);
+                        }
+                        Marshal.Copy(abValue, 0, intptrPointer, abValue.Length);
+                        m_twain.DsmMemUnlock(intptrHandle);
+                    }
+                    return (false);
+            }
+        }
+
+        /// <summary>
         /// Lists the files and folders in the current directory...
         /// </summary>
         /// <param name="a_functionarguments">tokenized command and anything needed</param>
@@ -2070,7 +2172,7 @@ namespace twaincscert
                 Display("pwd.............................................report the current working directory");
                 Display("report {initialize {driver}|save {folder}}......self certification report");
                 Display("return [status].................................return from call function");
-                Display("rollbacl [state#]...............................roll back to the desired state");
+                Display("rollback [state#]...............................roll back to the desired state");
                 Display("run [script]....................................run a script");
                 Display("runv [script]...................................run a script verbosely");
                 Display("setglobal [key [value]].........................show, set, or delete global keys");
@@ -2196,6 +2298,9 @@ namespace twaincscert
                 Display("  '${get:target}'");
                 Display("  The value last assigned to the target using the set command.");
                 Display("");
+                Display("  '${getbytes:target:utf8}'");
+                Display("  Get the number of bytes when target is converted to UTF-8.");
+                Display("");
                 Display("  '${gethandle:target:type:bytes}'");
                 Display("  Memlocks the target, and based on the type and the bytes converts the value to a string.");
                 Display("  The lock is freed when done.");
@@ -2226,6 +2331,9 @@ namespace twaincscert
                 Display("  '${ret:[index]}'");
                 Display("  The value supplied to the return command that ended the last run, runv, or call.  If an");
                 Display("  index is supplied the string is run through CSV and the indexed element is returned.");
+                Display("");
+                Display("  '${sizeof:type}'");
+                Display("  Get the size of the item in bytes (ex: ${sizeof:TW_TWAINDIRECT}).");
                 Display("");
                 Display("  '${state:}'");
                 Display("  The current TWAIN state (1 through 7).");
@@ -5744,6 +5852,7 @@ namespace twaincscert
                         || szSymbol.StartsWith("${folder:")
                         || szSymbol.StartsWith("${format:")
                         || szSymbol.StartsWith("${get:")
+                        || szSymbol.StartsWith("${getbytes:")
                         || szSymbol.StartsWith("${gettwei:")
                         || szSymbol.StartsWith("${gethandle:")
                         || szSymbol.StartsWith("${gethandleindex:")
@@ -5753,6 +5862,7 @@ namespace twaincscert
                         || szSymbol.StartsWith("${program:")
                         || szSymbol.StartsWith("${report:")
                         || szSymbol.StartsWith("${ret:")
+                        || szSymbol.StartsWith("${sizeof:")
                         || szSymbol.StartsWith("${state:")
                         || szSymbol.StartsWith("${sts:"))
                     {
@@ -5999,6 +6109,52 @@ namespace twaincscert
                         GetVariable(szGet, -1, out szValue, out iBytes, out blGlobal);
                     }
 
+                    // Get the number of bytes in the string, right now the only encoding
+                    // we're doing this for is UTF-8.  I could see adding the current one
+                    // as well (at least for Windows)...
+                    else if (szSymbol.StartsWith("${getbytes:"))
+                    {
+                        int iBytes = 0;
+                        bool blGlobal = false;
+                        byte[] abValue;
+                        string szValueLocal;
+
+                        // Assume zero...
+                        szValue = "0";
+
+                        // Strip off ${...}
+                        string szGetBytes = szSymbol.Substring(0, szSymbol.Length - 1).Substring(11);
+
+                        // If we don't have an encoding, assume UTF-8...
+                        if (!szGetBytes.Contains(":"))
+                        {
+                            GetVariable(szGetBytes, -1, out szValueLocal, out iBytes, out blGlobal);
+                            if (!string.IsNullOrEmpty(szValueLocal))
+                            {
+                                abValue = Encoding.UTF8.GetBytes(szValueLocal);
+                                szValue = abValue.Length.ToString();
+                            }
+                        }
+
+                        // Handle UTF-8
+                        else if (!szGetBytes.EndsWith(":uft8", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            szGetBytes = szGetBytes.Remove(szGetBytes.IndexOf(":"));
+                            GetVariable(szGetBytes, -1, out szValueLocal, out iBytes, out blGlobal);
+                            if (!string.IsNullOrEmpty(szValueLocal))
+                            {
+                                abValue = Encoding.UTF8.GetBytes(szValueLocal);
+                                szValue = abValue.Length.ToString();
+                            }
+                        }
+
+                        // Ruh-roh, leaving this here to help with debugging breakpoints...
+                        else
+                        {
+                            szValue = "0";
+                        }
+                    }
+
                     // Use value as a GET key to get a value, we don't allow a null in this
                     // case, it has to be an empty string.  We search the local list first,
                     // and if that fails go to the global list.  Once we have the value we
@@ -6099,7 +6255,7 @@ namespace twaincscert
                                             iDataBytes = Marshal.SizeOf(typeof(TWAIN.TW_STR255));
                                             abValue = new byte[iDataBytes];
                                             Marshal.Copy(intptrPointer, abValue, 0, iDataBytes);
-                                            szValue = Encoding.UTF8.GetString(abValue).Replace("\0","");
+                                            szValue = Encoding.UTF8.GetString(abValue).Replace("\0", "");
                                             break;
                                         case "TWTY_HANDLE":
                                             szValue = "";
@@ -6268,7 +6424,7 @@ namespace twaincscert
                         // Do the lookup...
                         if (aszGetTwei.Length > 1)
                         {
-                            if (Enum.TryParse(aszGetTwei[0].Replace("TWEI_","").Replace("twei_",""), out twei))
+                            if (Enum.TryParse(aszGetTwei[0].Replace("TWEI_", "").Replace("twei_", ""), out twei))
                             {
                                 szValue = TWAIN.CvtTweiValueToEnum(twei, aszGetTwei[1]);
                             }
@@ -6349,6 +6505,23 @@ namespace twaincscert
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // Get the size of the type...
+                    else if (szSymbol.StartsWith("${sizeof:"))
+                    {
+                        szValue = "0";
+                        string szType = szSymbol.Substring(0, szSymbol.Length - 1).Substring(9);
+                        // If there's no dot and it starts with TW, assume it's a TWAIN type...
+                        if (!szType.Contains(".") && szType.ToUpperInvariant().StartsWith("TW"))
+                        {
+                            szType = "TWAINWorkingGroup.TWAIN+" + szType.ToUpperInvariant() + ", TWAIN, Culture=neutral, PublicKeyToken=null";
+                        }
+                        Type type = System.Type.GetType(szType);
+                        if (type != null)
+                        {
+                            szValue = Marshal.SizeOf(type).ToString();
                         }
                     }
 

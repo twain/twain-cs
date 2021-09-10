@@ -150,9 +150,8 @@ setglobal TW_TWAINDIRECT.SizeOf                   0
 setglobal TW_TWAINDIRECT.CommunicationManager     1
 setglobal TW_TWAINDIRECT.Send                     2
 setglobal TW_TWAINDIRECT.SendSize                 3
-setglobal TW_TWAINDIRECT.SizeOf                   4
-setglobal TW_TWAINDIRECT.Receive                  5
-setglobal TW_TWAINDIRECT.ReceiveSize              6
+setglobal TW_TWAINDIRECT.Receive                  4
+setglobal TW_TWAINDIRECT.ReceiveSize              5
 ;
 setglobal TW_USERINTERFACE.ShowUI                 0
 setglobal TW_USERINTERFACE.ModalUI                1

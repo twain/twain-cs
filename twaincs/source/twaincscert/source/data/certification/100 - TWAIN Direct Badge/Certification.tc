@@ -46,6 +46,7 @@ call CERTIFY '${folder:certification}/Opends'  '${get:twidentity.productname}' '
 if '${get:g_localcertifyresult}' == 'fail' goto MAIN.CLOSEDS
 ;
 call CERTIFY 'TWAIN Direct Badge'              '${get:twidentity.productname}' 'g_localcertifyresult'
+call CERTIFY 'DAT_IMAGEMEMFILEXFER'            '${get:twidentity.productname}' 'g_localcertifyresult' '${folder:parent}'
 ;
 :MAIN.CLOSEDS
 call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' 'g_localcertifyresult' 'embedded'

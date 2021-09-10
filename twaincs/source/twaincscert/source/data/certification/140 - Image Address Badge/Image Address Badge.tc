@@ -285,13 +285,13 @@ if '${get:xfermech.value}' == '' goto MAIN.XFERMECH.DONE
 ; Test image address level 1 with no fixed field, confirm support for 0 and no padding...
 ; See the CERTIFY script down below for a description of the arguments.
 ;
-echo.titletest '${get:xfermech.value} Set IA: 0001' 1
-call CERTIFY '${get:xfermech.value}' '${folder:parent}' '' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
-if '${ret:}' != 'pass' goto MAIN.ERROR
+;echo.titletest '${get:xfermech.value} Set IA: 0001' 1
+;call CERTIFY '${get:xfermech.value}' '${folder:parent}' '' 'TWIA_LEVEL1,0000,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+;if '${ret:}' != 'pass' goto MAIN.ERROR
 ;
-echo.titletest '${get:xfermech.value} Set IA: 1' 1
-call CERTIFY '${get:xfermech.value}' '${folder:parent}' '' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
-if '${ret:}' != 'pass' goto MAIN.ERROR
+;echo.titletest '${get:xfermech.value} Set IA: 1' 1
+;call CERTIFY '${get:xfermech.value}' '${folder:parent}' '' 'TWIA_LEVEL1,####,1' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,' 'TWIA_UNUSED,,'
+;if '${ret:}' != 'pass' goto MAIN.ERROR
 
 
 

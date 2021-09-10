@@ -184,11 +184,11 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; Check to see if we passed.  We need one or more sheets of paper with no patch codes,
 ; and one or more sheets with one patch code.
 ;
-setlocal name 'Final Check: detected sheets with 0 patch codes
+setlocal name 'Final Check: detected ${get:g_patchcodecount.none} image(s) with no patch codes
 if '${get:g_patchcodecount.none}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'Final Check: detected sheets with 1 patch code'
+setlocal name 'Final Check: detected ${get:g_patchcodecount.one} image(s) with a patch code'
 if '${get:g_patchcodecount.one}' < '1' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
