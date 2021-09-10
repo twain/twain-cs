@@ -12,3 +12,17 @@
 /twaincs/source/twaincstool/source/obj
 /twaincs/source/twaincstst/source/bin/x86/Debug
 /twaincs/source/twaincstst/source/obj
+/twaincs/source/.vs/
+/twaincs/source/bin/
+/releases/twain-cs_02041100/twaincsscan/x64/Release/TWAINCSScan.log
+/releases/twain-cs_02041100/twaincsscan/x64/Release/twaindsm.log
+/releases/twain-cs_02041100/twaincstst/x86/Release/TWAINCSTst.log
+/twaincs/source/twaincscert/source/Properties/data.zip
+/twaincs/source/twaincscert/source/TWAIN-2.4-Specification.pdf
+/twaincs/source/twaincscert/source/bin/
+/twaincs/source/twaincscert/source/data/version.txt
+/twaincs/source/twaincscert/source/obj/
+/twaincs/source/twaincscert/source/twaincscert.csproj.user
+/twaincs/source/twaincsscan/source/bin/
+/twaincs/source/twaincstool/source/bin/
+/twaincs/source/twaincstst/source/bin/
