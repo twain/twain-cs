@@ -74,7 +74,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 :REWIND.4
 setlocal name 'dg_control/dat_identity/msg_closeds'
 if '${state:}' < '4' goto REWIND.3
-dsmentry src null dg_control dat_identity msg_closeds '0,0,0,ENGLISH_USA,USA,,2,4,0x0,,,${arg:1}'
+dsmentry src null dg_control dat_identity msg_closeds '${ds:}'
 if '${sts:}' == 'SUCCESS' goto REWIND.4.SUCCESS
 echo.passfail '${get:indent}${get:name}' 'fail'
 setlocal closedsresult 'fail'

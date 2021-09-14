@@ -178,7 +178,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ; CAP_PRINTERSUFFIX must be supported, and allow setting to 'TEST'...
 ;
 setlocal name 'CAP_PRINTERSUFFIX is supported'
-dsmentry src ds dg_control dat_capability msg_getcurrent 'CAP_PRINTERSUFFIX,TWON_ONEVALUE,TWTY_STR255,TEST'
+dsmentry src ds dg_control dat_capability msg_set 'CAP_PRINTERSUFFIX,TWON_ONEVALUE,TWTY_STR255,TEST'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
