@@ -35,7 +35,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_CAPABILITY v1.2 03-Jun-2020'
+echo.titletest 'DAT_CAPABILITY'
 setlocal indent ''
 setlocal pixeltype.itemlist 'TWPT_BW,TWPT_GRAY,TWPT_RGB'
 setlocal pixeltype.index '-1'

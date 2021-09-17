@@ -47,7 +47,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGENATIVEXFER v1.0 01-Mar-2020'
+echo.titletest 'DAT_IMAGENATIVEXFER'
 setlocal indent ''
 setlocal image.handle '0'
 setlocal image.count '0'

@@ -25,7 +25,7 @@
 ; Initialize...
 ;
 if '${arg:2}' == 'embedded' goto MAIN.TITLE.SKIP
-echo.titletest 'Closeds v1.0 05-Mar-2020'
+echo.titletest 'Closeds'
 :MAIN.TITLE.SKIP
 setlocal closedsresult 'pass'
 setlocal indent ''

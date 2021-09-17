@@ -21,7 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'ICAP_PIXELTYPE/ICAP_BITDEPTH v1.0 21-Feb-2020'
+echo.titletest 'ICAP_PIXELTYPE/ICAP_BITDEPTH'
 setlocal bitdepth ''
 
 

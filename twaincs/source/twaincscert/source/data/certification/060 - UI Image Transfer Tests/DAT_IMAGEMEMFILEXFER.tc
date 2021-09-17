@@ -58,7 +58,7 @@ return 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGEMEMFILEXFER v1.0 01-Mar-2020'
+echo.titletest 'DAT_IMAGEMEMFILEXFER'
 setlocal indent ''
 setlocal image.pointer '0'
 setlocal image.count '0'

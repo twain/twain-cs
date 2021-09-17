@@ -37,7 +37,7 @@
 ; Initialize...
 ;
 if '${arg:2}' == 'embedded' goto MAIN.TITLE.SKIP
-echo.titletest 'Opends v1.0 05-Mar-2020'
+echo.titletest 'Opends'
 :MAIN.TITLE.SKIP
 setlocal embedded '${arg:2}'
 setlocal indent '${arg:3}'

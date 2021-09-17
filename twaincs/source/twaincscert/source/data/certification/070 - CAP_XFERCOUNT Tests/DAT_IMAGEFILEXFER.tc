@@ -58,7 +58,7 @@ return 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize...
 ;
-echo.titletest 'DAT_IMAGEFILEXFER v1.0 04-Mar-2020'
+echo.titletest 'DAT_IMAGEFILEXFER'
 setlocal indent ''
 setlocal image.count '0'
 setlocal image.folder ''
