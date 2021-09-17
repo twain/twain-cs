@@ -18,13 +18,16 @@
 ; Returns
 ;   (none)
 ;
+; History
+;   1.0 - initial release
+;
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff, load tables if not already done for us...
 ;
-echo.titlesuite 'Barcode Badge v1.0 01-Sep-2021'
+echo.titlesuite 'Barcode Badge v1.0 17-Sep-2021'
 echo.yellow '*************************************************************************************'
 echo.yellow '*** This tests the Barcode Badge.  Skipping or failing means the driver does      ***'
 echo.yellow '*** not support this functionality.  It does not prevent certification.           ***'
@@ -61,7 +64,7 @@ call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass?
+; Did we pass? (do an extra check)
 if '${get:g_localcertifyresult}' == 'skip' goto MAIN.SKIP
 if '${get:g_localcertifyresult}' != 'pass' goto MAIN.ERROR
 echo ''

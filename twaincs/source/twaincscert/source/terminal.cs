@@ -6155,6 +6155,10 @@ namespace twaincscert
                         }
                     }
 
+                    // Format: ${gethandle:numeric handle:data type:bytes}
+                    // We only need bytes for TWTY_HANDLE, use 0 for all other types
+                    // Use -1 for NUL terminated strings
+                    //
                     // Use value as a GET key to get a value, we don't allow a null in this
                     // case, it has to be an empty string.  We search the local list first,
                     // and if that fails go to the global list.  Once we have the value we
@@ -6261,7 +6265,26 @@ namespace twaincscert
                                             szValue = "";
                                             if (int.TryParse(aszGet[2], out iDataBytes))
                                             {
-                                                if (iDataBytes > 0)
+                                                // Handle NUL-terminated strings...
+                                                if (iDataBytes == -1)
+                                                {
+                                                    abValue = new byte[0x10000]; // try 64K, we're expecting a NUL
+                                                    Marshal.Copy(intptrPointer, abValue, 0, abValue.Length);
+                                                    szValue = Encoding.UTF8.GetString(abValue);
+                                                    if (szValue.IndexOf('\0') == -1)
+                                                    {
+                                                        abValue = new byte[0x100000]; // try 1MB, we're expecting a NUL
+                                                        Marshal.Copy(intptrPointer, abValue, 0, abValue.Length);
+                                                        szValue = Encoding.UTF8.GetString(abValue);
+                                                    }
+                                                    int iNul = szValue.IndexOf('\0');
+                                                    if (iNul >= 0)
+                                                    {
+                                                        szValue = szValue.Remove(iNul);
+                                                    }
+                                                }
+                                                // Handle anything where we have a real non-zero size...
+                                                else if (iDataBytes > 0)
                                                 {
                                                     abValue = new byte[iDataBytes];
                                                     Marshal.Copy(intptrPointer, abValue, 0, iDataBytes);

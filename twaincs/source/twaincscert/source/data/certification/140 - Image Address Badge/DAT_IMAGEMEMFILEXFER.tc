@@ -268,7 +268,7 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 image free memfileimage
 echo.passfail 'SUMMARY' 'pass'

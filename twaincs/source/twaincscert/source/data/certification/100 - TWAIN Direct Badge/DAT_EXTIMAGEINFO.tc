@@ -1,11 +1,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; DAT_EXTIMAGEINFO
-;   Check the return values from DAT_EXTIMAGEINFO to make sure the patch code
+;   Check the return values from DAT_EXTIMAGEINFO to make sure the TWAIN Direct
 ;   metadata is properly reported.
 ;
 ;   Here's the basic flow:
 ;       DAT_EXTIMAGEINFO
-;       confirm that we have TWEI_PATCHCODE
+;       confirm that we have TWEI_TWAINDIRECTMETADATA
 ;       confirm a sheet with no patchcodes
 ;           TW_INFO[0].ReturnCode values TWRC_DATANOTAVAILABLE
 ;       confirm a sheet with one patch code
@@ -14,28 +14,17 @@
 ;           all TW_INFO[0].NumItems equals 1
 ;           all TW_INFO[0].Item handle contains one of the TWPCH_* values
 ;
-;   The test passes if:
-;       - g_patchcodecount.none >= 1
-;         and (g_patchcodecount.one >= 1)
-;
 ; Arguments
 ;   arg:1 - indent the passfail text
 ;   arg:2 - base filename (no extension)
 ;
 ; Globals
-;   g_patchcodecount.none - increment if no patchcodes are found
-;   g_patchcodecount.one - increment if one patchcodes is found
+;   (none)
 ;
 ; Locals
-;   patchcodecount - the number of patchcodes found on the image
-;   patchcodedata - the return value from DAT_EXTIMAGEINFO
 ;   name - current test being done
 ;   indent - indent the passfail text
-;   twinfo.infoid.index - index to TW_INFO[n].infoid from the start of patchcodedata
-;   twinfo.itemtype.index - index to TW_INFO[n].itemtype from the start of patchcodedata
-;   twinfo.numitems.index - index to TW_INFO[n].numitems from the start of patchcodedata
-;   twinfo.returncode.index - index to TW_INFO[n].returncode from the start of patchcodedata
-;   twinfo.item.index - index to TW_INFO[n].item from the start of patchcodedata
+;   twaindirectmetadata - the twain direct data
 ;
 ; Returns
 ;   pass/fail
@@ -44,38 +33,36 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Get the extended image info, save the data to 'patchcodedata'.
+; Get the extended image info, save the data to 'twaindirectmetadata'.
 ;
 setlocal indent '${arg:1}    '
-setlocal name 'dg_image/dat_extimageinfo/msg_get'
-dsmentry src ds dg_image dat_extimageinfo msg_get '1,TWEI_PATCHCODE,0,0,0,0'
+setlocal name 'dg_image/dat_extimageinfo/msg_get TWEI_TWAINDIRECTMETADATA'
+dsmentry src ds dg_image dat_extimageinfo msg_get '1,TWEI_TWAINDIRECTMETADATA,0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-setlocal patchcodedata '${ret:}'
+setlocal twaindirectmetadata '${ret:}'
 filewrite '${arg:2}_extimageinfo.txt' '${get:patchcodedata}'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Confirm that we got back all the patch code extimageinfo data...
+; Confirm that we got back all the twain direct extimageinfo data...
 ;
-setlocal name 'Found TWEI_PATCHCODE'
-if ',${get:patchcodedata},' !contains 'TWEI_PATCHCODE' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'Found TWEI_TWAINDIRECTMETADATA'
+if ',${get:twaindirectmetadata},' !contains 'TWEI_TWAINDIRECTMETADATA' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Start validating the contents of TWEI_PATCHCODE, which is TW_INFO[0],
-; we expect to find the correct id and either TWRC_SUCCESS or TWRC_DATANOTAVAILABLE...
-setlocal name 'TW_INFO[0].InfoID is TWEI_PATCHCODE'
-if '${getindex:patchcodedata:${get:TW_INFO.InfoID}}' != 'TWEI_PATCHCODE' goto MAIN.ERROR.ECHOPASSFAIL
+; Start validating the contents of TWEI_TWAINDIRECTMETADATA, which is TW_INFO[0],
+; we expect to find the correct id and TWRC_SUCCESS...
+setlocal name 'TW_INFO[0].InfoID is TWEI_TWAINDIRECTMETADATA'
+if '${getindex:twaindirectmetadata:${get:TW_INFO.InfoID}}' != 'TWEI_TWAINDIRECTMETADATA' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'TW_INFO[0].ReturnCode is TWRC_SUCCESS or TWRC_DATANOTAVAILABLE'
-if '${getindex:patchcodedata:${get:TW_INFO.ReturnCode}}' == 'TWRC_SUCCESS' goto MAIN.TWINFO.SUCCESS
-if '${getindex:patchcodedata:${get:TW_INFO.ReturnCode}}' == 'TWRC_DATANOTAVAILABLE' goto MAIN.TWINFO.NODATAFOUND
-goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_INFO[0].ReturnCode is TWRC_SUCCESS'
+if '${getindex:twaindirectmetadata:${get:TW_INFO.ReturnCode}}' != 'TWRC_SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 
 
 
@@ -86,52 +73,25 @@ goto MAIN.ERROR.ECHOPASSFAIL
 setlocal name 'TW_INFO[0].ReturnCode is TWRC_SUCCESS'
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'TW_INFO[0].ItemType is TWTY_UINT16'
-if '${getindex:patchcodedata:${get:TW_INFO.ItemType}}' != 'TWTY_UINT16' goto MAIN.ERROR.ECHOPASSFAIL
+setlocal name 'TW_INFO[0].ItemType is TWTY_HANDLE'
+if '${getindex:twaindirectmetadata:${get:TW_INFO.ItemType}}' != 'TWTY_HANDLE' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
 setlocal name 'TW_INFO[0].NumItems is 1'
-if '${getindex:patchcodedata:${get:TW_INFO.NumItems}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
+if '${getindex:twaindirectmetadata:${get:TW_INFO.NumItems}}' != '1' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
 ;
-setlocal name 'TW_INFO[0].Item is a TWPCH_1 value'
-if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_1' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_2 value'
-if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_2' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_3 value'
-if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_3' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_4 value'
-if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_4' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_6 value'
-if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_6' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_T value'
-if '${getindex:patchcodedata:${get:TW_INFO.Item}}' == 'TWPCH_T' goto MAIN.TWINFO.SUCCESS.INCREMENT
-setlocal name 'TW_INFO[0].Item is a TWPCH_* value'
-goto MAIN.ERROR.ECHOPASSFAIL
-;
-:MAIN.TWINFO.SUCCESS.INCREMENT
+setlocal name 'TW_INFO[0].Item contains metadata'
+if '${gethandle:${getindex:twaindirectmetadata:${get:TW_INFO.Item}}:TWTY_HANDLE:-1}' !contains 'metadata' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
-increment g_patchcodecount.one ${get:g_patchcodecount.one} 1
-goto MAIN.PASS
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Process TWRC_DATANOTAVAILABLE...
-;
-:MAIN.TWINFO.NODATAFOUND
-setlocal name 'TW_INFO[0].ReturnCode is TWRC_DATANOTAVAILABLE'
-echo.passfail '${get:indent}${get:name}' 'pass'
-;
-increment g_patchcodecount.none ${get:g_patchcodecount.none} 1
-goto MAIN.PASS
+echo 
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 return 'pass'
 ;

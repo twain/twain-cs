@@ -276,7 +276,7 @@ goto MAIN.PIXELTYPE.NEXT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'

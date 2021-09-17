@@ -47,7 +47,7 @@
 ; Get the extended image info, save the data to 'patchcodedata'.
 ;
 setlocal indent '${arg:1}    '
-setlocal name 'dg_image/dat_extimageinfo/msg_get'
+setlocal name 'dg_image/dat_extimageinfo/msg_get TWEI_PATCHCODE'
 dsmentry src ds dg_image dat_extimageinfo msg_get '1,TWEI_PATCHCODE,0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -133,7 +133,7 @@ goto MAIN.PASS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 return 'pass'
 ;

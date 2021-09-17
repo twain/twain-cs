@@ -88,7 +88,7 @@ echo.passfail '${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass?
+; We passed...
 :MAIN.PASS
 echo.passfail 'SUMMARY' 'pass'
 return 'pass'

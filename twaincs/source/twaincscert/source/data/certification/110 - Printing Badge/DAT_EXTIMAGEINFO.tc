@@ -34,7 +34,7 @@
 ; Get the extended image info, save the data to 'printerdata'.
 ;
 setlocal indent '${arg:1}    '
-setlocal name 'dg_image/dat_extimageinfo/msg_get'
+setlocal name 'dg_image/dat_extimageinfo/msg_get TWEI_PRINTER/TWEI_PRINTERTEXT'
 dsmentry src ds dg_image dat_extimageinfo msg_get '2,TWEI_PRINTER,0,0,0,0,TWEI_PRINTERTEXT,0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -140,7 +140,7 @@ free handle handle
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 return 'pass'
 ;

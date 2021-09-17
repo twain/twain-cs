@@ -54,7 +54,7 @@ setlocal totalfields '${arg:5}'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Get the extended image info, save the data to 'imageaddressdata'.
 ;
-setlocal name 'dg_image/dat_extimageinfo/msg_get'
+setlocal name 'dg_image/dat_extimageinfo/msg_get TWEI_IA*'
 dsmentry src ds dg_image dat_extimageinfo msg_get '6,TWEI_IALEVEL,0,0,0,0,TWEI_IAFIELDA_VALUE,0,0,0,0,TWEI_IAFIELDB_VALUE,0,0,0,0,TWEI_IAFIELDC_VALUE,0,0,0,0,TWEI_IAFIELDD_VALUE,0,0,0,0,TWEI_IAFIELDE_VALUE,0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -219,7 +219,7 @@ goto MAIN.TWINFO.NEXT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 return 'pass'
 ;

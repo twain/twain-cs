@@ -217,7 +217,7 @@ goto MAIN.VALUE.NEXT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 run '${folder:certification}/Closeds' '${arg:1}' embedded
 echo.passfail 'SUMMARY' 'pass'

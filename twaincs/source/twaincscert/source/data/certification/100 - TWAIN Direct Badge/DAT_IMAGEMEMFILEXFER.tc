@@ -94,7 +94,7 @@ setlocal source.index -1
 setlocal source.list 'any,flatbed,adf'
 ;
 setlocal pixelformat.index -1
-setlocal pixelformat.list 'any,bw,grayscale,rgb'
+setlocal pixelformat.list 'any,bw1,gray8,rgb24'
 
 
 
@@ -214,7 +214,6 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Start scanning...
 ;
-:MAIN.USERINTERFACE
 setlocal name 'dg_control/dat_userinterface/msg_enableds'
 wait reset
 dsmentry src null dg_control dat_userinterface msg_enableds '0,0'
@@ -267,6 +266,15 @@ image free memfileimage
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DAT_EXTIMAGEINFO
+; Check the twaindirect metadata...
+;
+run DAT_EXTIMAGEINFO '${get:indent}' '${get:image.folder}/adf${format:D6|${get:image.count}}'
+if '${ret:}' != 'pass' goto MAIN.ERROR.FAIL
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; End the transfer, see if we're done...
 ;
 setlocal name 'dg_control/dat_pendingxfers/msg_endxfer'
@@ -292,7 +300,7 @@ goto MAIN.PIXELFORMAT.NEXT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 echo.passfail 'SUMMARY' 'pass'
 image free memfileimage
@@ -302,6 +310,13 @@ return 'pass'
 ; Ruh-roh...
 :MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'fail - ${sts:} ${ret:}'
+echo.passfail 'SUMMARY' 'fail'
+image free memfileimage
+free pointer image.pointer
+return 'fail'
+;
+; Ruh-roh...
+:MAIN.ERROR.FAIL
 echo.passfail 'SUMMARY' 'fail'
 image free memfileimage
 free pointer image.pointer

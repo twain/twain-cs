@@ -119,7 +119,7 @@ echo.passfail 'SUMMARY' '${get:g_localcertifyresult}'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass?
+; Did we pass? (do an extra check)
 :MAIN.PASS
 if '${get:g_localcertifyresult}' != 'pass' goto MAIN.ERROR
 echo.passfail 'SUMMARY' 'pass'

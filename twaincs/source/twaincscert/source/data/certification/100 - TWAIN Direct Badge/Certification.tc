@@ -17,13 +17,17 @@
 ; Returns
 ;   (none)
 ;
+; History
+;   1.0 - initial release
+;   1.1 - add scanning so msg_settask and twei_twaindirect can be tested
+;
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialize stuff, load tables if not already done for us...
 ;
-echo.titlesuite 'TWAIN Direct Badge v1.0 24-Mar-2020'
+echo.titlesuite 'TWAIN Direct Badge v1.1 17-Sep-2020'
 echo.yellow '*************************************************************************************'
 echo.yellow '*** This tests the TWAIN Direct Badge.  Skipping or failing means the driver      ***'
 echo.yellow '*** does not support this functionality.  It does not prevent certification.      ***'
@@ -56,7 +60,7 @@ call CERTIFY '${folder:certification}/Closeds' '${get:twidentity.productname}' '
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass?
+; Did we pass? (do an extra check)
 if '${get:g_localcertifyresult}' == 'skip' goto MAIN.SKIP
 if '${get:g_localcertifyresult}' != 'pass' goto MAIN.ERROR
 echo ''

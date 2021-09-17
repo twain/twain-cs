@@ -71,7 +71,7 @@
 ; why further below...
 ;
 setlocal indent '${arg:1}    '
-setlocal name 'dg_image/dat_extimageinfo/msg_get'
+setlocal name 'dg_image/dat_extimageinfo/msg_get TWEI_BARCODE*'
 dsmentry src ds dg_image dat_extimageinfo msg_get '8,TWEI_BARCODECOUNT,0,0,0,0,TWEI_BARCODECONFIDENCE,0,0,0,0,TWEI_BARCODEROTATION,0,0,0,0,TWEI_BARCODETYPE,0,0,0,0,TWEI_BARCODEX,0,0,0,0,TWEI_BARCODEY,0,0,0,0,TWEI_BARCODETEXTLENGTH,0,0,0,0,TWEI_BARCODETEXT2,0,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
 echo.passfail '${get:indent}${get:name}' 'pass'
@@ -327,7 +327,7 @@ goto MAIN.MANYBARCODES.ITEM.BARCODETEXT2.NEXT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Summary and cleanup...
 ;
-; Did we pass? (do an extra check)
+; We passed...
 :MAIN.PASS
 return 'pass'
 ;
