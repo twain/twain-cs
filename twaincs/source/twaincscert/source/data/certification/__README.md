@@ -11,4 +11,5 @@ in running, or use a goto to skip over tests.
 
 The 'echo' command is your friend.  You can learn a lot from it.  Or you
 can use the 'verbose' option to get the program to hork out everything
-going on.
+going on.  The 'runv' command will show all of the TWAIN commands that
+are issued during the test.
