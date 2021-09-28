@@ -9,6 +9,7 @@
 ;
 ; Globals
 ;  g_xfermech - transfer mechanism currently in use
+;  g_capsupportedcaps - list of supported capabilities
 ;
 ; Locals
 ;   name - name of a test
@@ -75,31 +76,32 @@ goto MAIN.DONE
 setlocal name 'CAP_SUPPORTEDCAPS MSG_GET'
 dsmentry src ds dg_control dat_capability msg_get 'CAP_SUPPORTEDCAPS,0,0,0'
 if '${sts:}' != 'SUCCESS' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+setglobal g_capsupportedcaps '${ret:}'
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS ICAP_PATCHCODEDETECTIONENABLED found'
-if ',${ret:},' !~contains ',ICAP_PATCHCODEDETECTIONENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_capsupportedcaps},' !~contains ',ICAP_PATCHCODEDETECTIONENABLED,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS ICAP_PATCHCODEMAXSEARCHPRIORITIES found'
-if ',${ret:},' !~contains ',ICAP_PATCHCODEMAXSEARCHPRIORITIES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_capsupportedcaps},' !~contains ',ICAP_PATCHCODEMAXSEARCHPRIORITIES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS ICAP_PATCHCODESEARCHMODE found'
-if ',${ret:},' !~contains ',ICAP_PATCHCODESEARCHMODE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_capsupportedcaps},' !~contains ',ICAP_PATCHCODESEARCHMODE,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS ICAP_PATCHCODESEARCHPRIORITIES found'
-if ',${ret:},' !~contains ',ICAP_PATCHCODESEARCHPRIORITIES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_capsupportedcaps},' !~contains ',ICAP_PATCHCODESEARCHPRIORITIES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 setlocal name 'CAP_SUPPORTEDCAPS ICAP_SUPPORTEDPATCHCODETYPES found'
-if ',${ret:},' !~contains ',ICAP_SUPPORTEDPATCHCODETYPES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
+if ',${get:g_capsupportedcaps},' !~contains ',ICAP_SUPPORTEDPATCHCODETYPES,' goto MAIN.CAP_SUPPORTEDCAPS.FAIL
 echo.passfail '${get:name}' 'pass'
 ;
 goto MAIN.CAP_SUPPORTEDCAPS.DONE
 :MAIN.CAP_SUPPORTEDCAPS.FAIL
-echo.passfail '${get:name}' 'fail - ${sts:} ${ret:}'
+echo.passfail '${get:name}' 'fail - ${sts:} ${get:g_capsupportedcaps}'
 setlocal certifyresult 'fail'
 goto MAIN.DONE
 :MAIN.CAP_SUPPORTEDCAPS.DONE

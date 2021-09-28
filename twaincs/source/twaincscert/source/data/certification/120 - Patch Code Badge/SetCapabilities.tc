@@ -27,6 +27,7 @@
 ;
 ; Globals
 ;   g_patchcodemaxsearchpriorities.max - maximum patchcodes we can get (max of ICAP_PATCHCODEMAXSEARCHPRIORITIES)
+;   g_capsupportedcaps - list of supported capabilities
 ;
 ; Locals
 ;   patchcodesearchpriorities.itemlist - first ICAP_PATCHCODEMAXSEARCHPRIORITIES of ICAP_SUPPORTEDPATCHCODETYPES
@@ -101,6 +102,50 @@ echo.passfail '${get:indent}${get:name}' 'pass'
 setlocal name 'ICAP_EXTIMAGEINFO MSG_SET TRUE'
 dsmentry src ds dg_control dat_capability msg_set 'ICAP_EXTIMAGEINFO,TWON_ONEVALUE,TWTY_BOOL,TRUE'
 if '${sts:}' != 'SUCCESS' goto MAIN.ERROR.ECHOPASSFAIL
+echo.passfail '${get:indent}${get:name}' 'pass'
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Some scanners need image addressing on to detect patches,
+; so if we detect that, enable it and set values for all
+; of the fields...
+;
+setlocal name 'Image Address skipped'
+if ',${get:g_capsupportedcaps},' !~contains 'CAP_IMAGEADDRESSENABLED' goto MAIN.IMAGEADDRESSENABLED.SKIP
+;
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IMAGEADDRESSENABLED,TWON_ONEVALUE,TWTY_BOOL,TRUE'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+;
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDA_LEVEL,TWON_ONEVALUE,TWTY_UINT32,TWIA_FIXED'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDB_LEVEL,TWON_ONEVALUE,TWTY_UINT32,TWIA_LEVEL3'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDC_LEVEL,TWON_ONEVALUE,TWTY_UINT32,TWIA_LEVEL2'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDD_LEVEL,TWON_ONEVALUE,TWTY_UINT32,TWIA_LEVEL1'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+;
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDA_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,#####'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDB_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,###'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDC_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,###'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDD_PRINTFORMAT,TWON_ONEVALUE,TWTY_STR32,###'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+;
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDA_VALUE,TWON_ONEVALUE,TWTY_STR32,FIXED'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDB_VALUE,TWON_ONEVALUE,TWTY_STR32,300'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDC_VALUE,TWON_ONEVALUE,TWTY_STR32,20'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+dsmentry src ds dg_control dat_capability msg_set 'CAP_IAFIELDD_VALUE,TWON_ONEVALUE,TWTY_STR32,1'
+if '${sts:}' != 'SUCCESS' goto MAIN.IMAGEADDRESSENABLED.SKIP
+;
+setlocal name 'Image Address set'
+:MAIN.IMAGEADDRESSENABLED.SKIP
 echo.passfail '${get:indent}${get:name}' 'pass'
 
 
