@@ -1,6 +1,6 @@
 @echo off
 :: 
-:: makerelease v1.0 24-Mar-2020
+:: makerelease v1.1 08-Nov-2021
 :: Ask some questions, and copy the built files into this folder
 :: to make releasing stuff easier and less error prone.
 ::
@@ -11,9 +11,6 @@
 echo.
 echo | set /p dummyName="TWAIN CS........................."
 findstr /C:"AssemblyFileVersion" "%~dp0%..\twaincs\source\Properties\AssemblyInfo.cs"
-::
-echo | set /p dummyName="TWAIN CS Toolkit (deprecated)...."
-findstr /C:"AssemblyFileVersion" "%~dp0%..\twaincs\source\twaincstool\source\Properties\AssemblyInfo.cs"
 ::
 echo | set /p dummyName="TWAIN CS Certification..........."
 findstr /C:"AssemblyFileVersion" "%~dp0%..\twaincs\source\twaincscert\source\Properties\AssemblyInfo.cs"
