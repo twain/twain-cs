@@ -15329,9 +15329,22 @@ namespace TWAINWorkingGroup
                 // Don't care, keep going...
             }
 
-            // Turn on the listener...
-            ms_filestream = File.Open(szLogFile + ".log", FileMode.Append, FileAccess.Write, FileShare.Read);
-            Trace.Listeners.Add(new TextWriterTraceListener(ms_filestream, a_szName + "Listener"));
+            // Turn on the listener, if we're reentering, we maybe have to retry a bit until the
+            // previous one is gone...
+            for (int iRetry = 0; iRetry < 5000; iRetry += 1000)
+            {
+                try
+                {
+                    ms_filestream = File.Open(szLogFile + ".log", FileMode.Append, FileAccess.Write, FileShare.Read);
+                    Trace.Listeners.Add(new TextWriterTraceListener(ms_filestream, a_szName + "Listener"));
+                    break;
+                }
+                catch
+                {
+                    // Just keep retrying...
+                }
+                Thread.Sleep(1000);
+            }
         }
 
         /// <summary>

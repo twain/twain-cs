@@ -7359,7 +7359,7 @@ namespace twaincscert
         /// <param name="a_streamreaderConsole">the console to use</param>
         /// <param name="a_iTwainState">twain state</param>
         /// <returns>data captured</returns>
-        public string Prompt(StreamReader a_streamreaderConsole, int a_iTwainState, bool a_blAllowEmptyLine = false, bool a_blEcho = true)
+        public string Prompt(StreamReader a_streamreaderConsole, int a_iTwainState, bool a_blAllowEmptyLine = false, bool a_blEcho = false)
         {
             string szCmd;
 
@@ -7385,7 +7385,7 @@ namespace twaincscert
                 }
 
                 // Read in a line...
-                if (Environment.OSVersion.ToString().Contains("Microsoft Windows"))
+                if (!Environment.OSVersion.ToString().Contains("Microsoft Windowsxxx"))
                 {
                     szCmd = (a_streamreaderConsole == null) ? Console.In.ReadLine() : a_streamreaderConsole.ReadLine();
                     if (string.IsNullOrEmpty(szCmd))
@@ -7399,12 +7399,16 @@ namespace twaincscert
                 }
                 else
                 {
+                    szCmd = Console.ReadLine();
+                    break;
+                    /*
                     List<char> lchLine = new List<char>();
                     TextReader textreader = (a_streamreaderConsole == null) ? Console.In : a_streamreaderConsole;
                     bool blTyping = true;
                     while (blTyping)
                     {
-                        int iCh = textreader.Read();
+                        ConsoleKeyInfo consolekeyinfo = Console.ReadKey();
+                        int iCh = consolekeyinfo.KeyChar; // textreader.Read();
                         switch (iCh)
                         {
                             // A character...
@@ -7444,6 +7448,7 @@ namespace twaincscert
                     {
                         szCmd += ch;
                     }
+                    */
                 }
 
                 // Trim whitespace...
