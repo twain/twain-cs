@@ -2551,7 +2551,7 @@ namespace TWAINWorkingGroup
         /// Don't care values...
         /// </summary>
         public const byte TWON_DONTCARE8 = 0xff;
-        public const ushort TWON_DONTCARE16 = 0xff;
+        public const ushort TWON_DONTCARE16 = 0xffff;
         public const uint TWON_DONTCARE32 = 0xffffffff;
 
         /// <summary>
