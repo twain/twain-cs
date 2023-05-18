@@ -1005,7 +1005,7 @@ namespace TWAINWorkingGroup
                 // Look for hex number (take anything)...
                 if (a_szDg.ToLowerInvariant().StartsWith("dg_0x"))
                 {
-                    if (!int.TryParse(a_szDg.ToLowerInvariant().Substring(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iDg))
+                    if (!int.TryParse(a_szDg.ToLowerInvariant().Substring(5), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iDg))
                     {
                         TWAINWorkingGroup.Log.Error("Badly constructed dg - <" + a_szDg + ">");
                         return (TWAIN.STS.BADPROTOCOL);
@@ -1013,7 +1013,7 @@ namespace TWAINWorkingGroup
                 }
                 else
                 {
-                    if (!Enum.TryParse(a_szDg.ToUpperInvariant().Substring(3), out dg))
+                    if (!TWAIN.Enum_TryParse(a_szDg.ToUpperInvariant().Substring(3), out dg))
                     {
                         TWAINWorkingGroup.Log.Error("Unrecognized dg - <" + a_szDg + ">");
                         return (TWAIN.STS.BADPROTOCOL);
@@ -1033,7 +1033,7 @@ namespace TWAINWorkingGroup
                 // Look for hex number (take anything)...
                 if (a_szDat.ToLowerInvariant().StartsWith("dat_0x"))
                 {
-                    if (!int.TryParse(a_szDat.ToLowerInvariant().Substring(4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iDat))
+                    if (!int.TryParse(a_szDat.ToLowerInvariant().Substring(6), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iDat))
                     {
                         TWAINWorkingGroup.Log.Error("Badly constructed dat - <" + a_szDat + ">");
                         return (TWAIN.STS.BADPROTOCOL);
@@ -1041,7 +1041,7 @@ namespace TWAINWorkingGroup
                 }
                 else
                 {
-                    if (!Enum.TryParse(a_szDat.ToUpperInvariant().Substring(4), out dat))
+                    if (!TWAIN.Enum_TryParse(a_szDat.ToUpperInvariant().Substring(4), out dat))
                     {
                         TWAINWorkingGroup.Log.Error("Unrecognized dat - <" + a_szDat + ">");
                         return (TWAIN.STS.BADPROTOCOL);
@@ -1061,7 +1061,7 @@ namespace TWAINWorkingGroup
                 // Look for hex number (take anything)...
                 if (a_szMsg.ToLowerInvariant().StartsWith("msg_0x"))
                 {
-                    if (!int.TryParse(a_szMsg.ToLowerInvariant().Substring(4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iMsg))
+                    if (!int.TryParse(a_szMsg.ToLowerInvariant().Substring(6), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iMsg))
                     {
                         TWAINWorkingGroup.Log.Error("Badly constructed dat - <" + a_szMsg + ">");
                         return (TWAIN.STS.BADPROTOCOL);
@@ -1069,7 +1069,7 @@ namespace TWAINWorkingGroup
                 }
                 else
                 {
-                    if (!Enum.TryParse(a_szMsg.ToUpperInvariant().Substring(4), out msg))
+                    if (!TWAIN.Enum_TryParse(a_szMsg.ToUpperInvariant().Substring(4), out msg))
                     {
                         TWAINWorkingGroup.Log.Error("Unrecognized msg - <" + a_szMsg + ">");
                         return (TWAIN.STS.BADPROTOCOL);
@@ -1085,7 +1085,18 @@ namespace TWAINWorkingGroup
                 // it would be nice to have a solution for this, but that will need
                 // a dynamic marshalling system...
                 default:
-                    sts = TWAIN.STS.BADPROTOCOL;
+					{
+						Int64 i64Memref;
+						if (!Int64.TryParse(a_szTwmemref, out i64Memref))
+						{
+							sts = STS.BADPROTOCOL;
+						}
+						else
+						{
+							IntPtr intptrTwmemref = (IntPtr)i64Memref;
+							sts = DsmEntry((DG)iDg, (DAT)iDat, (MSG)iMsg, intptrTwmemref);
+						}
+					}
                     break;
 
                 // DAT_AUDIOFILEXFER...
